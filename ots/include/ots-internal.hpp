@@ -15,6 +15,9 @@
 #include "cryptonote_basic/cryptonote_basic.h"
 #include "cryptonote_core/cryptonote_core.h"
 
+#include "easylogging++.h"
+INITIALIZE_EASYLOGGINGPP
+
 namespace ots {
     crypto::secret_key keyFromHash(const std::vector<unsigned char>& data);
     crypto::secret_key randomKey();
