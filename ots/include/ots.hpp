@@ -12,7 +12,9 @@
  * @file ots.hpp
  * @brief Header for the C++ library
  * @see ots.h for the C ABI
- *
+ */
+
+/**
  * @namespace ots
  * @brief The library exists complete only in this namespace
  *
@@ -41,7 +43,9 @@ namespace ots {
 	enum class Network {
 		MAIN,
 		TEST,
-		STAGE
+		STAGE,
+        // WARNING: On extending the network types, the cryptonoteNetwork function in ots-internal.hpp needs to be updated, or at least reviewed.
+        // WARNING: keep OTS_NETWORK in sync with this enum, too!
 	};
 
     /**
@@ -57,6 +61,7 @@ namespace ots {
         Standard,
         SubAddress,
         Integrated
+        // WARNING: Keep OTS_ADDRESS_TYPE in sync with this enum!
     };
 
     /**
@@ -69,18 +74,81 @@ namespace ots {
 	enum class SeedType {
 		Monero,
 		Polyseed
+        // WARNING: Keep OTS_SEED_TYPE in sync with this enum!
 	};
 
 	// Forward declarations
 	class Seed;
+    class Address;
 	class Wallet;
     class KeyStore;
+    struct KeyStoreDeleter { // for std::unique_ptr, if not it will not compile
+            void operator()(KeyStore* p) const;
+    };
+    /**
+     * @class Account
+     * @brief holds monero internal account and internal functions
+     * @internal
+     */
+    class Account;
+    struct AccountDeleter { // for std::unique_ptr, if not it will not compile
+            void operator()(Account* p) const;
+    };
+    class PolyseedKeyStore;
 	class TxDescription;
 	class TxWarning;
 
 	// Type aliases
 	using key_handle_t = size_t;
 	using seed_handle_t = size_t;
+
+    /**
+     * @brief String class that wipes its memory on destruction
+     * @note This class helps prevent sensitive data from remaining in memory,
+     *       but does not guarantee complete memory security, only wiping the memory
+     *       on destruction.
+     */
+    class WipeableString : public std::string {
+        public:
+            /**
+             * @brief Explicitly convert to std::string
+             * @throws ots::exception::wipeablestring::UnsafeConversion if used
+             * @warning This would create an insecure copy of the data, and therefore
+             *          throws an exception. Use insecure() instead if you really need
+             *          to convert to std::string.
+             */
+            operator std::string() const;
+
+            /** @brief Inherit all std::string constructors */
+            using std::string::string;
+            
+            /** @brief Copy constructor */
+            WipeableString(const WipeableString& other);
+            
+            /** @brief Move constructor */
+            WipeableString(WipeableString&& other) noexcept;
+            
+            /** @brief Copy assignment operator */
+            WipeableString& operator=(const WipeableString& other);
+            
+            /** @brief Move assignment operator */
+            WipeableString& operator=(WipeableString&& other) noexcept;
+
+            /** @brief Destructor that wipes memory */
+            ~WipeableString();
+
+            /**
+             * @brief Create an insecure std::string copy
+             * @warning The returned string will not be wiped from
+             *          memory automatically. Use only if you are sure
+             *          what you are doing.
+             */
+            std::string insecure() const noexcept;
+
+        private:
+            /** @brief Wipe the string's memory */
+            void wipe() noexcept;
+    };
 
     /**
      * @class SeedLanguage
@@ -94,19 +162,19 @@ namespace ots {
              * @brief Retrieves the native name of the seed language
              * @return std::string Language native name
              */
-			[[nodiscard]] std::string name() const;
+			[[nodiscard]] const std::string& name() const;
 
             /**
              * @brief Retrieves the English name of the seed language
              * @return std::string Language name in English
              */
-			[[nodiscard]] std::string englishName() const;
+			[[nodiscard]] const std::string& englishName() const;
 
             /**
              * @brief Retrieves the two-letter language code, which could be extended by a dash with a variation
              * @return std::string language code
              */
-			[[nodiscard]] std::string code() const;
+			[[nodiscard]] const std::string& code() const;
 
             /**
              * @brief Checks if the language is supported for a specific seed type
@@ -118,9 +186,16 @@ namespace ots {
             /**
              * @brief Checks if this is the default language for a given seed type
              * @param type SeedType to check (default: Monero), alternative Polyseed
-             * @return bool True if this is the default language, false otherwise
+             * @return True if this is the default language, false otherwise
              */
 			[[nodiscard]] bool isDefault(SeedType type = SeedType::Monero) const;
+
+            /**
+             * @brief The native language index
+             * @param type SeedType to check support for (default: Monero), alternative Polyseed
+             * @return index for the SeedType or -1 on unkown
+             */
+			[[nodiscard]] int index(SeedType type = SeedType::Monero) const noexcept;
 
             /**
              * @brief Compares two SeedLanguage objects for equality
@@ -130,20 +205,40 @@ namespace ots {
 			bool operator==(const SeedLanguage& other) const;
 
             /**
+             * @brief Compares two SeedLanguage objects for equality
+             * @param other SeedLanguage to compare against
+             * @return bool True if languages are the same, false otherwise
+             */
+			bool operator==(SeedLanguage& other) const;
+
+            /**
+             * @brief Compares SeedLanguage to a language code
+             * @param code language code to compare against
+             * @return bool True if language codes are the same, false otherwise
+             */
+			bool operator==(const std::string& code) const;
+
+            /**
+             * @brief returns the english name as string
+             * @return std::string
+             */
+            operator const std::string&() const;
+
+            /**
              * @brief Retrieves a SeedLanguage by its native name
              * @param name Native language name
              * @return const SeedLanguage Found language object
              * @throws std::runtime_error If language not found
              */
-			static const SeedLanguage fromName(const std::string& name);
+			static const SeedLanguage& fromName(const std::string& name);
 
             /**
              * @brief Retrieves a SeedLanguage by its English name
              * @param name English language name
              * @return const SeedLanguage Found language object
-             * @throws std::runtime_error If language not found
+             * @throws std::runtime_error if language not found
              */
-			static const SeedLanguage fromEnglishName(const std::string& name);
+			static const SeedLanguage& fromEnglishName(const std::string& name);
 
             /**
              * @brief Retrieves a SeedLanguage by its language code
@@ -151,21 +246,21 @@ namespace ots {
              * @return const SeedLanguage Found language object
              * @throws std::runtime_error If language not found
              */
-			static const SeedLanguage fromCode(const std::string& code);
+			static const SeedLanguage& fromCode(const std::string& code);
 
 
             /**
              * @brief Retrieves the complete list of available seed languages
              * @return const std::vector<SeedLanguage>& List of all supported languages
              */
-			static const std::vector<SeedLanguage>& list();
+			static const std::vector<std::reference_wrapper<const SeedLanguage>> list();
 
             /**
              * @brief Retrieves languages supported for a specific seed type
              * @param type SeedType to filter languages: (default: Monero), alternative Polyseed
              * @return const std::vector<SeedLanguage> Languages supporting the seed type
              */
-			static const std::vector<SeedLanguage> listFor(SeedType type);
+			static const std::vector<std::reference_wrapper<const SeedLanguage>> listFor(SeedType type);
 
             /**
              * @brief Gets the default language for a given seed type
@@ -174,13 +269,22 @@ namespace ots {
              */
 			static const SeedLanguage& defaultLanguage(SeedType type = SeedType::Monero);
 
+            /**
+             * @brief Sets the default language for a given seed type
+             * @param type SeedType to set default language for
+             * @param language SeedLanguage to set as default
+             * @throws ots::exception::language::LanguageNotFound If the language is not supported
+             */
+            static void setDefaultLanguage(SeedType type, const SeedLanguage& language);
+
 		private:
 			static std::vector<SeedLanguage> s_list;
-			static std::map<SeedType, SeedLanguage> s_default;
+			static std::map<SeedType, std::reference_wrapper<const SeedLanguage>> s_default;
 			std::string m_code;
 			std::string m_name;
 			std::string m_englishName;
 			std::map<SeedType, bool> m_supported;
+			std::map<SeedType, int> m_index;
 	};
 
     /**
@@ -200,20 +304,35 @@ namespace ots {
              * @brief Generates the seed phrase in a specified language
              * @param language SeedLanguage to generate phrase in
              * @return std::string Seed phrase
+             *
+             * @todo TODO: should probably be made as safe and wipeable string
              */
-			virtual std::string phrase(const SeedLanguage& language) const = 0;
+			virtual const std::string phrase(const SeedLanguage& language) const = 0;
 
             /**
              * @brief Gets the raw numeric values representing the seed
              * @return std::vector<int> Seed numeric representation
+             *
+             * @todo TODO: should be probably as safe and wipeable vector as reference
              */
-			virtual inline std::vector<int> values() const { return m_values; };
+			virtual inline const std::vector<uint16_t> values() const { return m_values; };
 
             /**
-             * @brief Generates a unique fingerprint for the seed
+             * @brief Provides a unique fingerprint for the seed
              * @return std::string Seed fingerprint
+             *
+             * @note Fingerprint is the last 6 digits of sha256(address) as uppercase hex
+             * @note Can't thow exception, because on constructing a seed address must be valid or throw and exception. And with valid address the fingerprint is also valid.
              */
-			virtual std::string fingerprint() const = 0;
+			virtual const std::string& fingerprint() const noexcept;
+
+            /**
+             * @brief Address of the seed
+             * @return reference to the address of the seed
+             *
+             * @note Can't thow exception, because on constructing a seed address must be valid or throw and exception.
+             */
+			virtual const Address& address() const noexcept;
 
             /**
              * @brief Gets the seed's creation timestamp
@@ -225,7 +344,7 @@ namespace ots {
              *  case the block height on creation was provide this is also
              *  only a rough estimation
              */
-			virtual uint64_t birthday() const;
+			virtual const uint64_t timestamp() const noexcept;
 
             /**
              * @brief Gets the blockchain height associated with the seed
@@ -235,13 +354,13 @@ namespace ots {
              * For Monero seeds it will be the same if the user provided a date, otherwise
              *  it will be the height the user provided, can be 0 also.
              */
-			virtual uint64_t height() const;
+			virtual const uint64_t height() const noexcept;
 
             /**
              * @brief Checks if the seed is encrypted
              * @return bool True if the seed is encrypted, false otherwise
              */
-			virtual inline bool encrypted() const { return false; };
+			virtual inline bool encrypted() const noexcept { return false; };
 
             /**
              * @brief Gets the network associated with the seed
@@ -250,7 +369,7 @@ namespace ots {
              * Main importance is that the addresses are based on the key
              * and the network - other network different keys
              */
-			virtual inline Network network() const { return m_network; };
+			virtual inline const Network& network() const noexcept { return m_network; };
 
             /**
              * @brief Creates a wallet from the seed
@@ -266,12 +385,60 @@ namespace ots {
             Seed(Seed&&) noexcept = default;
             Seed& operator=(Seed&&) noexcept = default;
 
+            /**
+             * @brief Merges two seed values, so you can join multiple SeedQRs to one seed
+             * @param values1 First seed values to merge
+             * @param values2 Second seed values to merge
+             * @return std::vector<uint16_t> Merged seed values
+             * @throws ots::exception::seed::LengthMismatch If the seeds are not of the same size
+             *
+             * @note The vectors need to have the same size
+             */
+            static std::vector<uint16_t> mergeValues(const std::vector<uint16_t>& values1, const std::vector<uint16_t>& values2);
+
+            /**
+             * @brief Merges multiple seed values, so you can join multiple SeedQRs to one seed
+             * @param values the collection of seed values to merge
+             * @return std::vector<uint16_t> Merged seed values
+             * @throws ots::exception::seed::LengthMismatch If the seeds are not of the same size
+             * @throws ots::exception::seed::TooFewValues if not at least two values are provided
+             *
+             * @note The vectors need to have the same size, and at least two values need to be provided
+             */
+            static std::vector<uint16_t> mergeValues(const std::vector<std::vector<uint16_t>>& values);
+
+            /**
+             * @brief Merges two seed values, so you can join multiple SeedQRs to one seed
+             * @param values1 First seed values to merge
+             * @param values2 Second seed values to merge
+             * @param del will delete both values after merging and zeroize them, default is true
+             * @return std::vector<uint16_t> Merged seed values
+             * @throws ots::exception::seed::LengthMismatch If the seeds are not of the same size
+             *
+             * @note The vectors need to have the same size
+             */
+            static std::vector<uint16_t> mergeAndZeorizeValues(std::vector<uint16_t>& values1, std::vector<uint16_t>& values2, bool del = true);
+
+            /**
+             * @brief Merges multiple seed values, so you can join multiple SeedQRs to one seed
+             * @param values the collection of seed values to merge
+             * @param del will delete all values after merging and zeroize them, default is true
+             * @return std::vector<uint16_t> Merged seed values
+             * @throws ots::exception::seed::LengthMismatch If the seeds are not of the same size
+             * @throws ots::exception::seed::TooFewValues if not at least two values are provided
+             *
+             * @note The vectors need to have the same size, and at least two values need to be provided
+             */
+            static std::vector<uint16_t> mergeAndZeorizeValues(std::vector<std::vector<uint16_t>>& values, bool del = true);
+
 		protected:
             Seed();
-			uint64_t m_birthday = 0;
+            std::unique_ptr<Address> m_address;
+            std::shared_ptr<Wallet> m_wallet;
+			uint64_t m_timestamp = 0;
 			uint64_t m_height = 0;
-            std::unique_ptr<KeyStore> m_key;
-			std::vector<int> m_values;
+            std::unique_ptr<KeyStore, KeyStoreDeleter> m_key;
+			std::vector<uint16_t> m_values;
 			Network m_network;
 	};
 
@@ -315,9 +482,8 @@ namespace ots {
              * @param language SeedLanguage to use
              * @return std::string Seed phrase
              */
-			std::string phrase(const SeedLanguage& language) const override;
-			std::vector<int> values() const override;
-			std::string fingerprint() const override;
+			const std::string phrase(const SeedLanguage& language) const override;
+			const std::vector<uint16_t> values() const override;
 
             /**
              * @brief Decodes a seed from a phrase
@@ -345,7 +511,7 @@ namespace ots {
              * @return LegacySeed Decoded seed
              */
 			static LegacySeed decode(
-					const std::vector<int>& values, 
+					const std::vector<uint16_t>& values, 
 					uint64_t height = 0,
 					uint64_t time = 0, 
 					Network network = Network::MAIN
@@ -360,26 +526,37 @@ namespace ots {
      */
 	class MoneroSeed : public EncryptableSeed {
 		public:
-			std::string phrase(const SeedLanguage& language) const override;
-			std::vector<int> values() const override;
-			std::string fingerprint() const override;
-			bool encrypted() const override;
+			const std::string phrase(const SeedLanguage& language) const override;
+			const std::vector<uint16_t> values() const override;
+			bool encrypted() const noexcept override;
 			bool encrypt(const std::string& password) override;
 			bool decrypt(const std::string& password) override;
+            /**
+             * @brief Decodes a Monero seed from a phrase
+             * @param phrase Seed phrase
+             * @param height Optional blockchain height
+             * @param time Optional timestamp
+             * @param network Network type (default: MAIN)
+             * @param password Decryption password, if different from empty string
+             * @return MoneroSeed Decoded seed
+             *
+             * @note autodetect Language
+             * @note password in combination with monero seeds is unluckily a mess, I guess in monero source itself it is called seed offset because the password if used for the wallet file encryption. In cryptonois it is used for the seed encryption (seed offset). But I think outside from monero source password makes more sense.
+             */
 			static MoneroSeed decode(
 					const std::string& phrase,
-					const SeedLanguage& language, 
 					uint64_t height = 0,
 					uint64_t time = 0, 
-					bool encrypted = false, 
-					Network network = Network::MAIN
+					Network network = Network::MAIN,
+                    const std::string& password = ""
 					);
+
 			static MoneroSeed decode(
-					const std::vector<int>& values, 
+					const std::vector<uint16_t>& values, 
 					uint64_t height = 0,
 					uint64_t time = 0, 
-					bool encrypted = false, 
-					Network network = Network::MAIN
+					Network network = Network::MAIN,
+                    const std::string& password = ""
 					);
 
             /**
@@ -388,7 +565,7 @@ namespace ots {
              * @param height Optional blockchain height
              * @param time Optional timestamp
              * @param network Network type (default: MAIN)
-             * @return MoneroSeed Created seed
+             * @return MoneroSeed created seed
              *
              * Can be used to:
              * - recover a seed
@@ -398,7 +575,8 @@ namespace ots {
                     const std::array<unsigned char, 32>& random,
 					uint64_t height = 0,
 					uint64_t time = 0, 
-					Network network = Network::MAIN
+					Network network = Network::MAIN,
+                    const SeedLanguage& language = SeedLanguage::defaultLanguage(SeedType::Monero)
 					);
 
             /**
@@ -408,16 +586,19 @@ namespace ots {
              * @param network Network type (default: MAIN)
              * @return MoneroSeed Generated seed
              *
-             * Warning!
-             * Generates a seed from the device provided entropy.
-             * Use with caution if the device can't provide good
-             * enough entropy!
+             * @warning Generates a seed from the device provided entropy.
+             *          Use with caution if the device can't provide good
+             *          enough entropy!
              */
 			static MoneroSeed generate(
 					uint64_t height = 0,
 					uint64_t time = 0, 
-					Network network = Network::MAIN
+					Network network = Network::MAIN,
+                    const SeedLanguage& language = SeedLanguage::defaultLanguage(SeedType::Monero)
 					);
+        protected:
+            MoneroSeed() = default;
+            bool m_encrypted = false;
 	};
 
     /**
@@ -428,23 +609,33 @@ namespace ots {
      */
 	class Polyseed : public EncryptableSeed {
 		public:
-			std::string phrase(const SeedLanguage& language) const override;
-			std::vector<int> values() const override;
-			std::string fingerprint() const override;
-			bool encrypted() const override;
+			const std::string phrase(const SeedLanguage& language) const override;
+			const std::vector<uint16_t> values() const override;
+            MoneroSeed moneroSeed() const;
+			bool encrypted() const noexcept override;
+
+            /**
+             * @throw ots::exception::keystore::polyseed::ActivePolyseedDataSession should never happen
+             * @throw ots::exception::keystore::LockedWriteAttempt should never happen
+             * @throw ots::exception::keystore::LockedAccessAttempt should never happen
+             */
 			bool encrypt(const std::string& password) override;
+
+            /**
+             * @throw ots::exception::keystore::polyseed::ActivePolyseedDataSession should never happen
+             * @throw ots::exception::keystore::LockedWriteAttempt should never happen
+             * @throw ots::exception::keystore::LockedAccessAttempt should never happen
+             */
 			bool decrypt(const std::string& password) override;
 
             /**
              * @brief Creates a Polyseed with specific parameters
-             * @param time Timestamp for seed creation
-             * @param language Seed language
+             * @param time Timestamp for seed creation, default 0, what translates to now (current system time)
              * @param network Network type (default: MAIN)
              * @return Polyseed Created seed
              */
 			static Polyseed create(
-					uint64_t time,
-					const SeedLanguage& language, 
+					uint64_t time = 0,
 					Network network = Network::MAIN
 					);
 
@@ -453,20 +644,42 @@ namespace ots {
              * @param phrase Seed phrase
              * @param network Network type (default: MAIN)
              * @return Polyseed Decoded seed
+             *
+             * @note autodetect language
              */
 			static Polyseed decode(
 					const std::string& phrase, 
 					Network network = Network::MAIN
 					);
+
+            /**
+             * @brief Decodes a Polyseed from a phrase
+             * @param phrase Seed phrase
+             * @param language the language of the wordlist to use
+             * @param network Network type (default: MAIN)
+             * @return Polyseed Decoded seed
+             */
 			static Polyseed decode(
 					const std::string& phrase, 
 					const SeedLanguage& language, 
 					Network network = Network::MAIN
 					);
+
+            /**
+             * @brief Decodes a Polyseed from indexes of the words
+             * @param values Seed phrase as index representation
+             * @param network Network type (default: MAIN)
+             * @return Polyseed Decoded seed
+             *
+             * @note Language not needed because the index is the same in all languages
+             */
 			static Polyseed decode(
-					const std::vector<int>& values, 
+					const std::vector<uint16_t>& values, 
 					Network network = Network::MAIN
 					);
+        protected:
+            Polyseed() = default;
+            std::unique_ptr<PolyseedKeyStore> m_seed;
 	};
 
     /**
@@ -488,13 +701,46 @@ namespace ots {
              * @brief Get the network of the address
              * @return the network type of the address
              */
-			[[nodiscard]] Network network() const noexcept;
+			[[nodiscard]] const Network network() const noexcept;
 
             /**
              * @brief Get the type of the address
              * @return the type of the address
              */
-			[[nodiscard]] AddressType type() const noexcept;
+			[[nodiscard]] const AddressType type() const noexcept;
+
+            /**
+             * @brief Generates a unique fingerprint for the Address
+             * @return std::string Address fingerprint
+             * @note Fingerprint is the last 6 digits of sha256(address) as upper case hex
+             */
+			virtual const std::string& fingerprint() const noexcept;
+
+            /**
+             * @brief Is it an integrated address
+             * An integrated address is a standard address with a payment ID
+             * @return bool True if the address is integrated, false otherwise
+             */
+            bool isIntegrated() const noexcept;
+
+            /**
+             * @brief Get the payment ID of the address
+             * @return std::string Payment ID or empty string if not integrated
+             */
+            std::string paymentID() const noexcept;
+
+            /**
+             * @brief Get the standard address for an integrated address
+             * @return Address standard address
+             * @throws ots::exception::address::NotIntegrated if the address is not integrated
+             */
+            Address integratedAddress() const;
+
+            /**
+             * @brief character length of the base58 address
+             * @return size_t length of the address
+             */
+			[[nodiscard]] const size_t length() const noexcept;
 
             /**
              * @brief let you use the Address like it would be a std::string
@@ -503,13 +749,82 @@ namespace ots {
 			explicit operator std::string() const noexcept;
 
             /**
-             * @brief check if a given string is a valid monero address
+             * @brief let you use the Address like it would be a const std::string&
              * @return base58 address as std::string
              */
-			[[nodiscard]] static bool isValid(const std::string& address) noexcept;
+			operator const std::string&() const noexcept;
+
+            /**
+             * @brief let you use the Address like it would be a uit8_t*
+             * @return base58 address as uint8_t*
+             */
+			operator const uint8_t*() const noexcept;
+
+            /**
+             * @brief Compare Address with a std::string address
+             * @return bool True if the addresses are the same, false otherwise
+             */
+            bool operator==(const std::string& other) const noexcept;
+
+            /**
+             * @brief check if a given string is a valid monero address
+             * @param address the base58 encoded address
+             * @throws ots::exception::address::Invalid if not a valid monero address
+             *
+             * @return the network the address should be valid for
+             */
+			[[nodiscard]] static Network network(const std::string& address);
+
+            /**
+             * @brief Get the type of the address
+             * @param address the base58 encoded address
+             * @return the type of the address
+             * @throws ots::exception::address::Invalid if not a valid monero address
+             */
+			[[nodiscard]] static AddressType type(const std::string& address);
+
+            /**
+             * @brief check if a given string is a valid monero address
+             * @param address the base58 encoded address
+             * @param network the network the address should be valid for
+             * @return base58 address as std::string
+             */
+			[[nodiscard]] static bool isValid(const std::string& address, const Network network = Network::MAIN) noexcept;
+
+            /**
+             * @brief check if a given string is a valid monero address, and and integrated address
+             * @param address the base58 encoded address
+             * @return true if an it is integrated address
+             * @throws ots::exception::address::Invalid if not a valid monero address
+             */
+            [[nodiscard]] static bool isIntegrated(const std::string& address);
+
+            /**
+             * @brief check if a given string is a valid monero address, and and integrated address
+             * @param address the base58 encoded address
+             * @param network the network the address should be valid for, default is MAIN
+             * @return the payment ID of the address, if it is an integrated address, else an empty string
+             * @throws ots::exception::address::Invalid if not a valid monero address
+             */
+            [[nodiscard]] static std::string paymentID(const std::string& address, Network network = Network::MAIN);
+
+            /**
+             * @brief check if a given string is a valid monero address, and and integrated address
+             * @param address the base58 encoded address
+             * @param network the network the address should be valid for, default is MAIN
+             * @return the base58 encoded integrated address
+             * @throws ots::exception::address::Invalid if not a valid monero address
+             * @throws ots::exception::address::NotIntegrated if the address is not an integrated address
+             */
+            [[nodiscard]] static std::string integratedAddress(const std::string& address, Network network = Network::MAIN);
+
 		protected:
+            explicit Address(const std::string& address, Network network);
             static Address validAddress(const std::string& address);
 			std::string m_address;
+            Network m_network;
+            AddressType m_type;
+			std::string m_fingerprint;
 	};
 
     /**
@@ -552,6 +867,14 @@ namespace ots {
              * @warning Entropy is depending on your device, on low entropy devices don't use this for security related purpose!
              */
             static std::array<unsigned char, 32> random();
+
+            /**
+             * @brief Random bytes
+             * @param[IN] size size of bytes
+             * @param[OUT] bytes where to write the random bytes
+             * @warning Entropy is depending on your device, on low entropy devices don't use this for security related purpose!
+             */
+            static void random(size_t size, uint8_t *bytes);
 	};
 
     /**
@@ -586,6 +909,7 @@ namespace ots {
              * @throws ots::exception::seedjar::SeedNotFound if the Seed object is not in the jar
              */
 			const Seed& get(const std::string& fingerprint) const;
+            uint32_t count() const noexcept;
 			bool has(seed_handle_t handle) const noexcept;
 			bool has(const std::string& fingerprint) const;
 			std::vector<std::reference_wrapper<const Seed>> list() const noexcept;
@@ -761,20 +1085,24 @@ namespace ots {
 
             /**
              * @brief Create a offline Wallet from a secret key
-             * @param key provided as insecure std::array, will be stored in the keystore, make sure to wike the provided variable after creating the Wallet
+             * @param key provided as insecure std::array, will be stored in the keystore, make sure to wipe the provided variable after creating the Wallet
              * @param height restore height of the wallet
+             * @param network the network of the wallet
              */
-            Wallet(const std::array<unsigned char, 32>& key, uint64_t height) noexcept;
+            Wallet(const std::array<unsigned char, 32>& key, uint64_t height, const Network network) noexcept;
 
             /**
              * @brief Create a offline Wallet from a secret key
              * @param key provide the key via a secret key Storage
              * @param height restore height of the wallet
+             * @param network the network of the wallet
              * @internal Only for internal use how KeyStore is not publicly declared
              */
-            Wallet(const KeyStore& key, uint64_t height) noexcept;
+            Wallet(const KeyStore& key, uint64_t height, const Network network) noexcept;
         protected:
-            std::unique_ptr<KeyStore> m_key;
+            std::unique_ptr<KeyStore, KeyStoreDeleter> m_key;
+            std::unique_ptr<Account, AccountDeleter> m_account;
+            Network m_network;
             uint64_t m_height = 0;
 	};
 
