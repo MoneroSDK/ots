@@ -101,10 +101,10 @@ configure_file(
 # Create a stubs library for now, hate this cluster coitus, we sort this out later
 add_library(monero-stubs STATIC
 	src/stub/unbound.cpp
-	src/stub/logging.cpp
+	# src/stub/logging.cpp
 	# src/stub/div128.c is in epee int-util.cpp
 	# src/stub/epee.cpp makes no sense because we seem still to need epee, let's check later again
-	src/stub/cryptonote.cpp # check later again if this makes sense, I made it to compile without dragging even more dependencies in
+	## src/stub/cryptonote.cpp # check later again if this makes sense, I made it to compile without dragging even more dependencies in
 	src/stub/dns_utils.cpp
 	# src/stub/hw_device.cpp
 )
@@ -187,6 +187,7 @@ target_compile_definitions(epee
 	ELPP_DISABLE_LOGS
 	ELPP_NO_DEFAULT_LOG_FILE
 	ELPP_NO_LOG_TO_FILE
+	AUTO_INITIALIZE_EASYLOGGINGPP
     _GNU_SOURCE
     __BYTE_ORDER=__LITTLE_ENDIAN
     __LITTLE_ENDIAN=1234
@@ -206,59 +207,17 @@ target_link_libraries(epee
 
 set_property(SOURCE ${EPEE_SOURCE_DIR}/memwipe.c PROPERTY C_STANDARD 11)
 
-# RandomX sources
-set(RANDOMX_SOURCES
-	# ${RANDOMX_SOURCE_DIR}/intrin_portable.cpp
-	# ${RANDOMX_SOURCE_DIR}/argon2_ref.c
-	# ${RANDOMX_SOURCE_DIR}/blake2/blake2b-ref.c
-	# ${RANDOMX_SOURCE_DIR}/blake2/blake2s-ref.c
-	# ${RANDOMX_SOURCE_DIR}/jit_compiler_x86.cpp
-	# ${RANDOMX_SOURCE_DIR}/program.cpp
-	# ${RANDOMX_SOURCE_DIR}/virtual_machine_x86.cpp
-
-	${RANDOMX_SOURCE_DIR}/randomx.cpp
-	${RANDOMX_SOURCE_DIR}/blake2/blake2b.c
-	${RANDOMX_SOURCE_DIR}/aes_hash.cpp
-	${RANDOMX_SOURCE_DIR}/allocator.cpp
-	${RANDOMX_SOURCE_DIR}/blake2/blake2b.c
-	${RANDOMX_SOURCE_DIR}/blake2_generator.cpp
-	${RANDOMX_SOURCE_DIR}/bytecode_machine.cpp
-	${RANDOMX_SOURCE_DIR}/cpu.cpp
-	${RANDOMX_SOURCE_DIR}/dataset.cpp
-	${RANDOMX_SOURCE_DIR}/instruction.cpp
-	${RANDOMX_SOURCE_DIR}/instructions_portable.cpp
-	${RANDOMX_SOURCE_DIR}/reciprocal.c
-	${RANDOMX_SOURCE_DIR}/soft_aes.cpp
-	${RANDOMX_SOURCE_DIR}/superscalar.cpp
-	${RANDOMX_SOURCE_DIR}/virtual_machine.cpp
-	${RANDOMX_SOURCE_DIR}/virtual_memory.c
-	${RANDOMX_SOURCE_DIR}/vm_compiled.cpp
-	${RANDOMX_SOURCE_DIR}/vm_compiled_light.cpp
-	${RANDOMX_SOURCE_DIR}/vm_interpreted.cpp
-	${RANDOMX_SOURCE_DIR}/vm_interpreted_light.cpp
-	${RANDOMX_SOURCE_DIR}/assembly_generator_x86.cpp
-)
-
-# add_library(randomx STATIC
-# ${RANDOMX_SOURCES}
-# )
-
-# target_include_directories(randomx
-# PUBLIC
-# ${MONERO_SOURCE_DIR}/external/randomx/src
-# ${MONERO_SOURCE_DIR}/external/randomx/src/blake2
-# )
-
-# target_compile_definitions(randomx
-# PRIVATE
-# RANDOMX_DEFAULT_FLAGS=RANDOMX_FLAG_JIT
-# RANDOMX_PROGRAM_SIZE=256
-# RANDOMX_ARGON_MEMORY=262144
-# RANDOMX_ARGON_ITERATIONS=3
-# RANDOMX_SCRATCHPAD_L3=2097152
-# )
-
+set(RANDOMX_JIT ON CACHE BOOL "Enable RandomX JIT compilation" FORCE)
+set(RANDOMX_LARGE_PAGES OFF CACHE BOOL "Enable RandomX large pages support" FORCE)
 add_subdirectory(${RANDOMX_DIR} ${CMAKE_BINARY_DIR}/randomx)
+
+enable_language(ASM)
+add_library(cryptonight_asm STATIC
+    ${MONERO_CRYPTO_SOURCE_DIR}/CryptonightR_template.S
+)
+target_include_directories(cryptonight_asm PRIVATE
+    ${MONERO_SOURCE_DIR}/src
+)
 
 add_library(monero-crypto STATIC
 	# ${MONERO_SOURCE_DIR}/src/crypto/crypto.cpp
@@ -283,6 +242,12 @@ add_library(monero-crypto STATIC
 	${MONERO_CRYPTO_SOURCE_DIR}/random.c
 	${MONERO_CRYPTO_SOURCE_DIR}/slow-hash.c
 	${MONERO_CRYPTO_SOURCE_DIR}/hash-extra-blake.c
+    ${MONERO_CRYPTO_SOURCE_DIR}/hash-extra-groestl.c
+    ${MONERO_CRYPTO_SOURCE_DIR}/hash-extra-jh.c
+    ${MONERO_CRYPTO_SOURCE_DIR}/hash-extra-skein.c
+    ${MONERO_CRYPTO_SOURCE_DIR}/aesb.c
+    ${MONERO_CRYPTO_SOURCE_DIR}/tree-hash.c
+    ${MONERO_CRYPTO_SOURCE_DIR}/CryptonightR_JIT.c
 	${MONERO_CRYPTO_SOURCE_DIR}/rx-slow-hash.c
 	${MONERO_CRYPTO_SOURCE_DIR}/blake256.c
 	${MONERO_CRYPTO_SOURCE_DIR}/blake2b.c
@@ -296,6 +261,8 @@ add_library(monero-crypto STATIC
 	${MONERO_CRYPTO_SOURCE_DIR}/crypto-ops-data.c
 	${MONERO_CRYPTO_SOURCE_DIR}/crypto_ops_builder/verify.c
 	# ${MONERO_CRYPTO_SOURCE_DIR}/crypto_ops_builder/ref10CommentedCombined/ge.c
+    ${MONERO_CRYPTO_SOURCE_DIR}/CryptonightR_JIT.c
+    ${MONERO_CRYPTO_SOURCE_DIR}/CryptonightR_template.h
 )
 
 # Disable AES in slow-hash, TODO: figure out how to make the best for the target platform
@@ -321,6 +288,17 @@ target_compile_definitions(monero-crypto
     __BIG_ENDIAN=4321
     CRYPTONOTE_NO_AES
     NO_AES
+	USE_CRYPTONIGHT_JIT
+)
+
+target_link_libraries(monero-crypto
+    PRIVATE
+	cryptonight_asm
+    randomx
+    epee
+    easylogging
+	${OPENSSL_SSL_LIBRARY}
+	${OPENSSL_CRYPTO_LIBRARY} # same as above
 )
 
 # we need the MONERO_VERSION from the version.cpp
@@ -342,6 +320,7 @@ set(MONERO_SOURCES
 	${MONERO_CRYPTONOTE_BASIC_SOURCE_DIR}/account.cpp
 	${MONERO_CRYPTONOTE_BASIC_SOURCE_DIR}/cryptonote_basic_impl.cpp
 	${MONERO_CRYPTONOTE_BASIC_SOURCE_DIR}/cryptonote_format_utils_basic.cpp
+	${MONERO_CRYPTONOTE_BASIC_SOURCE_DIR}/cryptonote_format_utils.cpp
 	${MONERO_RINGCT_SOURCE_DIR}/rctOps.cpp
 	${MONERO_RINGCT_SOURCE_DIR}/rctTypes.cpp
 	${MONERO_RINGCT_SOURCE_DIR}/rctCryptoOps.c
@@ -378,6 +357,8 @@ add_library(monero-ots
 	${MONERO_SOURCE_DIR}/src/version.cpp
 	src/ots.cpp
 	src/ots-abi.cpp
+	src/wipeable-string.cpp
+	src/wipeable-vector.cpp
 	src/address.cpp
 	src/seed-jar.cpp
 	src/seed-language.cpp
@@ -387,6 +368,7 @@ add_library(monero-ots
 	src/seed-polyseed.cpp
 	src/wallet.cpp
 	src/key-store.cpp
+	src/account.cpp
 	# ${EPEE_SOURCES} # TODO: solve later with implementation, first finish ABI
 	${EASYLOGGING} # WTF! All this chingadera makes me desires to rewrite the whole thing :@ But need to calm my horses because it will probably take a eternity to get it done
 	${MONERO_SOURCES} # TODO: solve later with implementation, first finish ABI
@@ -396,7 +378,6 @@ add_library(monero-ots
 target_link_libraries(monero-ots
 	PRIVATE
 	monero-stubs # use stubs as module to get easier rid of later
-	PRIVATE
 	epee
 	randomx
 	monero-crypto
@@ -468,6 +449,7 @@ install(
 	epee
 	easylogging
 	randomx
+	cryptonight_asm
 	monero-crypto
 	EXPORT monero-ots-targets
 	LIBRARY DESTINATION lib
