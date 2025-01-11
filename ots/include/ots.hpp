@@ -82,6 +82,8 @@ namespace ots {
     class Address;
 	class Wallet;
     class KeyStore;
+    class WipeableString;
+    class SeedIndices;
     struct KeyStoreDeleter { // for std::unique_ptr, if not it will not compile
             void operator()(KeyStore* p) const;
     };
@@ -101,54 +103,6 @@ namespace ots {
 	// Type aliases
 	using key_handle_t = size_t;
 	using seed_handle_t = size_t;
-
-    /**
-     * @brief String class that wipes its memory on destruction
-     * @note This class helps prevent sensitive data from remaining in memory,
-     *       but does not guarantee complete memory security, only wiping the memory
-     *       on destruction.
-     */
-    class WipeableString : public std::string {
-        public:
-            /**
-             * @brief Explicitly convert to std::string
-             * @throws ots::exception::wipeablestring::UnsafeConversion if used
-             * @warning This would create an insecure copy of the data, and therefore
-             *          throws an exception. Use insecure() instead if you really need
-             *          to convert to std::string.
-             */
-            operator std::string() const;
-
-            /** @brief Inherit all std::string constructors */
-            using std::string::string;
-            
-            /** @brief Copy constructor */
-            WipeableString(const WipeableString& other);
-            
-            /** @brief Move constructor */
-            WipeableString(WipeableString&& other) noexcept;
-            
-            /** @brief Copy assignment operator */
-            WipeableString& operator=(const WipeableString& other);
-            
-            /** @brief Move assignment operator */
-            WipeableString& operator=(WipeableString&& other) noexcept;
-
-            /** @brief Destructor that wipes memory */
-            ~WipeableString();
-
-            /**
-             * @brief Create an insecure std::string copy
-             * @warning The returned string will not be wiped from
-             *          memory automatically. Use only if you are sure
-             *          what you are doing.
-             */
-            std::string insecure() const noexcept;
-
-        private:
-            /** @brief Wipe the string's memory */
-            void wipe() noexcept;
-    };
 
     /**
      * @class SeedLanguage
@@ -303,19 +257,16 @@ namespace ots {
             /**
              * @brief Generates the seed phrase in a specified language
              * @param language SeedLanguage to generate phrase in
-             * @return std::string Seed phrase
-             *
-             * @todo TODO: should probably be made as safe and wipeable string
+             * @return Seed phrase
+             * @throws ots::exception::seed::UnsupportedLanguage If the language is not supported
              */
-			virtual const std::string phrase(const SeedLanguage& language) const = 0;
+			virtual const WipeableString phrase(const SeedLanguage& language) const = 0;
 
             /**
-             * @brief Gets the raw numeric values representing the seed
-             * @return std::vector<int> Seed numeric representation
-             *
-             * @todo TODO: should be probably as safe and wipeable vector as reference
+             * @brief Gets the raw numeric values representing the seed (indices)
+             * @return Seed numeric representation
              */
-			virtual inline const std::vector<uint16_t> values() const { return m_values; };
+			virtual const SeedIndices indices() const = 0;
 
             /**
              * @brief Provides a unique fingerprint for the seed
@@ -438,7 +389,6 @@ namespace ots {
 			uint64_t m_timestamp = 0;
 			uint64_t m_height = 0;
             std::unique_ptr<KeyStore, KeyStoreDeleter> m_key;
-			std::vector<uint16_t> m_values;
 			Network m_network;
 	};
 
@@ -482,8 +432,8 @@ namespace ots {
              * @param language SeedLanguage to use
              * @return std::string Seed phrase
              */
-			const std::string phrase(const SeedLanguage& language) const override;
-			const std::vector<uint16_t> values() const override;
+			const WipeableString phrase(const SeedLanguage& language) const override;
+			const SeedIndices indices() const override;
 
             /**
              * @brief Decodes a seed from a phrase
@@ -526,8 +476,8 @@ namespace ots {
      */
 	class MoneroSeed : public EncryptableSeed {
 		public:
-			const std::string phrase(const SeedLanguage& language) const override;
-			const std::vector<uint16_t> values() const override;
+			const WipeableString phrase(const SeedLanguage& language) const override;
+			const SeedIndices indices() const override;
 			bool encrypted() const noexcept override;
 			bool encrypt(const std::string& password) override;
 			bool decrypt(const std::string& password) override;
@@ -609,8 +559,8 @@ namespace ots {
      */
 	class Polyseed : public EncryptableSeed {
 		public:
-			const std::string phrase(const SeedLanguage& language) const override;
-			const std::vector<uint16_t> values() const override;
+			const WipeableString phrase(const SeedLanguage& language) const override;
+			const SeedIndices indices() const override;
             MoneroSeed moneroSeed() const;
 			bool encrypted() const noexcept override;
 
@@ -824,7 +774,7 @@ namespace ots {
 			std::string m_address;
             Network m_network;
             AddressType m_type;
-			std::string m_fingerprint;
+			mutable std::string m_fingerprint;
 	};
 
     /**
@@ -995,25 +945,25 @@ namespace ots {
              * @brief The Secret View Key
              * @return the wallet secret view key
              */
-            std::string secretViewKey() const noexcept;
+            WipeableString secretViewKey() const noexcept;
 
             /**
              * @brief The Public View Key
              * @return the wallet public view key
              */
-            std::string publicViewKey() const noexcept;
+            WipeableString publicViewKey() const noexcept;
 
             /**
              * @brief The Secret Spend Key
              * @return the wallet secret spend key
              */
-            std::string secretSpendKey() const noexcept;
+            WipeableString secretSpendKey() const noexcept;
 
             /**
              * @brief The Public Spend Key
              * @return the wallet public spend key
              */
-            std::string publicSpendKey() const noexcept;
+            WipeableString publicSpendKey() const noexcept;
 
             /**
              * @brief import the output, previous exported from the view only wallet
@@ -1029,7 +979,7 @@ namespace ots {
              * @throws ots::exception::wallet::ExportKeyImages if there are no key images, probably because no outputs are imported
              * @note the key images are needed by the view only wallet to create an unsigned transaction
              */
-			std::string exportKeyImages() const;
+			WipeableString exportKeyImages() const;
 
             /**
              * @brief Gives a whole picture of the unsigned transaction
@@ -1122,4 +1072,183 @@ namespace ots {
      */
 	class TxWarning {};
 
+    // set this on the end because there will be a lot of bloat in the documentation.
+    /**
+     * @brief String class that wipes its memory on destruction
+     * @note This class helps prevent sensitive data from remaining in memory,
+     *       but does not guarantee complete memory security
+     */
+    class WipeableString {
+
+        public:
+            /** @brief Default constructor */
+            WipeableString() noexcept = default;
+
+            /** @brief Construct from std::string */
+            inline explicit WipeableString(const std::string& s): m_str(s) {};
+
+            /** @brief Construct from C-string */
+            explicit WipeableString(const char* s);
+
+            /** @brief Construct from string and length */
+            WipeableString(const char* s, size_t n);
+
+            /** @brief Copy constructor */
+            WipeableString(const WipeableString& other);
+            
+            /** @brief Move constructor */
+            WipeableString(WipeableString&& other) noexcept;
+            
+            /** @brief Copy assignment operator */
+            WipeableString& operator=(const WipeableString& other);
+            
+            /** @brief Move assignment operator */
+            WipeableString& operator=(WipeableString&& other) noexcept;
+
+            /** @brief Assignment operator for C-string */
+            WipeableString& operator=(const char* s);
+
+            /** @brief Destructor that wipes memory */
+            ~WipeableString();
+
+            /**
+             * @brief Create an insecure std::string copy
+             * @warning The returned string will not be wiped from
+             *          memory automatically. Use only if you are sure
+             *          what you are and why you are doing.
+             */
+            std::string insecure() const noexcept;
+
+            /** @brief Get C-string representation */
+            const char* c_str() const noexcept;
+
+            /** @brief Get string data */
+            const char* data() const noexcept;
+
+            /** @brief Get string length */
+            size_t size() const noexcept;
+
+            /** @brief Check if string is empty */
+            bool empty() const noexcept;
+
+            /** @brief Clear string content */
+            void clear() noexcept;
+
+            /** @brief Get string capacity */
+            size_t capacity() const noexcept;
+
+            /** @brief Reserve memory for string */
+            void reserve(size_t n);
+
+            /** @brief Get substring */
+            WipeableString substr(size_t pos = 0, size_t len = std::string::npos) const;
+
+            /** @brief Find substring */
+            size_t find(const WipeableString& str, size_t pos = 0) const noexcept;
+            
+            /** @brief Find C-string */
+            size_t find(const char* s, size_t pos = 0) const noexcept;
+
+            /** @brief Append string */
+            WipeableString& append(const WipeableString& str);
+
+            /** @brief Append C-string */
+            WipeableString& append(const char* s);
+
+            /** @brief Append operator */
+            WipeableString& operator+=(const WipeableString& str);
+
+            /** @brief Append C-string operator */
+            WipeableString& operator+=(const char* s);
+
+            /** @brief Compare with another WipeableString */
+            bool operator==(const WipeableString& other) const noexcept;
+
+            /** @brief Compare inequality with another WipeableString */
+            bool operator!=(const WipeableString& other) const noexcept;
+
+            /**
+             * @brief Conversion to std::string is explicitly prevented
+             * @throws ots::exception::wipeablestring::UnsafeConversion
+             * @warning This is done to prevent accidental insecure conversions
+             *          of sensitive data. Use insecure() method to get
+             *          an insecure copy of the string if you really need it.
+             */
+            operator std::string() const;
+
+            /** @brief Compare strings */
+            int compare(const WipeableString& other) const noexcept;
+
+            /** @brief Stream output operator */
+            friend std::ostream& operator<<(std::ostream& os, const WipeableString& str);
+
+            /** @brief Static npos value */
+            static constexpr size_t npos = std::string::npos;
+
+        private:
+            /** @brief Internal string storage */
+            std::string m_str;
+
+            /** @brief Wipe the string's memory */
+            void wipe() noexcept;
+    };
+
+    /**
+     * @brief Secure container for seed word indices
+     * @note Memory is automatically wiped on destruction
+     */
+    class SeedIndices {
+        public:
+            /** @brief Default constructor */
+            SeedIndices() noexcept = default;
+
+            /** @brief Construct from std::vector */
+            inline explicit SeedIndices(const std::vector<uint16_t>& v): m_vec(v) {};
+
+            /** @brief Construct with size */
+            explicit SeedIndices(size_t size): m_vec(size) {};
+
+            /** @brief Construct with size and value */
+            SeedIndices(size_t size, uint16_t value): m_vec(size, value) {};
+
+            /** @brief Copy constructor */
+            SeedIndices(const SeedIndices& other): m_vec(other.m_vec) {};
+
+            /** @brief Move constructor */
+            SeedIndices(SeedIndices&& other) noexcept: m_vec(std::move(other.m_vec)) {};
+
+            /** @brief Copy assignment operator */
+            SeedIndices& operator=(const SeedIndices& other);
+
+            /** @brief Move assignment operator */
+            SeedIndices& operator=(SeedIndices&& other) noexcept;
+
+            /** @brief Destructor that wipes memory */
+            ~SeedIndices();
+
+            /** @brief Get vector size */
+            size_t size() const noexcept;
+
+            /** @brief Check if vector is empty */
+            bool empty() const noexcept;
+
+            /** @brief Clear indices */
+            void clear() noexcept;
+
+            /** @brief Element access */
+            uint16_t& operator[](size_t pos);
+            const uint16_t& operator[](size_t pos) const;
+            uint16_t& at(size_t pos);
+            const uint16_t& at(size_t pos) const;
+
+            /** @brief Add index */
+            void push_back(uint16_t value);
+
+        private:
+            /** @brief Internal storage */
+            std::vector<uint16_t> m_vec;
+
+            /** @brief Wipe the memory */
+            void wipe() noexcept;
+    };
 } // namespace ots

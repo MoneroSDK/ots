@@ -164,50 +164,50 @@ TEST_F(OTSTest, WipeableStringWiping) {
     EXPECT_TRUE(isMemoryWiped(ptr, length)) << "Memory should be wiped";
 }
 
-TEST_F(OTSTest, WipeableVectorBasicConstruction) {
-    ots::WipeableVector<uint16_t> v1;
+TEST_F(OTSTest, SeedIndicesBasicConstruction) {
+    ots::SeedIndices v1;
     EXPECT_TRUE(v1.empty());
     
     std::vector<uint16_t> orig{1, 2, 3, 4};
-    ots::WipeableVector<uint16_t> v2(orig);
+    ots::SeedIndices v2(orig);
     EXPECT_EQ(v2.size(), 4);
     EXPECT_EQ(v2[0], 1);
     
-    ots::WipeableVector<uint16_t> v3(3, 42);
+    ots::SeedIndices v3(3, 42);
     EXPECT_EQ(v3.size(), 3);
     EXPECT_EQ(v3[0], 42);
     EXPECT_EQ(v3[1], 42);
     EXPECT_EQ(v3[2], 42);
 }
 
-TEST_F(OTSTest, WipeableVectorCopyAndMove) {
-    ots::WipeableVector<uint16_t> original{std::vector<uint16_t>{1, 2, 3}};
+TEST_F(OTSTest, SeedIndicesCopyAndMove) {
+    ots::SeedIndices original{std::vector<uint16_t>{1, 2, 3}};
     
     // Copy construction
-    ots::WipeableVector<uint16_t> copied(original);
+    ots::SeedIndices copied(original);
     EXPECT_EQ(copied.size(), original.size());
     EXPECT_EQ(copied[0], original[0]);
     
     // Move construction
-    ots::WipeableVector<uint16_t> moved(std::move(copied));
+    ots::SeedIndices moved(std::move(copied));
     EXPECT_EQ(moved.size(), original.size());
     EXPECT_EQ(moved[0], original[0]);
     
     // Copy assignment
-    ots::WipeableVector<uint16_t> copyAssigned;
+    ots::SeedIndices copyAssigned;
     copyAssigned = original;
     EXPECT_EQ(copyAssigned.size(), original.size());
     EXPECT_EQ(copyAssigned[0], original[0]);
     
     // Move assignment
-    ots::WipeableVector<uint16_t> moveAssigned;
+    ots::SeedIndices moveAssigned;
     moveAssigned = std::move(copyAssigned);
     EXPECT_EQ(moveAssigned.size(), original.size());
     EXPECT_EQ(moveAssigned[0], original[0]);
 }
 
-TEST_F(OTSTest, WipeableVectorOperations) {
-    ots::WipeableVector<uint16_t> v;
+TEST_F(OTSTest, SeedIndicesOperations) {
+    ots::SeedIndices v;
     
     // Push back
     v.push_back(1);
@@ -216,48 +216,13 @@ TEST_F(OTSTest, WipeableVectorOperations) {
     EXPECT_EQ(v[0], 1);
     EXPECT_EQ(v[1], 2);
     
-    // Resize
-    v.resize(4);
-    EXPECT_EQ(v.size(), 4);
-    
-    // Reserve
-    size_t oldCapacity = v.size();
-    v.reserve(100);
-    EXPECT_GE(v.size(), oldCapacity);
-    
     // Clear
     v.clear();
     EXPECT_TRUE(v.empty());
 }
 
-TEST_F(OTSTest, WipeableVectorIterators) {
-    std::vector<uint16_t> orig{1, 2, 3, 4};
-    ots::WipeableVector<uint16_t> v(orig);
-    
-    uint16_t sum = 0;
-    for(const auto& val : v) {
-        sum += val;
-    }
-    EXPECT_EQ(sum, 10);
-}
-
-TEST_F(OTSTest, WipeableVectorConversion) {
-    std::vector<uint16_t> orig{1, 2, 3, 4};
-    ots::WipeableVector<uint16_t> v(orig);
-    
-    // Test that explicit conversion works
-    std::vector<uint16_t> safe = v.insecure();
-    EXPECT_EQ(safe, orig);
-    
-    // Test that implicit conversion throws
-    EXPECT_THROW({
-        const std::vector<uint16_t>& unsafe = v.operator std::vector<uint16_t>();
-        (void)unsafe;  // prevent unused variable warning
-    }, ots::exception::wipeablevector::UnsafeConversion);
-}
-
-TEST_F(OTSTest, WipeableVectorElementAccess) {
-    ots::WipeableVector<uint16_t> v{std::vector<uint16_t>{1, 2, 3}};
+TEST_F(OTSTest, SeedIndicesElementAccess) {
+    ots::SeedIndices v{std::vector<uint16_t>{1, 2, 3}};
     
     // Operator []
     EXPECT_EQ(v[0], 1);
@@ -267,10 +232,6 @@ TEST_F(OTSTest, WipeableVectorElementAccess) {
     // At
     EXPECT_EQ(v.at(1), 2);
     EXPECT_THROW(v.at(99), std::out_of_range);
-    
-    // Data
-    const uint16_t* data = v.data();
-    EXPECT_EQ(data[0], 42);
 }
 
 TEST_F(OTSTest, OtsSeedLanguageList) {
