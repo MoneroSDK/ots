@@ -348,27 +348,29 @@ set(POLYSEED_SOURCES
 	${POLYSEED_SOURCE_DIR}/lang_pt.c
 	${POLYSEED_SOURCE_DIR}/lang_zh_s.c
 	${POLYSEED_SOURCE_DIR}/lang_zh_t.c
-	${POLYSEED_SOURCE_DIR}/storage.c
 	${POLYSEED_SOURCE_DIR}/polyseed.c
+	${POLYSEED_SOURCE_DIR}/storage.c
 )
 
 # Create polyseed library
-add_library(polyseed STATIC
-    ${POLYSEED_SOURCES}
+add_library(polyseed STATIC ${POLYSEED_SOURCES})
+
+set_target_properties(polyseed PROPERTIES
+    POSITION_INDEPENDENT_CODE ON
+    C_STANDARD 11
+    C_STANDARD_REQUIRED ON
 )
 
 target_include_directories(polyseed
     PUBLIC
     ${POLYSEED_INCLUDE_DIR_BASE}
-	${POLYSEED_SOURCE_DIR}
-)
-set_target_properties(polyseed PROPERTIES
-    C_STANDARD 11
-    C_STANDARD_REQUIRED ON
+    PRIVATE
+    ${POLYSEED_SOURCE_DIR}
 )
 
-target_compile_definitions(polyseed
-    PRIVATE
+target_compile_definitions(polyseed 
+    PRIVATE 
+    POLYSEED_STATIC
     _DEFAULT_SOURCE
     _BSD_SOURCE
     _POSIX_C_SOURCE=200809L
@@ -376,6 +378,7 @@ target_compile_definitions(polyseed
 
 # Force C compilation for .c files
 set_source_files_properties(${POLYSEED_SOURCES} PROPERTIES LANGUAGE C)
+
 
 # Main library
 add_library(monero-ots
