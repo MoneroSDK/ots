@@ -332,53 +332,24 @@ set(MONERO_SOURCES
 	${MONERO_SOURCE_DIR}/src/device/device_default.cpp
 )
 
-# TODO: what to do about polyseed? I don't like it, but I also shouldn't rework the whole thing, but how it is it forces me also to ugly code duplication
-set(POLYSEED_SOURCES
-	${POLYSEED_SOURCE_DIR}/dependency.c
-	${POLYSEED_SOURCE_DIR}/features.c
-	${POLYSEED_SOURCE_DIR}/gf.c
-	${POLYSEED_SOURCE_DIR}/lang.c
-	${POLYSEED_SOURCE_DIR}/lang_cs.c
-	${POLYSEED_SOURCE_DIR}/lang_en.c
-	${POLYSEED_SOURCE_DIR}/lang_es.c
-	${POLYSEED_SOURCE_DIR}/lang_fr.c
-	${POLYSEED_SOURCE_DIR}/lang_it.c
-	${POLYSEED_SOURCE_DIR}/lang_jp.c
-	${POLYSEED_SOURCE_DIR}/lang_ko.c
-	${POLYSEED_SOURCE_DIR}/lang_pt.c
-	${POLYSEED_SOURCE_DIR}/lang_zh_s.c
-	${POLYSEED_SOURCE_DIR}/lang_zh_t.c
-	${POLYSEED_SOURCE_DIR}/polyseed.c
-	${POLYSEED_SOURCE_DIR}/storage.c
+include(ExternalProject)
+
+# Build polyseed separately
+ExternalProject_Add(external_polyseed
+    SOURCE_DIR ${MONERO_SOURCE_DIR}/external/polyseed
+    BINARY_DIR ${CMAKE_BINARY_DIR}/polyseed
+    INSTALL_COMMAND ""  # Skip install step
 )
 
-# Create polyseed library
-add_library(polyseed STATIC ${POLYSEED_SOURCES})
-
+# Create imported target for polyseed
+add_library(polyseed STATIC IMPORTED)
 set_target_properties(polyseed PROPERTIES
-    POSITION_INDEPENDENT_CODE ON
-    C_STANDARD 11
-    C_STANDARD_REQUIRED ON
+    IMPORTED_LOCATION "${CMAKE_BINARY_DIR}/polyseed/libpolyseed.a"
+    INTERFACE_INCLUDE_DIRECTORIES "${POLYSEED_INCLUDE_DIR_BASE}"
 )
 
-target_include_directories(polyseed
-    PUBLIC
-    ${POLYSEED_INCLUDE_DIR_BASE}
-    PRIVATE
-    ${POLYSEED_SOURCE_DIR}
-)
-
-target_compile_definitions(polyseed 
-    PRIVATE 
-    POLYSEED_STATIC
-    _DEFAULT_SOURCE
-    _BSD_SOURCE
-    _POSIX_C_SOURCE=200809L
-)
-
-# Force C compilation for .c files
-set_source_files_properties(${POLYSEED_SOURCES} PROPERTIES LANGUAGE C)
-
+# Make sure polyseed is built before we try to use it
+add_dependencies(polyseed external_polyseed)
 
 # Main library
 add_library(monero-ots
@@ -406,6 +377,7 @@ add_library(monero-ots
 
 target_link_libraries(monero-ots
 	PRIVATE
+	polyseed
 	monero-stubs # use stubs as module to get easier rid of later
 	epee
 	randomx
@@ -481,7 +453,7 @@ install(
 	randomx
 	cryptonight_asm
 	monero-crypto
-	polyseed
+	# polyseed
 	EXPORT monero-ots-targets
 	LIBRARY DESTINATION lib
 	ARCHIVE DESTINATION lib
