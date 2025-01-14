@@ -65,18 +65,18 @@ find_package(OpenSSL REQUIRED)
 # Require Monero source directory
 if(NOT MONERO_SOURCE_DIR)
 	if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../src/crypto/crypto.cpp")
-        get_filename_component(MONERO_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
-        get_filename_component(MONERO_CRYPTO_SOURCE_DIR "${MONERO_SOURCE_DIR}/src/crypto" ABSOLUTE)
+		get_filename_component(MONERO_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
+		get_filename_component(MONERO_CRYPTO_SOURCE_DIR "${MONERO_SOURCE_DIR}/src/crypto" ABSOLUTE)
 		get_filename_component(MONERO_COMMON_SOURCE_DIR "${MONERO_SOURCE_DIR}/src/common" ABSOLUTE)
 		get_filename_component(MONERO_MNEMONICS_SOURCE_DIR "${MONERO_SOURCE_DIR}/src/mnemonics" ABSOLUTE)
 		get_filename_component(MONERO_CRYPTONOTE_BASIC_SOURCE_DIR "${MONERO_SOURCE_DIR}/src/cryptonote_basic" ABSOLUTE)
 		get_filename_component(MONERO_CRYPTONOTE_CORE_SOURCE_DIR "${MONERO_SOURCE_DIR}/src/cryptonote_core" ABSOLUTE)
 		get_filename_component(MONERO_RINGCT_SOURCE_DIR "${MONERO_SOURCE_DIR}/src/ringct" ABSOLUTE)
-        get_filename_component(EPEE_SOURCE_DIR "${MONERO_SOURCE_DIR}/contrib/epee/src" ABSOLUTE)
-        get_filename_component(EPEE_INCLUDE_DIR_BASE "${MONERO_SOURCE_DIR}/contrib/epee/include" ABSOLUTE)
-        get_filename_component(RANDOMX_DIR "${MONERO_SOURCE_DIR}/external/randomx" ABSOLUTE)
-        get_filename_component(RANDOMX_SOURCE_DIR "${MONERO_SOURCE_DIR}/external/randomx/src" ABSOLUTE)
-        get_filename_component(RANDOMX_INCLUDE_DIR_BASE "${MONERO_SOURCE_DIR}/external/randomx/src" ABSOLUTE)
+		get_filename_component(EPEE_SOURCE_DIR "${MONERO_SOURCE_DIR}/contrib/epee/src" ABSOLUTE)
+		get_filename_component(EPEE_INCLUDE_DIR_BASE "${MONERO_SOURCE_DIR}/contrib/epee/include" ABSOLUTE)
+		get_filename_component(RANDOMX_DIR "${MONERO_SOURCE_DIR}/external/randomx" ABSOLUTE)
+		get_filename_component(RANDOMX_SOURCE_DIR "${MONERO_SOURCE_DIR}/external/randomx/src" ABSOLUTE)
+		get_filename_component(RANDOMX_INCLUDE_DIR_BASE "${MONERO_SOURCE_DIR}/external/randomx/src" ABSOLUTE)
 		get_filename_component(EASYLOGGING_SOURCE_DIR "${MONERO_SOURCE_DIR}/external/easylogging++" ABSOLUTE)
 		set(EASYLOGGING_INCLUDE_DIR_BASE "${EASYLOGGING_SOURCE_DIR}")
 		get_filename_component(POLYSEED_SOURCE_DIR "${MONERO_SOURCE_DIR}/external/polyseed/src" ABSOLUTE)
@@ -352,6 +352,31 @@ set(POLYSEED_SOURCES
 	${POLYSEED_SOURCE_DIR}/polyseed.c
 )
 
+# Create polyseed library
+add_library(polyseed STATIC
+    ${POLYSEED_SOURCES}
+)
+
+target_include_directories(polyseed
+    PUBLIC
+    ${POLYSEED_INCLUDE_DIR_BASE}
+	${POLYSEED_SOURCE_DIR}
+)
+set_target_properties(polyseed PROPERTIES
+    C_STANDARD 11
+    C_STANDARD_REQUIRED ON
+)
+
+target_compile_definitions(polyseed
+    PRIVATE
+    _DEFAULT_SOURCE
+    _BSD_SOURCE
+    _POSIX_C_SOURCE=200809L
+)
+
+# Force C compilation for .c files
+set_source_files_properties(${POLYSEED_SOURCES} PROPERTIES LANGUAGE C)
+
 # Main library
 add_library(monero-ots
 	${MONERO_SOURCE_DIR}/src/version.cpp
@@ -373,7 +398,7 @@ add_library(monero-ots
 	# ${EPEE_SOURCES} # TODO: solve later with implementation, first finish ABI
 	${EASYLOGGING} # WTF! All this chingadera makes me desires to rewrite the whole thing :@ But need to calm my horses because it will probably take a eternity to get it done
 	${MONERO_SOURCES} # TODO: solve later with implementation, first finish ABI
-	${POLYSEED_SOURCES}
+	# ${POLYSEED_SOURCES} # separated into own library
 )
 
 target_link_libraries(monero-ots
@@ -420,10 +445,11 @@ target_include_directories(monero-ots
 	# ${MONERO_SOURCE_DIR}/external/easylogging++
 	${MONERO_SOURCE_DIR}/external/boost/archive
 	# ${MONERO_SOURCE_DIR}/external/polyseed/include
-	${POLYSEED_INCLUDE_DIR_BASE}
 	${RANDOMX_INCLUDE_DIR_BASE}
 	${CMAKE_THREAD_LIBS_INIT} # TODO: how came this in? Do we need it? And ifso, why and for what? Easylogging?
 	${Backtrace_LIBRARIES} # TODO: how came this in? Easylogging?
+	${POLYSEED_INCLUDE_DIR_BASE}
+	# ${POLYSEED_SOURCE_DIR}
 )
 
 # Library properties
@@ -452,6 +478,7 @@ install(
 	randomx
 	cryptonight_asm
 	monero-crypto
+	polyseed
 	EXPORT monero-ots-targets
 	LIBRARY DESTINATION lib
 	ARCHIVE DESTINATION lib
