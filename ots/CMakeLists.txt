@@ -358,7 +358,7 @@ add_library(monero-ots
 	src/ots.cpp
 	src/ots-abi.cpp
 	src/wipeable-string.cpp
-	src/wipeable-vector.cpp
+	src/seedindices.cpp
 	src/address.cpp
 	src/seed-jar.cpp
 	src/seed-language.cpp
@@ -368,6 +368,7 @@ add_library(monero-ots
 	src/seed-polyseed.cpp
 	src/wallet.cpp
 	src/key-store.cpp
+	src/polyseed-key-store.cpp
 	src/account.cpp
 	# ${EPEE_SOURCES} # TODO: solve later with implementation, first finish ABI
 	${EASYLOGGING} # WTF! All this chingadera makes me desires to rewrite the whole thing :@ But need to calm my horses because it will probably take a eternity to get it done
