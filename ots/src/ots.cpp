@@ -1,7 +1,12 @@
 #include "ots.hpp"
 #include "ots-internal.hpp"
 #include "key-store.hpp"
-#include "version.h"
+#include "ots-version.h"
+#include "crypto/crypto.h"
+
+// needed to deactivate easy logging
+#include "easylogging++.h"
+INITIALIZE_EASYLOGGINGPP
 
 namespace ots {
 
@@ -24,40 +29,83 @@ namespace ots {
     }
 
     std::array<unsigned char, 32> OTS::random() {
-        NOT_IMPLEMENTED_YET();
-        /* TODO: solve first dependencies
         std::array<unsigned char, 32> key;
-        crypto::random32_unbiased(key.data());
-        return key;
-        */
+        OTS::random(key.size(), key.data());
+        return std::move(key);
     }
 
-    crypto::secret_key keyFromHash(const std::vector<unsigned char>& data) {
-        NOT_IMPLEMENTED_YET();
-        /* TODO: solve first dependencies
+    void OTS::random(size_t size, uint8_t *bytes) {
+        crypto::generate_random_bytes_thread_safe(size, bytes);
+    }
+
+    crypto::secret_key Internal::keyFromHash(const std::vector<unsigned char>& data) {
 		crypto::secret_key key;
 		hash_to_scalar(data.data(), data.size(), key);
-        return key;
-        */
+        return std::move(key);
     }
 
-    crypto::secret_key randomKey() {
-        NOT_IMPLEMENTED_YET();
-        /* TODO: solve first dependencies
-		crypto::secret_key key;
-        crypto::random32_unbiased((unsigned char*)key.data);
-        return key;
-        */
-    }
-
-    epee::wipeable_string phraseFromKey(const crypto::secret_key& key, const std::string& language) {
-        NOT_IMPLEMENTED_YET();
-        /* TODO: solve first dependencies
+    epee::wipeable_string Internal::seedPhraseFromKey(const crypto::secret_key& key, const std::string& language) {
         epee::wipeable_string words;
-        bool ok = crypto::ElectrumWords::bytes_to_words(key, words, language);
-        if(!ok)
+        if(!crypto::ElectrumWords::bytes_to_words(key, words, language)) // if it returns false it failed to generate words, and we throw an exception.
             throw ots::exception::RuntimeError("Unable to generate seed phrase from bytes");
-        return words;
-        */
+        return std::move(words);
+    }
+
+    cryptonote::network_type cryptonoteNetwork(Network network) noexcept {
+        if(static_cast<uint8_t>(network) > 2)
+            return cryptonote::network_type::UNDEFINED;
+        return static_cast<cryptonote::network_type>(network);
+    }
+
+    SeedIndices seedIndices(const unsigned char* bytes, size_t byte_length, size_t word_list_length, size_t bytes_per_chunk, size_t words_per_chunk) {
+        SeedIndices indices;
+
+        if (byte_length % bytes_per_chunk != 0) {
+            throw ots::exception::seed::SeedEncodingFailed("Input byte size is not a multiple of bytes_per_chunk.");
+        }
+
+        size_t chunks = byte_length / bytes_per_chunk;
+
+        for (size_t pos = 0; pos < chunks; ++pos) {
+            uint32_t chunk = SWAP32LE(*(const uint32_t*)(bytes + (pos * bytes_per_chunk)));
+
+            uint32_t used = 0;
+            size_t divisor = 1;
+
+            for (size_t word = 0; word < words_per_chunk; ++word) {
+                uint16_t index = ((chunk / divisor) + used) % word_list_length;
+                indices.push_back(index);
+                used = index;
+                divisor *= word_list_length;
+            }
+        }
+
+        return indices;
+    }
+
+    template<size_t byte_count>
+    auto seedBytes(
+            const SeedIndices& indices,
+            const size_t word_list_length,
+            const size_t bytes_per_chunk,
+            const size_t words_per_chunk
+            ) {
+        size_t words = indices.size();
+        if (byte_count * words_per_chunk / bytes_per_chunk == words) {
+            throw ots::exception::seed::SeedDecodingFailed("Invalid number of indices for byte count.");
+        }
+
+        std::array<unsigned char, byte_count> out;
+        for (size_t i = 0; i < words; i += words_per_chunk) {
+            uint32_t chunk = indices[i];
+            for (size_t word = 1; word < words_per_chunk; word++) {
+                chunk += word_list_length * std::pow(word_list_length, word - 1) * 
+                    ((word_list_length - indices[i + word - 1] + indices[i + word]) % word_list_length);
+            }
+
+            chunk = SWAP32LE(chunk);
+            memcpy(out.data() + (i/words_per_chunk)*bytes_per_chunk, &chunk, bytes_per_chunk);
+        }
+        return out;
     }
 } // namespace ots
