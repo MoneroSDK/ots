@@ -134,7 +134,7 @@ namespace ots {
         return m_address.size();
     }
 
-    const std::string& Address::fingerprint() noexcept {
+    const std::string& Address::fingerprint() const noexcept {
         if(m_fingerprint.empty()) {
             crypto::hash hash; // struct hash { char data[HASH_SIZE]; };
             tools::sha256sum(reinterpret_cast<const uint8_t*>(m_address.data()), m_address.size(), hash);

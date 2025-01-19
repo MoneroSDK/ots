@@ -20,15 +20,15 @@
  *
  * This header file provides following features for the ots library for C++:
  *
- * - Legacy Seed (13 words) handling - except generating, omited on purpose
- * - Monero Seed (25 words) handling
- * - Polyseed (16 words) handling
- * - Address management
- * - Address verification
- * - Import of outputs
- * - Export of key images
- * - inspect unsigned transaction
- * - sign a unsigned transaction
+ * - [x] Legacy Seed (13 words) handling - except generating, omited on purpose
+ * - [x] Monero Seed (25 words) handling
+ * - [ ] Polyseed (16 words) handling
+ * - [ ] Address management
+ * - [x] Address verification
+ * - [ ] Import of outputs
+ * - [ ] Export of key images
+ * - [ ] inspect unsigned transaction
+ * - [ ] sign a unsigned transaction
  */
 namespace ots {
 
@@ -81,11 +81,17 @@ namespace ots {
 	class Seed;
     class Address;
 	class Wallet;
+    class Account;
     class KeyStore;
+    class PolyseedKeyStore;
     class WipeableString;
     class SeedIndices;
+    class MoneroSeed;
     struct KeyStoreDeleter { // for std::unique_ptr, if not it will not compile
             void operator()(KeyStore* p) const;
+    };
+    struct PolyseedKeyStoreDeleter { // for std::unique_ptr, if not it will not compile
+            void operator()(PolyseedKeyStore* p) const;
     };
     /**
      * @class Account
@@ -260,13 +266,13 @@ namespace ots {
              * @return Seed phrase
              * @throws ots::exception::seed::UnsupportedLanguage If the language is not supported
              */
-			virtual const WipeableString phrase(const SeedLanguage& language) const = 0;
+			virtual const WipeableString phrase(const SeedLanguage& language, const std::string& password = "") const = 0;
 
             /**
              * @brief Gets the raw numeric values representing the seed (indices)
              * @return Seed numeric representation
              */
-			virtual const SeedIndices indices() const = 0;
+			virtual const SeedIndices indices(const std::string& password = "") const = 0;
 
             /**
              * @brief Provides a unique fingerprint for the seed
@@ -308,12 +314,6 @@ namespace ots {
 			virtual const uint64_t height() const noexcept;
 
             /**
-             * @brief Checks if the seed is encrypted
-             * @return bool True if the seed is encrypted, false otherwise
-             */
-			virtual inline bool encrypted() const noexcept { return false; };
-
-            /**
              * @brief Gets the network associated with the seed
              * @return Network Cryptocurrency network
              *
@@ -328,7 +328,8 @@ namespace ots {
              *
              * will return always the same wallet, wallet is created only once.
              */
-            virtual std::shared_ptr<Wallet> wallet();
+            virtual std::shared_ptr<Wallet> wallet() noexcept;
+
             // Explicitly delete copy operations
             Seed(const Seed&) = delete;
             Seed& operator=(const Seed&) = delete;
@@ -382,6 +383,20 @@ namespace ots {
              */
             static std::vector<uint16_t> mergeAndZeorizeValues(std::vector<std::vector<uint16_t>>& values, bool del = true);
 
+            /**
+             * @brief Converts plain std::vector<uint16_t> to SeedIndices
+             * @param values Seed values to convert
+             * @return SeedIndices Converted seed indices
+             */
+            static SeedIndices seedIndices(const std::vector<uint16_t>& indices);
+
+            /**
+             * @brief Converts SeedIndices to plain std::vector<uint16_t>
+             * @param indices SeedIndices to convert
+             * @return std::vector<uint16_t> Converted seed values
+             */
+            static std::vector<uint16_t> seedIndices(const SeedIndices& indices);
+
 		protected:
             Seed();
             std::unique_ptr<Address> m_address;
@@ -391,33 +406,6 @@ namespace ots {
             std::unique_ptr<KeyStore, KeyStoreDeleter> m_key;
 			Network m_network;
 	};
-
-
-    /**
-     * @class EncryptableSeed
-     * @brief Abstract base class for seeds that support encryption
-     * 
-     * Extends Seed with encryption and decryption capabilities
-     */
-	class EncryptableSeed : public Seed {
-		public:
-            /**
-             * @brief Encrypts the seed with a password
-             * @param password Encryption password
-             * @return bool True if encrypted, false otherwise
-             */
-			virtual bool encrypt(const std::string& password) = 0;
-
-            /**
-             * @brief Decrypts the seed with a password
-             * @param password Decryption password
-             * @return bool True if decrypted, false otherwise
-             */
-			virtual bool decrypt(const std::string& password) = 0;
-        protected:
-            EncryptableSeed() = default;
-	};
-
 
     /**
      * @class LegacySeed
@@ -432,21 +420,41 @@ namespace ots {
              * @param language SeedLanguage to use
              * @return std::string Seed phrase
              */
-			const WipeableString phrase(const SeedLanguage& language) const override;
-			const SeedIndices indices() const override;
+			const WipeableString phrase(const SeedLanguage& language, const std::string& password = "") const override;
+
+            /**
+             * @brief Gets the raw numeric values representing the seed (indices)
+             * @return Seed numeric representation
+             */
+			const SeedIndices indices(const std::string& password = "") const override;
 
             /**
              * @brief Decodes a seed from a phrase
              * @param phrase Seed phrase
-             * @param language SeedLanguage of the phrase
+             * @param height Optional blockchain height
+             * @param time Optional timestamp
+             * @param network Network type (default: MAIN)
+             * @return LegacySeed Decoded seed
+             * @throws ots::exception::seed::SeedDecodingFailed If decoding fails
+             * @throws ots::exception::legacyseed::InvalidSeedFormat If the seed phrase is not in the expected format
+             */
+			static LegacySeed decode(
+					const std::string& phrase,
+					uint64_t height = 0,
+					uint64_t time = 0, 
+					Network network = Network::MAIN
+					);
+
+            /**
+             * @brief Decodes a seed from numeric values
+             * @param indices SeedIndices to decode
              * @param height Optional blockchain height
              * @param time Optional timestamp
              * @param network Network type (default: MAIN)
              * @return LegacySeed Decoded seed
              */
 			static LegacySeed decode(
-					const std::string& phrase,
-					const SeedLanguage& language, 
+					const SeedIndices& indices,
 					uint64_t height = 0,
 					uint64_t time = 0, 
 					Network network = Network::MAIN
@@ -466,6 +474,10 @@ namespace ots {
 					uint64_t time = 0, 
 					Network network = Network::MAIN
 					);
+
+            protected:
+                explicit LegacySeed();
+                std::unique_ptr<KeyStore, KeyStoreDeleter> m_seed;
 	};
 
     /**
@@ -474,13 +486,11 @@ namespace ots {
      * 
      * Provides Monero seed generation and decoding
      */
-	class MoneroSeed : public EncryptableSeed {
+	class MoneroSeed : public Seed {
 		public:
-			const WipeableString phrase(const SeedLanguage& language) const override;
-			const SeedIndices indices() const override;
-			bool encrypted() const noexcept override;
-			bool encrypt(const std::string& password) override;
-			bool decrypt(const std::string& password) override;
+			const WipeableString phrase(const SeedLanguage& language, const std::string& password = "") const override;
+			const SeedIndices indices(const std::string& password = "") const override;
+
             /**
              * @brief Decodes a Monero seed from a phrase
              * @param phrase Seed phrase
@@ -489,6 +499,7 @@ namespace ots {
              * @param network Network type (default: MAIN)
              * @param password Decryption password, if different from empty string
              * @return MoneroSeed Decoded seed
+             * @throws ots::exception::seed::SeedDecodingFailed If decoding fails
              *
              * @note autodetect Language
              * @note password in combination with monero seeds is unluckily a mess, I guess in monero source itself it is called seed offset because the password if used for the wallet file encryption. In cryptonois it is used for the seed encryption (seed offset). But I think outside from monero source password makes more sense.
@@ -501,6 +512,34 @@ namespace ots {
                     const std::string& password = ""
 					);
 
+            /**
+             * @brief Decodes a Monero seed from numeric values
+             * @param indices SeedIndices to decode
+             * @param height Optional blockchain height
+             * @param time Optional timestamp
+             * @param network Network type (default: MAIN)
+             * @param password Decryption password, if different from empty string
+             * @return MoneroSeed Decoded seed
+             * @throws ots::exception::seed::SeedDecodingFailed If decoding fails
+             */
+			static MoneroSeed decode(
+					const SeedIndices& indices,
+					uint64_t height = 0,
+					uint64_t time = 0, 
+					Network network = Network::MAIN,
+                    const std::string& password = ""
+					);
+
+            /**
+             * @brief Decodes a Monero seed from numeric values
+             * @param values Numeric representation of the seed
+             * @param height Optional blockchain height
+             * @param time Optional timestamp
+             * @param network Network type (default: MAIN)
+             * @param password Decryption password, if different from empty string
+             * @return MoneroSeed Decoded seed
+             * @throws ots::exception::seed::SeedDecodingFailed If decoding fails
+             */
 			static MoneroSeed decode(
 					const std::vector<uint16_t>& values, 
 					uint64_t height = 0,
@@ -515,6 +554,7 @@ namespace ots {
              * @param height Optional blockchain height
              * @param time Optional timestamp
              * @param network Network type (default: MAIN)
+             * @param password Encryption password, if different from empty string
              * @return MoneroSeed created seed
              *
              * Can be used to:
@@ -525,8 +565,7 @@ namespace ots {
                     const std::array<unsigned char, 32>& random,
 					uint64_t height = 0,
 					uint64_t time = 0, 
-					Network network = Network::MAIN,
-                    const SeedLanguage& language = SeedLanguage::defaultLanguage(SeedType::Monero)
+					const Network network = Network::MAIN
 					);
 
             /**
@@ -534,6 +573,7 @@ namespace ots {
              * @param height Optional blockchain height
              * @param time Optional timestamp
              * @param network Network type (default: MAIN)
+             * @param password Encryption password, if different from empty string
              * @return MoneroSeed Generated seed
              *
              * @warning Generates a seed from the device provided entropy.
@@ -543,12 +583,10 @@ namespace ots {
 			static MoneroSeed generate(
 					uint64_t height = 0,
 					uint64_t time = 0, 
-					Network network = Network::MAIN,
-                    const SeedLanguage& language = SeedLanguage::defaultLanguage(SeedType::Monero)
+					const Network network = Network::MAIN
 					);
         protected:
             MoneroSeed() = default;
-            bool m_encrypted = false;
 	};
 
     /**
@@ -557,49 +595,38 @@ namespace ots {
      * 
      * Provides Polyseed generation, encoding, and management
      */
-	class Polyseed : public EncryptableSeed {
+	class Polyseed : public Seed {
 		public:
-			const WipeableString phrase(const SeedLanguage& language) const override;
-			const SeedIndices indices() const override;
+			const WipeableString phrase(const SeedLanguage& language, const std::string& password = "") const override;
+			const SeedIndices indices(const std::string& password = "") const override;
             MoneroSeed moneroSeed() const;
-			bool encrypted() const noexcept override;
-
-            /**
-             * @throw ots::exception::keystore::polyseed::ActivePolyseedDataSession should never happen
-             * @throw ots::exception::keystore::LockedWriteAttempt should never happen
-             * @throw ots::exception::keystore::LockedAccessAttempt should never happen
-             */
-			bool encrypt(const std::string& password) override;
-
-            /**
-             * @throw ots::exception::keystore::polyseed::ActivePolyseedDataSession should never happen
-             * @throw ots::exception::keystore::LockedWriteAttempt should never happen
-             * @throw ots::exception::keystore::LockedAccessAttempt should never happen
-             */
-			bool decrypt(const std::string& password) override;
 
             /**
              * @brief Creates a Polyseed with specific parameters
-             * @param time Timestamp for seed creation, default 0, what translates to now (current system time)
              * @param network Network type (default: MAIN)
+             * @param time Timestamp for seed creation, default 0, what translates to now (current system time)
              * @return Polyseed Created seed
              */
 			static Polyseed create(
-					uint64_t time = 0,
-					Network network = Network::MAIN
+					Network network = Network::MAIN,
+					uint64_t time = 0
 					);
 
             /**
              * @brief Decodes a Polyseed from a phrase
              * @param phrase Seed phrase
              * @param network Network type (default: MAIN)
+             * @param password Decryption password, if different from empty string
              * @return Polyseed Decoded seed
+             * @throws ots::exception::seed::SeedDecodingFailed If decoding fails
+             * @throws ots::exception::polyseed::NoPasswordProvided If a password is needed but not provided
              *
              * @note autodetect language
              */
 			static Polyseed decode(
 					const std::string& phrase, 
-					Network network = Network::MAIN
+					const Network network = Network::MAIN,
+                    const std::string& password = ""
 					);
 
             /**
@@ -607,29 +634,54 @@ namespace ots {
              * @param phrase Seed phrase
              * @param language the language of the wordlist to use
              * @param network Network type (default: MAIN)
+             * @param password Decryption password, if different from empty string
              * @return Polyseed Decoded seed
+             * @throws ots::exception::seed::SeedDecodingFailed If decoding fails
+             * @throws ots::exception::polyseed::NoPasswordProvided If a password is needed but not provided
              */
 			static Polyseed decode(
 					const std::string& phrase, 
 					const SeedLanguage& language, 
-					Network network = Network::MAIN
+					const Network network = Network::MAIN,
+                    const std::string& password = ""
+					);
+
+            /**
+             * @brief Decodes a Polyseed from indexes of the words
+             * @param indices SeedIndices to decode
+             * @param network Network type (default: MAIN)
+             * @param password Decryption password, if different from empty string
+             * @return Polyseed Decoded seed
+             * @throws ots::exception::seed::SeedDecodingFailed If decoding fails
+             * @throws ots::exception::polyseed::NoPasswordProvided If a password is needed but not provided
+             *
+             * @note Language not needed because the index is the same in all languages
+             */
+			static Polyseed decode(
+					const SeedIndices& indices,
+					const Network network = Network::MAIN,
+                    const std::string& password = ""
 					);
 
             /**
              * @brief Decodes a Polyseed from indexes of the words
              * @param values Seed phrase as index representation
              * @param network Network type (default: MAIN)
+             * @param password Decryption password, if different from empty string
              * @return Polyseed Decoded seed
+             * @throws ots::exception::seed::SeedDecodingFailed If decoding fails
+             * @throws ots::exception::polyseed::NoPasswordProvided If a password is needed but not provided
              *
              * @note Language not needed because the index is the same in all languages
              */
 			static Polyseed decode(
 					const std::vector<uint16_t>& values, 
-					Network network = Network::MAIN
+					const Network network = Network::MAIN,
+                    const std::string& password = ""
 					);
         protected:
-            Polyseed() = default;
-            std::unique_ptr<PolyseedKeyStore> m_seed;
+            Polyseed();
+            std::unique_ptr<PolyseedKeyStore, PolyseedKeyStoreDeleter> m_seed;
 	};
 
     /**
@@ -1049,6 +1101,17 @@ namespace ots {
              * @internal Only for internal use how KeyStore is not publicly declared
              */
             Wallet(const KeyStore& key, uint64_t height, const Network network) noexcept;
+
+            /**
+             * @brief Create a offline Wallet from a secret key
+             * @param account provides the internal workings of the wallet
+             * @param key provide the key via a secret key Storage
+             * @param height restore height of the wallet
+             * @param network the network of the wallet
+             * @internal Only for internal use how KeyStore and Account are not publicly declared
+             */
+            Wallet(const Account& account, const KeyStore& key, uint64_t height, const Network network) noexcept;
+
         protected:
             std::unique_ptr<KeyStore, KeyStoreDeleter> m_key;
             std::unique_ptr<Account, AccountDeleter> m_account;
@@ -1223,6 +1286,39 @@ namespace ots {
             /** @brief Move assignment operator */
             SeedIndices& operator=(SeedIndices&& other) noexcept;
 
+            /** @brief conversion to const uint8_t*, @see size() */
+            operator const uint8_t*() const noexcept;
+
+            /** @brief conversion to const char*, @see size() */
+            operator const char*() const noexcept;
+
+            /** @brief Conversion to std::string @see numeric() */
+            operator const std::string() const noexcept;
+
+            /** @brief compare operator */
+            bool operator==(const SeedIndices& other) const noexcept;
+
+            /** @brief compare to vector */
+            bool operator==(const std::vector<uint16_t>& other) const noexcept;
+
+            /** @brief compare operator */
+            bool operator!=(const SeedIndices& other) const noexcept;
+
+            /** @brief compare to vector */
+            bool operator!=(const std::vector<uint16_t>& other) const noexcept;
+
+            /** @brief Get numeric representation 4 digits per 2 bytes concatenated without separator
+             *  @param separator optional separator between the digits
+             *  @return numeric representation of the seed
+             */
+            const std::string numeric(const std::string& separator = "") const noexcept;
+
+            /** @brief Get hex representation 4 digits per 2 bytes concatenated without separator
+             *  @param separator optional separator between the digits
+             *  @return hex representation of the seed
+             */
+            const std::string hex(const std::string& separator = "") const noexcept;
+
             /** @brief Destructor that wipes memory */
             ~SeedIndices();
 
@@ -1244,6 +1340,36 @@ namespace ots {
             /** @brief Add index */
             void push_back(uint16_t value);
 
+            /** @brief Iterator support */
+            auto begin() noexcept { return m_vec.begin(); }
+
+            /** @brief Iterator support */
+            auto end() noexcept { return m_vec.end(); }
+
+            /** @brief Iterator support */
+            auto begin() const noexcept { return m_vec.begin(); }
+
+            /** @brief Iterator support */
+            auto end() const noexcept { return m_vec.end(); }
+
+            /** @brief Iterator support */
+            auto cbegin() const noexcept { return m_vec.cbegin(); }
+
+            /** @brief Iterator support */
+            auto cend() const noexcept { return m_vec.cend(); }
+
+            /**
+             * @brief Create SeedIndices from numeric representation
+             * @param numeric numeric representation of the seed
+             * @param separator optional separator between the digits
+             */
+            static SeedIndices fromNumeric(const std::string& numeric, const std::string& separator = "");
+
+            /** @brief Create SeedIndices from hex representation
+             *  @param hex hex representation of the seed
+             *  @param separator optional separator between the digits
+             */
+            static SeedIndices fromHex(const std::string& hex, const std::string& separator = "");
         private:
             /** @brief Internal storage */
             std::vector<uint16_t> m_vec;

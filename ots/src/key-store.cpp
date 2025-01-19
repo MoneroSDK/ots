@@ -89,6 +89,11 @@ namespace ots {
         return reinterpret_cast<const unsigned char*>(m_key.data);
     }
 
+    KeyStore::operator const char*() const {
+        insecureAccessRequest(false);
+        return reinterpret_cast<const char*>(m_key.data);
+    }
+
     void KeyStore::wipe() noexcept {
         memwipe(m_key.data, 32);
     }
