@@ -15,16 +15,6 @@ endif()
 # TODO: should think about a version strategy
 project(monero-ots VERSION 0.1.0)
 
-# TODO: probably remove, it's to test to build slow-hash without AES
-# TODO: seems to compile, let for now, but check later again, what to remove and
-#       how fix it better
-add_definitions(-DCRYPTONOTE_NO_AES)
-add_definitions(-DNO_AES)
-add_definitions(-DFORCE_USE_HEAP=1)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DCRYPTONOTE_NO_AES -DNO_AES")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DCRYPTONOTE_NO_AES -DNO_AES")
-# without AES clusterfuck.
-
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Require C++17
@@ -39,10 +29,13 @@ option(DEBUG "Build with debug symbols" OFF)
 if(DEBUG)
 	add_compile_definitions(DEBUG=1)
 endif()
+option(BUILD_BLOCKTIME "Build blocktime analysis tools" OFF)
+option(BUILD_BLOCKTIME_TESTS "Include blocktime in test suite" OFF)
 option(BUILD_TESTS "Build test suite" OFF)
 option(BUILD_SHARED_LIBS "Build shared library" OFF)  # Default to static
 # Monero dependencies
 
+# TODO: need to be fixed
 # lot of warnings we suppress for now
 # set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++ -Wl,--no-warn-search-mismatch")
@@ -86,11 +79,21 @@ if(NOT MONERO_SOURCE_DIR)
 	endif()
 endif()
 
-# test byte order
-# add_executable(test_byte_order test_byte_order.cpp)
-# target_include_directories(test_byte_order PRIVATE ${EPEE_INCLUDE_DIR_BASE})
-# target_compile_definitions(test_byte_order PRIVATE
-# )
+if(BUILD_BLOCKTIME OR (BUILD_TESTS AND BUILD_BLOCKTIME_TESTS))
+	# LMDB setup
+	set(LMDB_SOURCES
+		${MONERO_SOURCE_DIR}/external/db_drivers/liblmdb/mdb.c
+		${MONERO_SOURCE_DIR}/external/db_drivers/liblmdb/midl.c
+	)
+	add_library(lmdb STATIC ${LMDB_SOURCES})
+	target_include_directories(lmdb PUBLIC
+		${MONERO_SOURCE_DIR}/external/db_drivers/liblmdb
+	)
+endif()
+
+if(BUILD_BLOCKTIME OR (BUILD_TESTS AND BUILD_BLOCKTIME_TESTS))
+    add_subdirectory(blocktime)
+endif()
 
 # Version configuration
 configure_file(
@@ -141,8 +144,6 @@ target_compile_definitions(easylogging
 	ELPP_NO_LOG_TO_FILE
 )
 
-# EPEE
-# add_definitions(-DSTATICLIB) TODO: is that really needed how we put -static in the linker flags?
 # TODO: this will drag more and more dependencies inside
 #	check how to include boost into the lib
 #	check how to get rid of easylogging
@@ -220,22 +221,6 @@ target_include_directories(cryptonight_asm PRIVATE
 )
 
 add_library(monero-crypto STATIC
-	# ${MONERO_SOURCE_DIR}/src/crypto/crypto.cpp
-	# ${MONERO_SOURCE_DIR}/src/crypto/hash.c
-	# ${MONERO_SOURCE_DIR}/src/crypto/random.c
-	# ${MONERO_SOURCE_DIR}/src/crypto/slow-hash.c
-	# ${MONERO_SOURCE_DIR}/src/crypto/hash-extra-blake.c
-	# ${MONERO_SOURCE_DIR}/src/crypto/rx-slow-hash.c
-	# ${MONERO_SOURCE_DIR}/src/crypto/blake256.c
-	# ${MONERO_SOURCE_DIR}/src/crypto/blake2b.c
-	# ${MONERO_SOURCE_DIR}/src/crypto/groestl.c
-	# ${MONERO_SOURCE_DIR}/src/crypto/jh.c
-	# ${MONERO_SOURCE_DIR}/src/crypto/skein.c
-	# ${MONERO_SOURCE_DIR}/src/crypto/chacha.c
-	# ${MONERO_SOURCE_DIR}/src/crypto/oaes_lib.c
-	# ${MONERO_SOURCE_DIR}/src/crypto/crypto-ops.c
-	# ${MONERO_SOURCE_DIR}/src/crypto/keccak.c
-	# ${MONERO_SOURCE_DIR}/src/crypto/crypto-ops-data.c
 	${CMAKE_CURRENT_BINARY_DIR}/version.cpp
 	${MONERO_CRYPTO_SOURCE_DIR}/crypto.cpp
 	${MONERO_CRYPTO_SOURCE_DIR}/hash.c
@@ -260,15 +245,8 @@ add_library(monero-crypto STATIC
 	${MONERO_CRYPTO_SOURCE_DIR}/keccak.c
 	${MONERO_CRYPTO_SOURCE_DIR}/crypto-ops-data.c
 	${MONERO_CRYPTO_SOURCE_DIR}/crypto_ops_builder/verify.c
-	# ${MONERO_CRYPTO_SOURCE_DIR}/crypto_ops_builder/ref10CommentedCombined/ge.c
     ${MONERO_CRYPTO_SOURCE_DIR}/CryptonightR_JIT.c
     ${MONERO_CRYPTO_SOURCE_DIR}/CryptonightR_template.h
-)
-
-# Disable AES in slow-hash, TODO: figure out how to make the best for the target platform
-set_source_files_properties(
-	${MONERO_CRYPTO_SOURCE_DIR}/slow-hash.c
-	PROPERTIES COMPILE_DEFINITIONS CRYPTONOTE_NO_AES
 )
 
 target_include_directories(monero-crypto
@@ -402,7 +380,6 @@ add_library(monero-ots
 	# ${EPEE_SOURCES} # TODO: solve later with implementation, first finish ABI
 	${EASYLOGGING} # WTF! All this chingadera makes me desires to rewrite the whole thing :@ But need to calm my horses because it will probably take a eternity to get it done
 	${MONERO_SOURCES} # TODO: solve later with implementation, first finish ABI
-	# ${POLYSEED_SOURCES} # separated into own library
 )
 
 target_link_libraries(monero-ots
