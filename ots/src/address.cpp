@@ -126,6 +126,10 @@ namespace ots {
         return reinterpret_cast<const uint8_t*>(m_address.data());
 	}
 
+    bool Address::operator==(const Address& other) const noexcept {
+        return m_address == other.m_address;
+    }
+
     bool Address::operator==(const std::string& other) const noexcept {
         return m_address == other;
     }
