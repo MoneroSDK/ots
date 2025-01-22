@@ -60,6 +60,10 @@ namespace ots {
         m_vec.push_back(value);
     }
 
+    uint16_t SeedIndices::emplace_back(uint16_t value) {
+        return m_vec.emplace_back(value);
+    }
+
     void SeedIndices::wipe() noexcept {
         if(m_vec.size() > 0) {
             volatile uint16_t* p = const_cast<volatile uint16_t*>(m_vec.data());
@@ -100,6 +104,10 @@ namespace ots {
         return reinterpret_cast<const char*>(m_vec.data());
     }
 
+    SeedIndices::operator const std::vector<uint16_t>&() const noexcept {
+        return m_vec;
+    }
+
     bool SeedIndices::operator==(const SeedIndices& other) const noexcept {
         return m_vec == other.m_vec;
     }
@@ -121,8 +129,8 @@ namespace ots {
         std::vector<std::string> hexParts = ots::splitString(hex, separator);
         for(const auto& part : hexParts)
             if(!part.empty())
-                indices.push_back(std::stoi(part, nullptr, 16));
-        return indices;
+                indices.emplace_back(std::stoi(part, nullptr, 16));
+        return std::move(indices);
     }
 
     SeedIndices SeedIndices::fromNumeric(const std::string& numeric, const std::string& separator) {
@@ -130,7 +138,7 @@ namespace ots {
         std::vector<std::string> numParts = ots::splitString(numeric, separator);
         for(const auto& part : numParts)
             if(!part.empty())
-                indices.push_back(std::stoi(part));
-        return indices;
+                indices.emplace_back(std::stoi(part));
+        return std::move(indices);
     }
 }
