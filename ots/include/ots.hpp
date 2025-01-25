@@ -346,7 +346,10 @@ namespace ots {
              *
              * @note The vectors need to have the same size
              */
-            static std::vector<uint16_t> mergeValues(const std::vector<uint16_t>& values1, const std::vector<uint16_t>& values2);
+            static std::vector<uint16_t> mergeValues(
+                const std::vector<uint16_t>& values1,
+                const std::vector<uint16_t>& values2
+                );
 
             /**
              * @brief Merges multiple seed values, so you can join multiple SeedQRs to one seed
@@ -369,7 +372,11 @@ namespace ots {
              *
              * @note The vectors need to have the same size
              */
-            static std::vector<uint16_t> mergeAndZeorizeValues(std::vector<uint16_t>& values1, std::vector<uint16_t>& values2, bool del = true);
+            static std::vector<uint16_t> mergeAndZeorizeValues(
+                std::vector<uint16_t>& values1,
+                std::vector<uint16_t>& values2,
+                bool del = true
+                );
 
             /**
              * @brief Merges multiple seed values, so you can join multiple SeedQRs to one seed
@@ -381,22 +388,61 @@ namespace ots {
              *
              * @note The vectors need to have the same size, and at least two values need to be provided
              */
-            static std::vector<uint16_t> mergeAndZeorizeValues(std::vector<std::vector<uint16_t>>& values, bool del = true);
+            static std::vector<uint16_t> mergeAndZeorizeValues(
+                std::vector<std::vector<uint16_t>>& values,
+                bool del = true
+                );
 
             /**
-             * @brief Converts plain std::vector<uint16_t> to SeedIndices
-             * @param values Seed values to convert
-             * @return SeedIndices Converted seed indices
+             * @brief Merge password with seed values
+             * @param password for the seed ^ PBKDF2_SHA256(password) operation
+             * @param values seed values to merge
+             * @return Merged values
+             * @throws ots::exception::seed::MergeError On failures
              */
-            static SeedIndices seedIndices(const std::vector<uint16_t>& indices);
+            static std::vector<uint16_t> mergeWithPassword(
+                const std::string& password,
+                const std::vector<uint16_t>& values
+                );
 
             /**
-             * @brief Converts SeedIndices to plain std::vector<uint16_t>
-             * @param indices SeedIndices to convert
-             * @return std::vector<uint16_t> Converted seed values
+             * @brief Merge password with seed values and zeroize password
+             * @param password for the seed ^ PBKDF2_SHA256(password) operation
+             * @param values seed values to merge
+             * @param del will delete password and values after merging and zeroize it, default is true
+             * @return Merged values
+             * @throws ots::exception::seed::MergeError On failures
              */
-            static std::vector<uint16_t> seedIndices(const SeedIndices& indices);
+            static std::vector<uint16_t> mergeWithPasswordAndZeorize(
+                    std::string& password,
+                    std::vector<uint16_t>& values,
+                    bool del = true
+                    );
 
+            /**
+             * @brief Merge password with seed values
+             * @param password for the seed ^ PBKDF2
+             * @param values seed values to merge
+             * @return Merged values
+             * @throws ots::exception::seed::MergeError On failures
+             */
+            static std::vector<uint16_t> mergeWithPassword(
+                    const WipeableString& password,
+                    const std::vector<uint16_t>& values
+                    );
+
+            /**
+             * @brief Merge password with seed values and zeroize values
+             * @param password for the seed ^ PBKDF2
+             * @param values seed values to merge and zeroize
+             * @return Merged values
+             * @throws ots::exception::seed::MergeError On failures
+             */
+            static std::vector<uint16_t> mergeWithPasswordAndZeorize(
+                    const WipeableString& password,
+                    std::vector<uint16_t>& values,
+                    bool del = true
+                    );
 		protected:
             Seed();
             std::unique_ptr<Address> m_address;
@@ -413,7 +459,7 @@ namespace ots {
      * 
      * Provides only decoding
      */
-	class LegacySeed : public Seed {
+	class LegacySeed: public Seed {
 		public:
             /**
              * @brief seed phrase in a specified language
@@ -483,13 +529,38 @@ namespace ots {
     /**
      * @class MoneroSeed
      * @brief Represents a Monero 25-words seed
+     * @note if you provide to the user seed offset by passphrase I suggest asking the user
+     *       for the fingerprint of the seed and compare it with the fingerprint of the Seed
+     *       if not it doesn't match the passphrase is wrong.
      * 
      * Provides Monero seed generation and decoding
      */
-	class MoneroSeed : public Seed {
+	class MoneroSeed: public Seed {
 		public:
-			const WipeableString phrase(const SeedLanguage& language, const std::string& password = "") const override;
-			const SeedIndices indices(const std::string& password = "") const override;
+            /**
+             * @brief Generates the seed phrase in a specified language
+             * @param language SeedLanguage to generate phrase in
+             * @param passphrase Encryption passphrase, if different from empty string
+             * @return Seed phrase
+             * @note The passphrase uses monero encryption to encrypt the secret
+             *       spend key with this passphrase, on decoding the same passphrase
+             *       needs to be provided.
+             *       There is no feedback if the passphrase is wrong, you can only
+             *       see it on the public address, if it is not the same as expected.
+             */
+			const WipeableString phrase(const SeedLanguage& language, const std::string& passphrase = "") const override;
+
+            /**
+             * @brief Gets the raw numeric values representing the seed (indices)
+             * @param passphrase Encryption passphrase, if different from empty string
+             * @return Seed numeric representation
+             * @note The passphrase uses monero encryption to encrypt the secret
+             *       spend key with this passphrase, on decoding the same passphrase
+             *       needs to be provided.
+             *       There is no feedback if the passphrase is wrong, you can only
+             *       see it on the public address, if it is not the same as expected.
+             */
+			const SeedIndices indices(const std::string& passphrase = "") const override;
 
             /**
              * @brief Decodes a Monero seed from a phrase
@@ -497,19 +568,20 @@ namespace ots {
              * @param height Optional blockchain height
              * @param time Optional timestamp
              * @param network Network type (default: MAIN)
-             * @param password Decryption password, if different from empty string
+             * @param passphrase Decryption passphrase, if different from empty string
              * @return MoneroSeed Decoded seed
              * @throws ots::exception::seed::SeedDecodingFailed If decoding fails
              *
              * @note autodetect Language
-             * @note password in combination with monero seeds is unluckily a mess, I guess in monero source itself it is called seed offset because the password if used for the wallet file encryption. In cryptonois it is used for the seed encryption (seed offset). But I think outside from monero source password makes more sense.
+             * @note passphrase decrypts the seed with a seed before encrypted by that passphrase
+             *
              */
 			static MoneroSeed decode(
 					const std::string& phrase,
 					uint64_t height = 0,
 					uint64_t time = 0, 
 					Network network = Network::MAIN,
-                    const std::string& password = ""
+                    const std::string& passphrase = ""
 					);
 
             /**
@@ -518,7 +590,7 @@ namespace ots {
              * @param height Optional blockchain height
              * @param time Optional timestamp
              * @param network Network type (default: MAIN)
-             * @param password Decryption password, if different from empty string
+             * @param passphrase Decryption passphrase, if different from empty string
              * @return MoneroSeed Decoded seed
              * @throws ots::exception::seed::SeedDecodingFailed If decoding fails
              */
@@ -527,7 +599,7 @@ namespace ots {
 					uint64_t height = 0,
 					uint64_t time = 0, 
 					Network network = Network::MAIN,
-                    const std::string& password = ""
+                    const std::string& passphrase = ""
 					);
 
             /**
@@ -536,7 +608,7 @@ namespace ots {
              * @param height Optional blockchain height
              * @param time Optional timestamp
              * @param network Network type (default: MAIN)
-             * @param password Decryption password, if different from empty string
+             * @param passphrase Decryption passphrase, if different from empty string
              * @return MoneroSeed Decoded seed
              * @throws ots::exception::seed::SeedDecodingFailed If decoding fails
              */
@@ -554,7 +626,6 @@ namespace ots {
              * @param height Optional blockchain height
              * @param time Optional timestamp
              * @param network Network type (default: MAIN)
-             * @param password Encryption password, if different from empty string
              * @return MoneroSeed created seed
              *
              * Can be used to:
@@ -573,7 +644,6 @@ namespace ots {
              * @param height Optional blockchain height
              * @param time Optional timestamp
              * @param network Network type (default: MAIN)
-             * @param password Encryption password, if different from empty string
              * @return MoneroSeed Generated seed
              *
              * @warning Generates a seed from the device provided entropy.
@@ -594,8 +664,26 @@ namespace ots {
      * @brief Represents a Polyseed type
      * 
      * Provides Polyseed generation, encoding, and management
+     *
+     * @note Password and Passphrase is somehow unfortunate.
+     *       - Password encrypts and decrypts a polyseed, so you can call
+     *         Polyseed::phrase(lang, "password") or Polyseed::indices("password")
+     *         to encrypt the seed with a password. And later you provide the same
+     *         seed phrase and the same password to decrypt it.
+     *       - Passphrase is used to offset the seed, and works a bit different.
+     *         The seed offset passphrase is used after the data from the seed,
+     *         for that the passphrase is set on creation time and need to be provided
+     *         always on decoding.
+     *       So, while you can change your seed phrase with a password, the passphrase
+     *       will be always the same! With a monero seed you can change the passphrase
+     *       because the secret key is encoded by the seed phrase while with polyseed
+     *       the secret key is derived from the seed phrase data and not reversible.
+     * @note if you provide to the user seed offset by passphrase, or encryption by password
+     *       I suggest asking the user for the fingerprint of the seed and compare it with
+     *       the fingerprint of the Seeed and if not it doesn't match the passphrase
+     *       or password are wrong.
      */
-	class Polyseed : public Seed {
+	class Polyseed: public Seed {
 		public:
 			const WipeableString phrase(const SeedLanguage& language, const std::string& password = "") const override;
 			const SeedIndices indices(const std::string& password = "") const override;
@@ -603,13 +691,45 @@ namespace ots {
 
             /**
              * @brief Creates a Polyseed with specific parameters
+             * @param random 19-byte random input
              * @param network Network type (default: MAIN)
              * @param time Timestamp for seed creation, default 0, what translates to now (current system time)
+             * @param passphrase for seed offset (like in monero seed), default empty string
              * @return Polyseed Created seed
              */
 			static Polyseed create(
+                    const std::array<unsigned char, 19>& random,
 					Network network = Network::MAIN,
-					uint64_t time = 0
+					uint64_t time = 0,
+                    const std::string& passphrase = ""
+					);
+
+            /**
+             * @brief Convinience function to create a Polyseed from random 32 bytes like sha256 or pbkdf2
+             * @param random 32-byte random input, but only first 19 bytes are used!
+             * @param network Network type (default: MAIN)
+             * @param time Timestamp for seed creation, default 0, what translates to now (current system time)
+             * @param passphrase for seed offset (like in monero seed), default empty string
+             * @return Polyseed Created seed
+             */
+			static Polyseed create(
+                    const std::array<unsigned char, 32>& random,
+					Network network = Network::MAIN,
+					uint64_t time = 0,
+                    const std::string& passphrase = ""
+					);
+
+            /**
+             * @brief Generates a Polyseed with specific parameters
+             * @param network Network type (default: MAIN)
+             * @param time Timestamp for seed creation, default 0, what translates to now (current system time)
+             * @param passphrase for seed offset (like in monero seed), default empty string
+             * @return Polyseed Created seed
+             */
+			static Polyseed generate(
+					Network network = Network::MAIN,
+					uint64_t time = 0,
+                    const std::string& passphrase = ""
 					);
 
             /**
@@ -617,6 +737,7 @@ namespace ots {
              * @param phrase Seed phrase
              * @param network Network type (default: MAIN)
              * @param password Decryption password, if different from empty string
+             * @param passphrase for seed offset (like in monero seed), default empty string
              * @return Polyseed Decoded seed
              * @throws ots::exception::seed::SeedDecodingFailed If decoding fails
              * @throws ots::exception::polyseed::NoPasswordProvided If a password is needed but not provided
@@ -626,7 +747,8 @@ namespace ots {
 			static Polyseed decode(
 					const std::string& phrase, 
 					const Network network = Network::MAIN,
-                    const std::string& password = ""
+                    const std::string& password = "",
+                    const std::string& passphrase = ""
 					);
 
             /**
@@ -635,6 +757,7 @@ namespace ots {
              * @param language the language of the wordlist to use
              * @param network Network type (default: MAIN)
              * @param password Decryption password, if different from empty string
+             * @param passphrase for seed offset (like in monero seed), default empty string
              * @return Polyseed Decoded seed
              * @throws ots::exception::seed::SeedDecodingFailed If decoding fails
              * @throws ots::exception::polyseed::NoPasswordProvided If a password is needed but not provided
@@ -643,7 +766,8 @@ namespace ots {
 					const std::string& phrase, 
 					const SeedLanguage& language, 
 					const Network network = Network::MAIN,
-                    const std::string& password = ""
+                    const std::string& password = "",
+                    const std::string& passphrase = ""
 					);
 
             /**
@@ -651,6 +775,7 @@ namespace ots {
              * @param indices SeedIndices to decode
              * @param network Network type (default: MAIN)
              * @param password Decryption password, if different from empty string
+             * @param passphrase for seed offset (like in monero seed), default empty string
              * @return Polyseed Decoded seed
              * @throws ots::exception::seed::SeedDecodingFailed If decoding fails
              * @throws ots::exception::polyseed::NoPasswordProvided If a password is needed but not provided
@@ -660,7 +785,8 @@ namespace ots {
 			static Polyseed decode(
 					const SeedIndices& indices,
 					const Network network = Network::MAIN,
-                    const std::string& password = ""
+                    const std::string& password = "",
+                    const std::string& passphrase = ""
 					);
 
             /**
@@ -668,6 +794,7 @@ namespace ots {
              * @param values Seed phrase as index representation
              * @param network Network type (default: MAIN)
              * @param password Decryption password, if different from empty string
+             * @param passphrase for seed offset (like in monero seed), default empty string
              * @return Polyseed Decoded seed
              * @throws ots::exception::seed::SeedDecodingFailed If decoding fails
              * @throws ots::exception::polyseed::NoPasswordProvided If a password is needed but not provided
@@ -677,12 +804,15 @@ namespace ots {
 			static Polyseed decode(
 					const std::vector<uint16_t>& values, 
 					const Network network = Network::MAIN,
-                    const std::string& password = ""
+                    const std::string& password = "",
+                    const std::string& passphrase = ""
 					);
         protected:
             Polyseed();
             std::unique_ptr<PolyseedKeyStore, PolyseedKeyStoreDeleter> m_seed;
 	};
+
+    /** todo: TODO: maybe implement later feather 14 words seed, too */
 
     /**
      * @class Address
@@ -761,6 +891,12 @@ namespace ots {
              * @return base58 address as uint8_t*
              */
 			operator const uint8_t*() const noexcept;
+
+            /**
+             * @brief Compare Address with another Address
+             * @return bool True if the addresses are the same, false otherwise
+             */
+            bool operator==(const Address& other) const noexcept;
 
             /**
              * @brief Compare Address with a std::string address
@@ -852,6 +988,8 @@ namespace ots {
              * @param timestamp unix timestamp (epoch, seconds since 1970-01-01 00:00:00 UTC)
              * @param network estimation is network related
              * @return monero blockchain block height
+             * @note The estimation automatically substracts 10 days, how test have show a
+             *       difference up to 8 days with data until 2025-01-23
              */
 			static uint64_t heightFromTimestamp(uint64_t timestamp, Network network = Network::MAIN);
 
@@ -877,6 +1015,34 @@ namespace ots {
              * @warning Entropy is depending on your device, on low entropy devices don't use this for security related purpose!
              */
             static void random(size_t size, uint8_t *bytes);
+
+            /**
+             * @brief check for low entropy in data
+             * @param size size of data
+             * @param data the data to check
+             * @param minEntropy the minimum entropy to accept
+             * @return true if the entropy is lower than minEntropy
+             */
+            static bool lowEntropy(size_t size, const uint8_t* data, double minEntropy = 3.5) noexcept;
+
+            /**
+             * @brief switch enforcement of sufficient entropy
+             * @param enforce true to enforce entropy check, default is true
+             */
+            static void enforceEntropy(bool enforce = true) noexcept;
+
+        protected:
+            /**
+             * @brief check for low entropy in data
+             * @param size size of data
+             * @param data the data to check
+             * @param minEntropy the minimum entropy to accept
+             * @throws ots::exception::LowEntropy if the entropy is lower than minEntropy
+             */
+            static void ensureEntropy(size_t size, const uint8_t* data, double minEntropy = 3.5);
+
+        private:
+            static bool s_enforceEntropy;
 	};
 
     /**
@@ -1292,6 +1458,9 @@ namespace ots {
             /** @brief conversion to const char*, @see size() */
             operator const char*() const noexcept;
 
+            /** @brief conversion to const std::vector<uint16_t>& */
+            operator const std::vector<uint16_t>&() const noexcept;
+
             /** @brief Conversion to std::string @see numeric() */
             operator const std::string() const noexcept;
 
@@ -1331,6 +1500,12 @@ namespace ots {
             /** @brief Clear indices */
             void clear() noexcept;
 
+            /** @brief Reserve elements */
+            inline void reserve(size_t n) { m_vec.reserve(n); };
+
+            /** @brief shrink to fit */
+            inline void shrink_to_fit() { m_vec.shrink_to_fit(); };
+
             /** @brief Element access */
             uint16_t& operator[](size_t pos);
             const uint16_t& operator[](size_t pos) const;
@@ -1339,6 +1514,9 @@ namespace ots {
 
             /** @brief Add index */
             void push_back(uint16_t value);
+
+            /** @brief Add index */
+            uint16_t emplace_back(uint16_t value);
 
             /** @brief Iterator support */
             auto begin() noexcept { return m_vec.begin(); }

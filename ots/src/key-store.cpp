@@ -94,6 +94,13 @@ namespace ots {
         return reinterpret_cast<const char*>(m_key.data);
     }
 
+    KeyStore::operator std::array<unsigned char, 32>() const {
+        insecureAccessRequest(false);
+        std::array<unsigned char, 32> out;
+        memcpy(out.data(), reinterpret_cast<const unsigned char*>(m_key.data), 32);
+        return std::move(out);
+    }
+
     void KeyStore::wipe() noexcept {
         memwipe(m_key.data, 32);
     }

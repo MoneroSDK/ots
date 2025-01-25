@@ -11,11 +11,12 @@
  */
 
 #include "ots.hpp"
-#include "memwipe.h" // for memwipe
+#include "data.hpp"
+#include <memwipe.h> // for memwipe
 // TODO: remove #include "crypto/crypto.h" // for crypto::secret_key
-#include "int-util.h" // for SWAP32LE
+#include <int-util.h> // for SWAP32LE
 // TODO: remove #include "mnemonics/electrum-words.h"
-#include "cryptonote_basic/cryptonote_basic.h" // for cryptonote::network_type
+#include <cryptonote_basic/cryptonote_basic.h> // for cryptonote::network_type
 // TODO: remove #include "cryptonote_core/cryptonote_core.h" // for cryptonote::address_parse_info
 
 namespace ots {
@@ -73,6 +74,7 @@ namespace ots {
      */
     SeedIndices seedIndices(const unsigned char* bytes, size_t byte_length, size_t word_list_length = 1626, size_t bytes_per_chunk = 4, size_t words_per_chunk = 3);
 
+    /** @todo TODO: documentation missing */
     template<size_t byte_count>
     std::array<unsigned char, byte_count> seedBytes(
             const SeedIndices& indices,
@@ -81,6 +83,7 @@ namespace ots {
             const size_t words_per_chunk = 3
             );
 
+    /** @todo TODO: documentation missing */
     template<size_t byte_count>
     std::array<unsigned char, byte_count> seedBytes(
             const SeedIndices& indices,
@@ -109,4 +112,7 @@ namespace ots {
         }
         return out;
     }
+
+    extern const std::map<Network, ots::data::NetworkData> NETWORK_DATA_MAP;
+    const ots::data::NetworkData* getNetworkData(Network network);
 }

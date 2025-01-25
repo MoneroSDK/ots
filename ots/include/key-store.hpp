@@ -162,6 +162,20 @@ namespace ots {
             operator const char*() const;
 
             /**
+             * @brief Implicit conversion to std::array<unsigned char, 32> for direct byte access
+             * @throw ots::exception::keystore::LockedAccessAttempt if not unlocked for access
+             * @note You need first unlock the usage!
+             * @return Pointer to the underlying byte data of the secret key
+             * 
+             * Usage example:
+             * ```
+             * keyStore.unlockInsecureOnce();
+             * std::array<unsigned char, 32> keys = keyStore;  // Direct access to key bytes
+             * ```
+             */
+            operator std::array<unsigned char, 32>() const;
+
+            /**
              * @brief guard the insecure access attempts
              * @throw ots::exception::keystore::LockedWriteAttempt if not unlocked for write access,
              *        if write access is requested

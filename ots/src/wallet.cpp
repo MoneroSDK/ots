@@ -1,22 +1,29 @@
 #include "ots.hpp"
 #include "key-store.hpp"
+#include "account.hpp"
 
 namespace ots {
 
 	Address Wallet::address(uint32_t account, uint32_t index) const noexcept {
-		NOT_IMPLEMENTED_YET();
+        return m_account->address(account, index);
 	}
 
 	std::vector<Address> Wallet::accounts(uint32_t max, uint32_t offset) const noexcept {
-		/*
 		std::vector<Address> accounts;
+        uint32_t stop = max + offset;
+        for(uint32_t i = offset; i < stop; i++) {
+            accounts.push_back(address(i, 0));
+        }
 		return accounts;
-		*/
-		NOT_IMPLEMENTED_YET();
 	}
 
 	std::vector<Address> Wallet::subAddresses(uint32_t account, uint32_t max, uint32_t offset) const noexcept {
-		NOT_IMPLEMENTED_YET();
+        std::vector<Address> subAddresses;
+        uint32_t stop = max + offset;
+        for(uint32_t i = offset; i < stop; i++) {
+            subAddresses.push_back(address(account, i));
+        }
+        return subAddresses;
 	}
 
 	bool Wallet::hasAddress(const std::string& address) const noexcept {
@@ -28,38 +35,38 @@ namespace ots {
 	}
 
 	bool Wallet::hasAddress(const Address& address) const noexcept {
-		NOT_IMPLEMENTED_YET();
+        return m_account->hasAddress(address);
 	}
 
 	std::pair<uint32_t, uint32_t> Wallet::addressIndex(const std::string& address) const {
-		NOT_IMPLEMENTED_YET();
+        return m_account->addressIndex(Address(address), DEFAULT_MAX_ACCOUNT_DEPTH, DEFAULT_MAX_INDEX_DEPTH); // throws ots::exception::address::Invalid if not valid, and ots::exception::wallet::AddressNotFound if not in wallet TODO: max depths?
 	}
 
 	std::pair<uint32_t, uint32_t> Wallet::addressIndex(const Address& address) const {
-		NOT_IMPLEMENTED_YET();
+        return m_account->addressIndex(address, DEFAULT_MAX_ACCOUNT_DEPTH, DEFAULT_MAX_INDEX_DEPTH); // throws ots::exception::wallet::AddressNotFound if not in wallet TODO: max depths?
 	}
 
-    std::string Wallet::secretViewKey() const noexcept {
-		NOT_IMPLEMENTED_YET();
+    WipeableString Wallet::secretViewKey() const noexcept {
+		return m_account->secretViewKey();
     };
 
-    std::string Wallet::publicViewKey() const noexcept {
-		NOT_IMPLEMENTED_YET();
+    WipeableString Wallet::publicViewKey() const noexcept {
+		return m_account->publicViewKey();
     };
 
-    std::string Wallet::secretSpendKey() const noexcept {
-		NOT_IMPLEMENTED_YET();
+    WipeableString Wallet::secretSpendKey() const noexcept {
+		return m_account->secretSpendKey();
     };
 
-    std::string Wallet::publicSpendKey() const noexcept {
-		NOT_IMPLEMENTED_YET();
+    WipeableString Wallet::publicSpendKey() const noexcept {
+		return m_account->publicSpendKey();
     };
 
 	uint64_t Wallet::importOutputs(const std::string& outputs) {
 		NOT_IMPLEMENTED_YET();
 	}
 
-	std::string Wallet::exportKeyImages() const {
+	WipeableString Wallet::exportKeyImages() const {
 		NOT_IMPLEMENTED_YET();
 	}
 
@@ -96,11 +103,21 @@ namespace ots {
 		NOT_IMPLEMENTED_YET();
 	}
 
-    Wallet::Wallet(const std::array<unsigned char, 32>& key, uint64_t height) noexcept :
-        m_key(std::make_unique<KeyStore>(KeyStore(key))),
-        m_height(height) {}
+    Wallet::Wallet(const std::array<unsigned char, 32>& key, uint64_t height, const Network network) noexcept :
+        m_key(new KeyStore(key), KeyStoreDeleter()),
+        m_account(new Account(key, network), AccountDeleter()),
+        m_height(height),
+        m_network(network) {}
 
-    Wallet::Wallet(const KeyStore& key, uint64_t height) noexcept :
-        m_key(std::make_unique<KeyStore>(key)),
-        m_height(height) {}
+    Wallet::Wallet(const KeyStore& key, uint64_t height, const Network network) noexcept :
+        m_key(new KeyStore(key), KeyStoreDeleter()),
+        m_account(new Account(key, network), AccountDeleter()),
+        m_height(height),
+        m_network(network) {}
+
+    Wallet::Wallet(const Account& account, const KeyStore& key, uint64_t height, const Network network) noexcept :
+        m_key(new KeyStore(key), KeyStoreDeleter()),
+        m_account(new Account(account), AccountDeleter()),
+        m_height(height),
+        m_network(network) {}
 }

@@ -109,6 +109,11 @@ namespace ots {
         return WipeableString(epee::string_tools::pod_to_hex(m_account.get_keys().m_account_address.m_view_public_key));
     }
 
+    void Account::clearAddressCache() const noexcept {
+        m_addressCache.clear();
+        m_addressIndexCache.clear();
+    }
+
     void AccountDeleter::operator()(Account* account) const {
         delete account;
     }

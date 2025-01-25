@@ -176,9 +176,11 @@ endif()
 add_library(epee STATIC
 	${EPEE_SOURCES}
 )
+
 target_include_directories(epee
 	PUBLIC
 	"${EPEE_INCLUDE_DIR_BASE}"
+	PRIVATE
 	"${EASYLOGGING_INCLUDE_DIR_BASE}"
 )
 
@@ -194,6 +196,7 @@ target_compile_definitions(epee
     __LITTLE_ENDIAN=1234
     __BIG_ENDIAN=4321
 )
+
 target_link_libraries(epee
 	PUBLIC
 	easylogging
@@ -358,6 +361,38 @@ target_compile_definitions(polyseed
 # Force C compilation for .c files
 set_source_files_properties(${POLYSEED_SOURCES} PROPERTIES LANGUAGE C)
 
+# Create utf8proc library
+set(UTF8PROC_INSTALL OFF)
+set(UTF8PROC_ENABLE_TESTING OFF)
+set(BUILD_SHARED_LIBS OFF)
+
+add_library(utf8proc STATIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/external/utf8proc/utf8proc.c
+)
+
+target_include_directories(utf8proc
+    PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/external/utf8proc>
+    $<INSTALL_INTERFACE:include>
+)
+
+target_compile_definitions(utf8proc 
+    PUBLIC 
+    UTF8PROC_STATIC
+    PRIVATE
+    UTF8PROC_EXPORTS
+)
+
+if (NOT MSVC)
+    set_target_properties(
+        utf8proc PROPERTIES
+        COMPILE_FLAGS "-O2 -std=c99 -pedantic -Wall"
+    )
+endif()
+
+set_target_properties(utf8proc PROPERTIES
+    POSITION_INDEPENDENT_CODE ON
+)
 
 # Main library
 add_library(monero-ots
@@ -375,6 +410,7 @@ add_library(monero-ots
 	src/seed-polyseed.cpp
 	src/wallet.cpp
 	src/key-store.cpp
+	src/entropy.cpp
 	src/polyseed-key-store.cpp
 	src/account.cpp
 	# ${EPEE_SOURCES} # TODO: solve later with implementation, first finish ABI
@@ -384,6 +420,7 @@ add_library(monero-ots
 
 target_link_libraries(monero-ots
 	PRIVATE
+	utf8proc
 	polyseed
 	monero-stubs # use stubs as module to get easier rid of later
 	epee
@@ -393,8 +430,8 @@ target_link_libraries(monero-ots
 	Boost::thread
 	Boost::system
 	# OpenSSL::SSL
-	# OpenSSL::Crypto
 	${OPENSSL_SSL_LIBRARY} # TODO: cluster coitus and makumba, need to get rid of this
+	# OpenSSL::Crypto
 	${OPENSSL_CRYPTO_LIBRARY} # same as above
 	-static
 )
@@ -421,17 +458,13 @@ target_include_directories(monero-ots
 	$<INSTALL_INTERFACE:include>
 	PRIVATE
 	${MONERO_SOURCE_DIR}/src
-	# ${MONERO_SOURCE_DIR}/contrib/epee/include
 	${EPEE_INCLUDE_DIR_BASE}
 	${EASYLOGGING_INCLUDE_DIR_BASE}
-	# ${MONERO_SOURCE_DIR}/external/easylogging++
 	${MONERO_SOURCE_DIR}/external/boost/archive
-	# ${MONERO_SOURCE_DIR}/external/polyseed/include
 	${RANDOMX_INCLUDE_DIR_BASE}
 	${CMAKE_THREAD_LIBS_INIT} # TODO: how came this in? Do we need it? And ifso, why and for what? Easylogging?
 	${Backtrace_LIBRARIES} # TODO: how came this in? Easylogging?
 	${POLYSEED_INCLUDE_DIR_BASE}
-	# ${POLYSEED_SOURCE_DIR}
 )
 
 # Library properties
@@ -454,6 +487,7 @@ endif()
 # Installation rules
 install(
 	TARGETS monero-ots
+	utf8proc
 	polyseed
 	monero-stubs
 	epee
