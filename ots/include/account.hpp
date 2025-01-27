@@ -3,12 +3,12 @@
 #include "ots-internal.hpp"
 #include "ots-exceptions.hpp"
 #include "key-store.hpp"
-#include "wipeable_string.h" // for epee::wipeable_string
-#include "cryptonote_basic/cryptonote_format_utils.h" // for cryptonote::decrypt_key
-#include "cryptonote_basic/account.h" // for cryptonote::account_base
-#include <utility> // For std::pair
-#include <unordered_map> // For std::unordered_map
-#include <set> // For std::set
+#include <wipeable_string.h>
+#include <cryptonote_basic/cryptonote_format_utils.h>
+#include <cryptonote_basic/account.h>
+#include <utility>
+#include <unordered_map>
+#include <set>
 
 #define DEFAULT_MAX_ACCOUNT_DEPTH 10
 #define DEFAULT_MAX_INDEX_DEPTH 100
@@ -115,7 +115,101 @@ namespace ots {
              */
             void clearAddressCache() const noexcept;
 
+            /**
+             * @brief sign a message with the wallet
+             * @param data the message to sign
+             * @return the signature of the message
+             * @throws ots::exception::BufferOverflowException if tools:write_varint fails in Account::hashData() (should not happen)
+             */
+            std::string signData(const std::string& data) const;
+
+            /**
+             * @brief sign a message with subindex address of the wallet
+             * @param data the message to sign
+             * @param index the account and index to sign with
+             * @return the signature of the message
+             * @throws ots::exception::BufferOverflowException if tools:write_varint fails in Account::hashData() (should not happen)
+             */
+            std::string signData(const std::string& data, const std::pair<uint32_t, uint32_t>& index) const;
+
+            /**
+             * @brief sign a message with the provided address of the wallet
+             * @param data the message to sign
+             * @param address the address of the wallet
+             * @param maxAccountDepth the maximum account depth to search
+             * @param maxIndexDepth the maximum index depth to search
+             * @return the signature of the message
+             * @throws ots::exception::address::Invalid if the address is not valid
+             * @throws ots::exception::BufferOverflowException if tools:write_varint fails in Account::hashData() (should not happen)
+             */
+            std::string signData(const std::string& data, const std::string& address, uint32_t maxAccountDepth = DEFAULT_MAX_ACCOUNT_DEPTH, uint32_t maxIndexDepth = DEFAULT_MAX_INDEX_DEPTH) const;
+
+            /**
+             * @brief sign a message with the provided address of the wallet
+             * @param data the message to sign
+             * @param address the address of the wallet
+             * @param maxAccountDepth the maximum account depth to search
+             * @param maxIndexDepth the maximum index depth to search
+             * @return the signature of the message
+             * @throws ots::exception::address::Invalid if the address is not valid
+             * @throws ots::exception::BufferOverflowException if tools:write_varint fails in Account::hashData() (should not happen)
+             */
+            std::string signData(const std::string& data, const Address& address, uint32_t maxAccountDepth = DEFAULT_MAX_ACCOUNT_DEPTH, uint32_t maxIndexDepth = DEFAULT_MAX_INDEX_DEPTH) const;
+
+            /**
+             * @brief verify a signed message
+             * @param data the message to verify
+             * @param address of the signer
+             * @param signature of the message
+             * @return true if the signature is valid
+             * @note the signature must be a base58 encoded string
+             * @note will only verify signatures of Version 2 and only mode 0 (signed with secret spend key)
+             */
+            bool static verifyData(const std::string& data, const Address& address, const std::string& signature);
+
+            /**
+             * @brief verify a signed message
+             * @param data the message to verify
+             * @param address of the signer
+             * @param signature of the message
+             * @return true if the signature is valid
+             * @note the signature must be a base58 encoded string
+             * @note will only verify signatures of Version 2 and only mode 0 (signed with secret spend key)
+             */
+            bool static verifyData(const std::string& data, const std::string& address, const std::string& signature);
+
+            /**
+             * @brief verify a signed message
+             * @param data the message to verify
+             * @param address of the signer
+             * @param signature of the message
+             * @return true if the signature is valid
+             * @note the signature must be a base58 encoded string
+             * @note will only verify signatures of Version 1 and only mode 0 (signed with secret spend key)
+             */
+            bool static verifyDataLegacy(const std::string& data, const Address& address, const std::string& signature);
+
+            /**
+             * @brief verify a signed message
+             * @param data the message to verify
+             * @param address of the signer
+             * @param signature of the message
+             * @return true if the signature is valid
+             * @note the signature must be a base58 encoded string
+             * @note will only verify signatures of Version 1 and only mode 0 (signed with secret spend key)
+             */
+            bool static verifyDataLegacy(const std::string& data, const std::string& address, const std::string& signature);
+
         private:
+            /**
+             * @brief hash the data with the spend and view keys
+             * @param data the data to hash
+             * @param spendKey the public spend key
+             * @param viewKey the public view key
+             * @return the hash of the data
+             * @throws ots::exception::BufferOverflowException if tools:write_varint fails (should not happen)
+             */
+            static crypto::hash hashData(const std::string& data, const crypto::public_key& spendKey, const crypto::public_key& viewKey);
             cryptonote::account_base m_account;
             mutable std::unordered_map<std::string, std::pair<uint32_t, uint32_t>> m_addressCache;
             mutable std::set<std::pair<uint32_t, uint32_t>> m_addressIndexCache;
