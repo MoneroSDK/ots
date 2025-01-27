@@ -36,7 +36,7 @@ cryptonote::account_base account(const std::string& key) {
  * @param nettype the network type
  * @return the address string
  */
-std::string address(cryptonote::account_base account, cryptonote::network_type nettype) {
+std::string address(const cryptonote::account_base& account, const cryptonote::network_type& nettype) {
     return account.get_public_address_str(nettype);
 }
 
@@ -48,9 +48,9 @@ std::string address(cryptonote::account_base account, cryptonote::network_type n
  * @return the address string
  */
 std::string address(
-        cryptonote::account_base account,
-        cryptonote::network_type nettype,
-        cryptonote::subaddress_index index
+        const cryptonote::account_base& account,
+        const cryptonote::network_type& nettype,
+        const cryptonote::subaddress_index& index
     ) {
     cryptonote::account_public_address subaddr = account.get_device().get_subaddress(account.get_keys(), index);
     return cryptonote::get_account_address_as_str(nettype, true, subaddr);
