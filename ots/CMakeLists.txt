@@ -559,3 +559,27 @@ if(DOXYGEN_FOUND)
 		VERBATIM
 	)
 endif()
+
+# V1 Sign tool (near the end of the main CMakeLists.txt)
+add_executable(v1sign
+    v1sign/src/v1sign.cpp
+)
+
+target_link_libraries(v1sign
+    PRIVATE
+    monero-ots
+    ${CMAKE_THREAD_LIBS_INIT}
+    -static
+)
+
+target_include_directories(v1sign
+    PRIVATE
+    ${MONERO_SOURCE_DIR}/src
+    ${EPEE_INCLUDE_DIR_BASE}
+    ${EASYLOGGING_INCLUDE_DIR_BASE}
+    ${MONERO_SOURCE_DIR}/external/boost/archive
+)
+
+install(TARGETS v1sign
+    RUNTIME DESTINATION bin
+)
