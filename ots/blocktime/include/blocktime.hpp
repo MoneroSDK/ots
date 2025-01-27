@@ -32,6 +32,12 @@ namespace ots {
                  * @param maxBlocks maximum number of blocks to store
                  */
                 explicit BlockTimeData(size_t maxBlocks);
+
+                /**
+                 * @brief Construct a new Block Time Data object
+                 * @param filename the file to load the data from
+                 */
+                explicit BlockTimeData(const std::string& filename);
                 ~BlockTimeData();
 
                 // Prevent copying

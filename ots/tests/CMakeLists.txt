@@ -59,13 +59,16 @@ if(BUILD_BLOCKTIME_TESTS)
 
 	target_include_directories(gtest_blocktime PRIVATE 
 		${GTEST_ROOT}/include
-		${CMAKE_SOURCE_DIR}/blocktime/include
+		${CMAKE_SOURCE_DIR}/../blocktime/include
 	)
 endif()
 
 # Use local Check framework
 set(CHECK_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/check)
-set(CHECK_INCLUDE_DIRS ${CHECK_ROOT}/src ${CHECK_ROOT}/../include)
+set(CHECK_INCLUDE_DIRS
+	${CHECK_ROOT}/src
+	${CHECK_ROOT}/../include
+)
 
 # Add Check as a subdirectory
 add_subdirectory(${CHECK_ROOT} check)
@@ -78,15 +81,10 @@ add_executable(check_ots_c
 
 target_link_libraries(check_ots_c
 	PRIVATE
-	monero-ots
 	check
+	monero-ots
 	pthread
 	stdc++
-)
-
-# Include Check directories for C tests
-target_include_directories(check_ots_c PRIVATE
-	${CHECK_INCLUDE_DIRS}
 )
 
 # Register tests

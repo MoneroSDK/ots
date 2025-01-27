@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <vector>
 #include <numeric>
+#include <iostream>
 
 namespace ots {
     namespace blocktime {
@@ -10,9 +11,20 @@ namespace ots {
             : blocks(new uint64_t[maxBlocks]()), 
             m_highestBlock(0),
             m_maxBlocks(maxBlocks) {
-                // Initialize all blocks to zero
-                std::fill_n(blocks.get(), maxBlocks, uint64_t{0});
-            }
+            // Initialize all blocks to zero
+            std::fill_n(blocks.get(), maxBlocks, uint64_t{0});
+        }
+
+        BlockTimeData::BlockTimeData(const std::string& filename) {
+            // get the file size
+            std::ifstream file(filename, std::ios::binary | std::ios::ate);
+            uint64_t fileSize = file.tellg();
+            m_maxBlocks  = fileSize / sizeof(uint64_t);
+            blocks = std::make_unique<uint64_t[]>(m_maxBlocks);
+            file.close();
+            std::fill_n(blocks.get(), m_maxBlocks, uint64_t{0});
+            load(filename); // false, why?
+        }
 
         BlockTimeData::~BlockTimeData() = default;
 
@@ -25,7 +37,7 @@ namespace ots {
                 return false;
             // Read the blocks
             file.read(reinterpret_cast<char*>(blocks.get()), m_maxBlocks * sizeof(uint64_t));
-            if(!file.good())
+            if(!file.good()) // why is file.good() false?
                 return false;
             m_highestBlock = m_maxBlocks - 1;
             return true;
@@ -40,7 +52,7 @@ namespace ots {
             file.write(
                     reinterpret_cast<const char*>(blocks.get()), 
                     blocks_to_write * sizeof(uint64_t)
-            );
+                    );
             return file.good();
         }
 
