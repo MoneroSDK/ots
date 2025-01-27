@@ -21,15 +21,13 @@ namespace ots {
         return {OTS_VERSION_MAJOR, OTS_VERSION_MINOR, OTS_VERSION_PATCH};
     };
 
-    /**
-     * @todo TODO: unluckily, there are for 15116 blocks a hughe difference, so the user would load too many blocks, we should fix this with approximate, and if approximate fails, then estimate the block height
-     */
     uint64_t OTS::heightFromTimestamp(uint64_t timestamp, Network network) {
         const ots::data::NetworkData* data = getNetworkData(network);
         if(timestamp <= data->birth) // Monero didn't exist, so return to square 0
             return 0;
-        // Apply security margin (10 days in seconds, should be enough how the biggest positive difference are 8 days)
-        timestamp -= 864000; // 10 * 24 * 60 * 60
+        // Apply security margin (8 days in seconds, should be enough how the biggest positive difference is 8 days), this leads to a maximum negative difference of 11 days
+        // timestamp -= 864000; // 10 * 24 * 60 * 60
+        timestamp -= 691200; // 8 * 24 * 60 * 60 = 8 days
         uint64_t height;
         if(timestamp <= data->birth)
             return 0;
@@ -64,7 +62,7 @@ namespace ots {
             // and after 3 tries we throw an exception
             for(size_t i = 0; i < 3; i++) {
                 crypto::generate_random_bytes_thread_safe(size, bytes);
-                if(!OTS::s_enforceEntropy || !OTS::lowEntropy(size, bytes))
+                if(!OTS::sEnforceEntropy || !OTS::lowEntropy(size, bytes))
                     return; // success
             }
             throw ots::exception::LowEntropy(); // after 3 tries still low entropy
@@ -90,10 +88,12 @@ namespace ots {
     }
 
     void OTS::enforceEntropy(bool enforce) noexcept {
-        OTS::s_enforceEntropy = enforce;
+        OTS::sEnforceEntropy = enforce;
     }
 
-    bool OTS::s_enforceEntropy = true;
+    bool OTS::sEnforceEntropy = true;
+    uint32_t OTS::sMaxAccountDepth = (uint32_t)DEFAULT_MAX_ACCOUNT_DEPTH;
+    uint32_t OTS::sMaxIndexDepth = (uint32_t)DEFAULT_MAX_INDEX_DEPTH;
 
     cryptonote::network_type cryptonoteNetwork(Network network) noexcept {
         if(static_cast<uint8_t>(network) > 2)
@@ -152,5 +152,35 @@ namespace ots {
         if (it == NETWORK_DATA_MAP.end())
             throw ots::exception::UnknownNetwork();
         return &it->second;
+    }
+
+    uint32_t OTS::maxAccountDepth(uint32_t depth) noexcept {
+        if(depth == 0)
+            return sMaxAccountDepth;
+        return depth;
+    }
+
+    uint32_t OTS::maxIndexDepth(uint32_t depth) noexcept {
+        if(depth == 0)
+            return sMaxIndexDepth;
+        return depth;
+    }
+
+    void OTS::setMaxAccountDepth(uint32_t depth) noexcept {
+        sMaxAccountDepth = depth;
+    }
+
+    void OTS::setMaxIndexDepth(uint32_t depth) noexcept {
+        sMaxIndexDepth = depth;
+    }
+
+    void OTS::setMaxDepth(uint32_t accountDepth, uint32_t indexDepth) noexcept {
+        sMaxAccountDepth = accountDepth;
+        sMaxIndexDepth = indexDepth;
+    }
+
+    void OTS::resetMaxDepth() noexcept {
+        sMaxAccountDepth = (uint32_t)DEFAULT_MAX_ACCOUNT_DEPTH;
+        sMaxIndexDepth = (uint32_t)DEFAULT_MAX_INDEX_DEPTH;
     }
 } // namespace ots

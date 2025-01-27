@@ -32,6 +32,9 @@ endif()
 option(BUILD_BLOCKTIME "Build blocktime analysis tools" OFF)
 option(BUILD_BLOCKTIME_TESTS "Include blocktime in test suite" OFF)
 option(BUILD_TESTS "Build test suite" OFF)
+option(BUILD_DOCS "Build documentation" OFF)
+option(BUILD_V1SIGN "Build v1sign tool" OFF)
+option(RUN_TESTS "Run tests after build" OFF)
 option(BUILD_SHARED_LIBS "Build shared library" OFF)  # Default to static
 # Monero dependencies
 
@@ -48,7 +51,7 @@ set(OPENSSL_USE_STATIC_LIBS TRUE)
 set(OPENSSL_CRYPTO_LIBRARY "/usr/lib/x86_64-linux-gnu/libcrypto.a")
 set(OPENSSL_SSL_LIBRARY "/usr/lib/x86_64-linux-gnu/libssl.a")
 
-find_package(Boost REQUIRED COMPONENTS filesystem thread system chrono)
+find_package(Boost REQUIRED COMPONENTS filesystem thread system chrono serialization) # TODO: serialization needed for monero-ots, can we get rid of it?
 find_package(OpenSSL REQUIRED)
 
 # No Unbound, no extra dependencies
@@ -461,6 +464,7 @@ target_link_libraries(monero-ots
 	utf8proc
 	polyseed
 	monero-minimal
+	Boost::serialization # TODO: needed at the moment for account.cpp, possibe to get rid of it?
 	-static
 )
 
@@ -503,12 +507,6 @@ set_target_properties(monero-ots PROPERTIES
 	POSITION_INDEPENDENT_CODE ON
 	LINK_FLAGS "$<$<NOT:$<BOOL:${DEBUG}>>:-s>"
 )
-
-# Tests configuration
-if(BUILD_TESTS)
-	enable_testing()
-	add_subdirectory(tests)
-endif()
 
 # Installation rules
 install(
@@ -562,51 +560,56 @@ install(FILES
 	DESTINATION lib/cmake/monero-ots
 )
 
-# Doxygen documentation
-find_package(Doxygen)
-if(DOXYGEN_FOUND)
-	# Set the Doxyfile input and output directories
-	set(DOXYGEN_INPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/manual")
-	set(DOXYGEN_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/docs")
-	set(DOXYGEN_CCS "${CMAKE_CURRENT_SOURCE_DIR}/manual/doxygen-awesome.css ${CMAKE_CURRENT_SOURCE_DIR}/manual/doxygen-awesome-sidebar-only.css")
-	set(DOXYGEN_MD_MAINPAGE "${CMAKE_CURRENT_SOURCE_DIR}/manual/index.md")
-
-	# Configure the Doxyfile
-	configure_file(
-		${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile.in
-		${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
-		@ONLY
-	)
-
-	# Add custom target for documentation
-	add_custom_target(docs
-		COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
-		WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-		COMMENT "Generating API documentation with Doxygen"
-		VERBATIM
-	)
+# Tests configuration
+if(BUILD_TESTS)
+	enable_testing()
+	add_subdirectory(tests)
 endif()
 
-# V1 Sign tool (near the end of the main CMakeLists.txt)
-add_executable(v1sign
-	v1sign/src/v1sign.cpp
-)
+# Doxygen documentation
+if(BUILD_DOCS)
+	find_package(Doxygen)
+	if(DOXYGEN_FOUND)
+		# Set the Doxyfile input and output directories
+		set(DOXYGEN_INPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/src ${CMAKE_CURRENT_SOURCE_DIR}/manual")
+		set(DOXYGEN_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/docs")
+		set(DOXYGEN_CCS "${CMAKE_CURRENT_SOURCE_DIR}/manual/doxygen-awesome.css ${CMAKE_CURRENT_SOURCE_DIR}/manual/doxygen-awesome-sidebar-only.css")
+		set(DOXYGEN_MD_MAINPAGE "${CMAKE_CURRENT_SOURCE_DIR}/manual/index.md")
+		# Configure the Doxyfile
+		configure_file(
+			${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile.in
+			${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
+			@ONLY
+		)
+		# Add custom target for documentation
+		add_custom_target(docs
+			COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile
+			WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+			COMMENT "Generating API documentation with Doxygen"
+			VERBATIM
+		)
+	endif()
+endif()
 
-target_link_libraries(v1sign
-	PRIVATE
-	monero-minimal
-	${CMAKE_THREAD_LIBS_INIT}
-	-static
-)
-
-target_include_directories(v1sign
-	PRIVATE
-	${MONERO_SOURCE_DIR}/src
-	${EPEE_INCLUDE_DIR_BASE}
-	${EASYLOGGING_INCLUDE_DIR_BASE}
-	${MONERO_SOURCE_DIR}/external/boost/archive
-)
-
-install(TARGETS v1sign
-	RUNTIME DESTINATION bin
-)
+# V1 Sign tool
+if(BUILD_V1SIGN)
+	add_executable(v1sign
+		v1sign/src/v1sign.cpp
+	)
+	target_link_libraries(v1sign
+		PRIVATE
+		monero-minimal
+		${CMAKE_THREAD_LIBS_INIT}
+		-static
+	)
+	target_include_directories(v1sign
+		PRIVATE
+		${MONERO_SOURCE_DIR}/src
+		${EPEE_INCLUDE_DIR_BASE}
+		${EASYLOGGING_INCLUDE_DIR_BASE}
+		${MONERO_SOURCE_DIR}/external/boost/archive
+	)
+	install(TARGETS v1sign
+		RUNTIME DESTINATION bin
+	)
+endif()

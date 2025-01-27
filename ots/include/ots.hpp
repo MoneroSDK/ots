@@ -15,6 +15,26 @@
  */
 
 /**
+ * @def DEFAULT_MAX_ACCOUNT_DEPTH
+ * @brief The default maximum account depth, to search for an address
+ *        in the wallet
+ */
+#ifndef DEFAULT_MAX_ACCOUNT_DEPTH
+#define DEFAULT_MAX_ACCOUNT_DEPTH 10
+#endif
+
+/**
+ * @def DEFAULT_MAX_INDEX_DEPTH
+ * @brief The default maximum index depth, to search for an address
+ *        in an account of the wallet
+ */
+#ifndef DEFAULT_MAX_INDEX_DEPTH
+#define DEFAULT_MAX_INDEX_DEPTH 100
+#endif
+
+#define OUTPUT_EXPORT_FILE_MAGIC "Monero output export\004"
+
+/**
  * @namespace ots
  * @brief The library exists complete only in this namespace
  *
@@ -22,13 +42,13 @@
  *
  * - [x] Legacy Seed (13 words) handling - except generating, omited on purpose
  * - [x] Monero Seed (25 words) handling
- * - [ ] Polyseed (16 words) handling
- * - [ ] Address management
+ * - [x] Polyseed (16 words) handling
+ * - [x] Address management
  * - [x] Address verification
  * - [ ] Import of outputs
  * - [ ] Export of key images
  * - [ ] inspect unsigned transaction
- * - [ ] sign a unsigned transaction
+ * - [x] sign a unsigned transaction
  */
 namespace ots {
 
@@ -1031,6 +1051,56 @@ namespace ots {
              */
             static void enforceEntropy(bool enforce = true) noexcept;
 
+            /**
+             * @brief set the maximum depth of the accounts to search through
+             * @param depth the maximum depth of the account, set this value
+             *        to 0 will restrict to use only the main (wallet) account
+             */
+            static void setMaxAccountDepth(uint32_t depth) noexcept;
+
+            /**
+             * @brief set the maximum depth of the indexes to search through
+             * @param depth the maximum depth of the index, set this value
+             *        to 0 will restrict to use only the first index of every
+             *        account
+             */
+            static void setMaxIndexDepth(uint32_t depth) noexcept;
+
+            /**
+             * @brief set the maximum depth of the accounts and indexes to search through
+             * @param account the maximum depth of the account, set this value
+             *        to 0 will restrict to use only the main (wallet) account
+             * @param index the maximum depth of the index, set this value
+             *        to 0 will restrict to use only the first index of every
+             *        account
+             */
+            static void setMaxDepth(uint32_t account, uint32_t index) noexcept;
+
+            /**
+             * @brief reset the maximum depth of the accounts and indexes to search through
+             */
+            static void resetMaxDepth() noexcept;
+
+            /**
+             * @brief get the maximum depth of the accounts to search through
+             *        (lookahead, generate addresses to search)
+             * @param depth the maximum depth of the account, default is 0 and
+             *        returns the current value, or DEFAULT_MAX_ACCOUNT_DEPTH or
+             *        the value set via @see setMaxAccountDepth or @see setMaxDepth
+             * @return the maximum depth of the account generation
+             */
+            static uint32_t maxAccountDepth(uint32_t depth = 0) noexcept;
+
+            /**
+             * @brief get the maximum depth of the indexes to search through
+             *        (lookahead, generate addresses to search)
+             * @param depth the maximum depth of the index, default is 0 and
+             *        returns the current value, or DEFAULT_MAX_INDEX_DEPTH or
+             *        the value set via @see setMaxIndexDepth or @see setMaxDepth
+             * @return the maximum depth of the index generation
+             */
+            static uint32_t maxIndexDepth(uint32_t depth = 0) noexcept;
+
         protected:
             /**
              * @brief check for low entropy in data
@@ -1042,7 +1112,9 @@ namespace ots {
             static void ensureEntropy(size_t size, const uint8_t* data, double minEntropy = 3.5);
 
         private:
-            static bool s_enforceEntropy;
+            static bool sEnforceEntropy;
+            static uint32_t sMaxAccountDepth;
+            static uint32_t sMaxIndexDepth;
 	};
 
     /**
@@ -1132,14 +1204,14 @@ namespace ots {
              * @param address the string containing supposingly a monero address
              * @return false if the address is not valid or not belong to the wallet, otherwise true
              */
-			bool hasAddress(const std::string& address) const noexcept;
+			bool hasAddress(const std::string& address, uint32_t maxAccountDepth = 0, uint32_t maxIndexDepth = 0) const noexcept;
 
             /**
              * @brief check if the address belongs to the wallet
              * @param address the monero address
              * @return true if the address belongs to the wallet
              */
-			bool hasAddress(const Address& address) const noexcept;
+			bool hasAddress(const Address& address, uint32_t maxAccountDepth = 0, uint32_t maxIndexDepth = 0) const noexcept;
 
             /**
              * @brief check if the address string is a valid monero address and give the account and subindex
@@ -1148,7 +1220,7 @@ namespace ots {
              * @throws ots::exception::wallet::AddressNotFound if the address is not in the wallet
              * @return first number is the account, second number the index
              */
-			std::pair<uint32_t, uint32_t> addressIndex(const std::string& address) const;
+			std::pair<uint32_t, uint32_t> addressIndex(const std::string& address, uint32_t maxAccountDepth = 0, uint32_t maxIndexDepth = 0) const;
 
             /**
              * @brief get the account and subindex of a address in the wallet
@@ -1157,7 +1229,7 @@ namespace ots {
              * @throws ots::exception::wallet::AddressNotFound if the address is not in the wallet
              * @return first number is the account, second number the index
              */
-			std::pair<uint32_t, uint32_t> addressIndex(const Address& address) const;
+			std::pair<uint32_t, uint32_t> addressIndex(const Address& address, uint32_t maxAccountDepth = 0, uint32_t maxIndexDepth = 0) const;
 
             /**
              * @brief The Secret View Key
@@ -1238,17 +1310,75 @@ namespace ots {
 			std::string signData(const std::string& data) const noexcept;
 
             /**
+             * @brief sign a message with subindex address of the wallet
+             * @param data the message to sign
+             * @param index the account and index to sign with
+             * @return the signature of the message
+             * @throws ots::exception::BufferOverflowException if tools:write_varint fails in Account::hashData() (should not happen)
+             */
+            std::string signData(const std::string& data, const std::pair<uint32_t, uint32_t>& index) const;
+
+            /**
+             * @brief sign a message with the provided address of the wallet
+             * @param data the message to sign
+             * @param address the address of the wallet
+             * @return the signature of the message
+             * @throws ots::exception::address::Invalid if the address is not valid
+             * @throws ots::exception::BufferOverflowException if tools:write_varint fails in Account::hashData() (should not happen)
+             */
+            std::string signData(const std::string& data, const Address& address) const;
+
+            /**
+             * @brief sign a message with the provided address of the wallet
+             * @param data the message to sign
+             * @param address the address of the wallet
+             * @return the signature of the message
+             * @throws ots::exception::address::Invalid if the address is not valid
+             * @throws ots::exception::BufferOverflowException if tools:write_varint fails in Account::hashData() (should not happen)
+             */
+            std::string signData(const std::string& data, const std::string& address) const;
+
+            /**
              * @brief Verify a signed message
              * @param data String of the message to sign
-             * @param address Monero address as string
-             * @param signature the provided signature for the message
+             * @param address public Monero address as string
+             * @param signature for the message
              * @throws ots::exception::address::Invalid if the address is not valid
              * @return true if the signature is valid
              */
-			bool verifyData(
+			static bool verifyData(
 					const std::string& data, 
 					const std::string& address, 
-					const std::string& signature
+					const std::string& signature,
+                    bool legacyFallback = false
+					);
+
+            /**
+             * @brief Verify a signed message
+             * @param data String of the message to sign
+             * @param address public Monero address
+             * @param signature for the message
+             * @throws ots::exception::address::Invalid if the address is not valid
+             * @return true if the signature is valid
+             */
+			static bool verifyData(
+					const std::string& data, 
+					const Address& address, 
+					const std::string& signature,
+                    bool legacyFallback = false
+					);
+
+			bool verifyData(
+					const std::string& data, 
+					const std::pair<uint32_t, uint32_t>& index,
+					const std::string& signature,
+                    bool legacyFallback = false
+					) const;
+
+			bool verifyData(
+					const std::string& data, 
+					const std::string& signature,
+                    bool legacyFallback = false
 					) const;
 
             /**
