@@ -7,9 +7,9 @@ cmake_policy(SET CMP0076 NEW)  # For target_sources relative paths
 # speed up turnarounds
 find_program(CCACHE_PROGRAM ccache)
 if(CCACHE_PROGRAM)
-    set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
-    set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
-    message(STATUS "Using ccache: ${CCACHE_PROGRAM}")
+	set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+	set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+	message(STATUS "Using ccache: ${CCACHE_PROGRAM}")
 endif()
 
 # TODO: should think about a version strategy
@@ -58,6 +58,7 @@ find_package(OpenSSL REQUIRED)
 # Require Monero source directory
 if(NOT MONERO_SOURCE_DIR)
 	if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../src/crypto/crypto.cpp")
+		get_filename_component(MONERO_STUBS_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/stubs/include" ABSOLUTE)
 		get_filename_component(MONERO_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
 		get_filename_component(MONERO_CRYPTO_SOURCE_DIR "${MONERO_SOURCE_DIR}/src/crypto" ABSOLUTE)
 		get_filename_component(MONERO_COMMON_SOURCE_DIR "${MONERO_SOURCE_DIR}/src/common" ABSOLUTE)
@@ -92,7 +93,7 @@ if(BUILD_BLOCKTIME OR (BUILD_TESTS AND BUILD_BLOCKTIME_TESTS))
 endif()
 
 if(BUILD_BLOCKTIME OR (BUILD_TESTS AND BUILD_BLOCKTIME_TESTS))
-    add_subdirectory(blocktime)
+	add_subdirectory(blocktime)
 endif()
 
 # Version configuration
@@ -103,12 +104,12 @@ configure_file(
 
 # Create a stubs library for now, hate this cluster coitus, we sort this out later
 add_library(monero-stubs STATIC
-	src/stub/unbound.cpp
+	stubs/src/unbound.cpp
 	# src/stub/logging.cpp
 	# src/stub/div128.c is in epee int-util.cpp
 	# src/stub/epee.cpp makes no sense because we seem still to need epee, let's check later again
 	## src/stub/cryptonote.cpp # check later again if this makes sense, I made it to compile without dragging even more dependencies in
-	src/stub/dns_utils.cpp
+	stubs/src/dns_utils.cpp
 	# src/stub/hw_device.cpp
 )
 
@@ -128,12 +129,12 @@ set(EASYLOGGING
 )
 
 add_library(easylogging STATIC
-    ${EASYLOGGING}
+	${EASYLOGGING}
 )
 
 target_include_directories(easylogging
-    PUBLIC
-    ${EASYLOGGING_INCLUDE_DIR_BASE}
+	PUBLIC
+	${EASYLOGGING_INCLUDE_DIR_BASE}
 )
 
 target_compile_definitions(easylogging
@@ -164,14 +165,14 @@ set(EPEE_SOURCES
 	${EPEE_SOURCE_DIR}/mlog.cpp
 )
 if (MSVC)
-    add_definitions(-D_CRT_SECURE_NO_WARNINGS)
-    add_definitions(-D_WIN32_WINNT=0x0600)
+	add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+	add_definitions(-D_WIN32_WINNT=0x0600)
 else()
-    add_definitions(-DGIT_ARCHIVE)
+	add_definitions(-DGIT_ARCHIVE)
 endif()
 
 if (APPLE)
-    add_definitions(-DPER_BLOCK_CHECKPOINT)
+	add_definitions(-DPER_BLOCK_CHECKPOINT)
 endif()
 add_library(epee STATIC
 	${EPEE_SOURCES}
@@ -191,10 +192,10 @@ target_compile_definitions(epee
 	ELPP_NO_DEFAULT_LOG_FILE
 	ELPP_NO_LOG_TO_FILE
 	AUTO_INITIALIZE_EASYLOGGINGPP
-    _GNU_SOURCE
-    __BYTE_ORDER=__LITTLE_ENDIAN
-    __LITTLE_ENDIAN=1234
-    __BIG_ENDIAN=4321
+	_GNU_SOURCE
+	__BYTE_ORDER=__LITTLE_ENDIAN
+	__LITTLE_ENDIAN=1234
+	__BIG_ENDIAN=4321
 )
 
 target_link_libraries(epee
@@ -217,10 +218,10 @@ add_subdirectory(${RANDOMX_DIR} ${CMAKE_BINARY_DIR}/randomx)
 
 enable_language(ASM)
 add_library(cryptonight_asm STATIC
-    ${MONERO_CRYPTO_SOURCE_DIR}/CryptonightR_template.S
+	${MONERO_CRYPTO_SOURCE_DIR}/CryptonightR_template.S
 )
 target_include_directories(cryptonight_asm PRIVATE
-    ${MONERO_SOURCE_DIR}/src
+	${MONERO_SOURCE_DIR}/src
 )
 
 add_library(monero-crypto STATIC
@@ -230,12 +231,12 @@ add_library(monero-crypto STATIC
 	${MONERO_CRYPTO_SOURCE_DIR}/random.c
 	${MONERO_CRYPTO_SOURCE_DIR}/slow-hash.c
 	${MONERO_CRYPTO_SOURCE_DIR}/hash-extra-blake.c
-    ${MONERO_CRYPTO_SOURCE_DIR}/hash-extra-groestl.c
-    ${MONERO_CRYPTO_SOURCE_DIR}/hash-extra-jh.c
-    ${MONERO_CRYPTO_SOURCE_DIR}/hash-extra-skein.c
-    ${MONERO_CRYPTO_SOURCE_DIR}/aesb.c
-    ${MONERO_CRYPTO_SOURCE_DIR}/tree-hash.c
-    ${MONERO_CRYPTO_SOURCE_DIR}/CryptonightR_JIT.c
+	${MONERO_CRYPTO_SOURCE_DIR}/hash-extra-groestl.c
+	${MONERO_CRYPTO_SOURCE_DIR}/hash-extra-jh.c
+	${MONERO_CRYPTO_SOURCE_DIR}/hash-extra-skein.c
+	${MONERO_CRYPTO_SOURCE_DIR}/aesb.c
+	${MONERO_CRYPTO_SOURCE_DIR}/tree-hash.c
+	${MONERO_CRYPTO_SOURCE_DIR}/CryptonightR_JIT.c
 	${MONERO_CRYPTO_SOURCE_DIR}/rx-slow-hash.c
 	${MONERO_CRYPTO_SOURCE_DIR}/blake256.c
 	${MONERO_CRYPTO_SOURCE_DIR}/blake2b.c
@@ -248,36 +249,36 @@ add_library(monero-crypto STATIC
 	${MONERO_CRYPTO_SOURCE_DIR}/keccak.c
 	${MONERO_CRYPTO_SOURCE_DIR}/crypto-ops-data.c
 	${MONERO_CRYPTO_SOURCE_DIR}/crypto_ops_builder/verify.c
-    ${MONERO_CRYPTO_SOURCE_DIR}/CryptonightR_JIT.c
-    ${MONERO_CRYPTO_SOURCE_DIR}/CryptonightR_template.h
+	${MONERO_CRYPTO_SOURCE_DIR}/CryptonightR_JIT.c
+	${MONERO_CRYPTO_SOURCE_DIR}/CryptonightR_template.h
 )
 
 target_include_directories(monero-crypto
-    PUBLIC
-    ${MONERO_SOURCE_DIR}/src
-    ${EPEE_INCLUDE_DIR_BASE}
-    PRIVATE
+	PUBLIC
+	${MONERO_SOURCE_DIR}/src
+	${EPEE_INCLUDE_DIR_BASE}
+	PRIVATE
 	${RANDOMX_INCLUDE_DIR_BASE}
-    ${EASYLOGGING_INCLUDE_DIR_BASE}
+	${EASYLOGGING_INCLUDE_DIR_BASE}
 )
 
 target_compile_definitions(monero-crypto
-    PRIVATE
-    _GNU_SOURCE
-    __BYTE_ORDER=__LITTLE_ENDIAN
-    __LITTLE_ENDIAN=1234
-    __BIG_ENDIAN=4321
-    CRYPTONOTE_NO_AES
-    NO_AES
+	PRIVATE
+	_GNU_SOURCE
+	__BYTE_ORDER=__LITTLE_ENDIAN
+	__LITTLE_ENDIAN=1234
+	__BIG_ENDIAN=4321
+	CRYPTONOTE_NO_AES
+	NO_AES
 	USE_CRYPTONIGHT_JIT
 )
 
 target_link_libraries(monero-crypto
-    PRIVATE
+	PRIVATE
 	cryptonight_asm
-    randomx
-    epee
-    easylogging
+	randomx
+	epee
+	easylogging
 	${OPENSSL_SSL_LIBRARY}
 	${OPENSSL_CRYPTO_LIBRARY} # same as above
 )
@@ -295,7 +296,6 @@ configure_file(
 set(MONERO_SOURCES
 	${MONERO_MNEMONICS_SOURCE_DIR}/electrum-words.cpp
 	${MONERO_COMMON_SOURCE_DIR}/util.cpp
-	# ${MONERO_COMMON_SOURCE_DIR}/dns_utils.cpp # use only a stub, we don't ant to drag more and more dependencies in
 	${MONERO_COMMON_SOURCE_DIR}/base58.cpp
 	${MONERO_CRYPTONOTE_CORE_SOURCE_DIR}/cryptonote_core.cpp
 	${MONERO_CRYPTONOTE_BASIC_SOURCE_DIR}/account.cpp
@@ -307,13 +307,53 @@ set(MONERO_SOURCES
 	${MONERO_RINGCT_SOURCE_DIR}/rctCryptoOps.c
 	${MONERO_RINGCT_SOURCE_DIR}/rctSigs.cpp
 	${MONERO_RINGCT_SOURCE_DIR}/bulletproofs.cc
-	# ${MONERO_RINGCT_SOURCE_DIR}/bulletproof_plus.cc
 	${MONERO_RINGCT_SOURCE_DIR}/multiexp.cc
 	${MONERO_SOURCE_DIR}/src/device/device.cpp
 	${MONERO_SOURCE_DIR}/src/device/device_default.cpp
 )
 
+add_library(monero-minimal STATIC
+	${MONERO_SOURCES}
+)
+
+# Library properties
+set_target_properties(monero-minimal PROPERTIES
+	C_VISIBILITY_PRESET hidden
+	CXX_VISIBILITY_PRESET hidden
+	VISIBILITY_INLINES_HIDDEN ON
+	POSITION_INDEPENDENT_CODE ON
+	LINK_FLAGS "$<$<NOT:$<BOOL:${DEBUG}>>:-s>"
+)
+
+target_include_directories(monero-minimal
+	PUBLIC
+	# ${MONERO_STUBS_INCLUDE_DIR}
+	${MONERO_SOURCE_DIR}/src
+	${EPEE_INCLUDE_DIR_BASE}
+	${EASYLOGGING_INCLUDE_DIR_BASE}
+	PRIVATE
+	${MONERO_STUBS_INCLUDE_DIR}
+)
+
+target_link_libraries(monero-minimal
+	PUBLIC
+	epee
+	randomx
+	monero-crypto
+	monero-stubs
+	easylogging
+	Boost::filesystem
+	Boost::thread
+	Boost::system
+	${OPENSSL_SSL_LIBRARY}
+	${OPENSSL_CRYPTO_LIBRARY}
+	${CMAKE_THREAD_LIBS_INIT}
+	${Backtrace_LIBRARIES}
+	-static
+)
+
 # TODO: what to do about polyseed? I don't like it, but I also shouldn't rework the whole thing, but how it is it forces me also to ugly code duplication
+# Polyseed library
 set(POLYSEED_SOURCES
 	${POLYSEED_SOURCE_DIR}/dependency.c
 	${POLYSEED_SOURCE_DIR}/features.c
@@ -338,24 +378,24 @@ add_library(polyseed STATIC ${POLYSEED_SOURCES})
 set_property(TARGET polyseed PROPERTY POSITION_INDEPENDENT_CODE ON)
 
 set_target_properties(polyseed PROPERTIES
-    POSITION_INDEPENDENT_CODE ON
-    C_STANDARD 11
-    C_STANDARD_REQUIRED ON
+	POSITION_INDEPENDENT_CODE ON
+	C_STANDARD 11
+	C_STANDARD_REQUIRED ON
 )
 
 target_include_directories(polyseed
-    PUBLIC
-    ${POLYSEED_INCLUDE_DIR_BASE}
-    PRIVATE
+	PUBLIC
+	${POLYSEED_INCLUDE_DIR_BASE}
+	PRIVATE
 	# ${POLYSEED_SOURCE_DIR}
 )
 
 target_compile_definitions(polyseed 
-    PRIVATE 
-    POLYSEED_STATIC
-    _DEFAULT_SOURCE
-    _BSD_SOURCE
-    _POSIX_C_SOURCE=200809L
+	PRIVATE 
+	POLYSEED_STATIC
+	_DEFAULT_SOURCE
+	_BSD_SOURCE
+	_POSIX_C_SOURCE=200809L
 )
 
 # Force C compilation for .c files
@@ -367,31 +407,31 @@ set(UTF8PROC_ENABLE_TESTING OFF)
 set(BUILD_SHARED_LIBS OFF)
 
 add_library(utf8proc STATIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/external/utf8proc/utf8proc.c
+	${CMAKE_CURRENT_SOURCE_DIR}/external/utf8proc/utf8proc.c
 )
 
 target_include_directories(utf8proc
-    PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/external/utf8proc>
-    $<INSTALL_INTERFACE:include>
+	PUBLIC
+	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/external/utf8proc>
+	$<INSTALL_INTERFACE:include>
 )
 
 target_compile_definitions(utf8proc 
-    PUBLIC 
-    UTF8PROC_STATIC
-    PRIVATE
-    UTF8PROC_EXPORTS
+	PUBLIC 
+	UTF8PROC_STATIC
+	PRIVATE
+	UTF8PROC_EXPORTS
 )
 
 if (NOT MSVC)
-    set_target_properties(
-        utf8proc PROPERTIES
-        COMPILE_FLAGS "-O2 -std=c99 -pedantic -Wall"
-    )
+	set_target_properties(
+		utf8proc PROPERTIES
+		COMPILE_FLAGS "-O2 -std=c99 -pedantic -Wall"
+	)
 endif()
 
 set_target_properties(utf8proc PROPERTIES
-    POSITION_INDEPENDENT_CODE ON
+	POSITION_INDEPENDENT_CODE ON
 )
 
 # Main library
@@ -413,26 +453,14 @@ add_library(monero-ots
 	src/entropy.cpp
 	src/polyseed-key-store.cpp
 	src/account.cpp
-	# ${EPEE_SOURCES} # TODO: solve later with implementation, first finish ABI
 	${EASYLOGGING} # WTF! All this chingadera makes me desires to rewrite the whole thing :@ But need to calm my horses because it will probably take a eternity to get it done
-	${MONERO_SOURCES} # TODO: solve later with implementation, first finish ABI
 )
 
 target_link_libraries(monero-ots
 	PRIVATE
 	utf8proc
 	polyseed
-	monero-stubs # use stubs as module to get easier rid of later
-	epee
-	randomx
-	monero-crypto
-	Boost::filesystem
-	Boost::thread
-	Boost::system
-	# OpenSSL::SSL
-	${OPENSSL_SSL_LIBRARY} # TODO: cluster coitus and makumba, need to get rid of this
-	# OpenSSL::Crypto
-	${OPENSSL_CRYPTO_LIBRARY} # same as above
+	monero-minimal
 	-static
 )
 
@@ -450,8 +478,6 @@ target_compile_definitions(monero-ots
 # Include directories
 target_include_directories(monero-ots
 	PRIVATE
-	# ${MONERO_SOURCE_DIR}/external/randomx/src
-	# ${MONERO_SOURCE_DIR}/external/randomx/src/blake2
 	PUBLIC
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
@@ -475,7 +501,7 @@ set_target_properties(monero-ots PROPERTIES
 	CXX_VISIBILITY_PRESET hidden
 	VISIBILITY_INLINES_HIDDEN ON
 	POSITION_INDEPENDENT_CODE ON
-	LINK_FLAGS "$<$<NOT:$<BOOL:${DEBUG}>>:-s>" # do not strip in debug mode
+	LINK_FLAGS "$<$<NOT:$<BOOL:${DEBUG}>>:-s>"
 )
 
 # Tests configuration
@@ -490,6 +516,7 @@ install(
 	utf8proc
 	polyseed
 	monero-stubs
+	monero-minimal
 	epee
 	easylogging
 	randomx
@@ -562,24 +589,24 @@ endif()
 
 # V1 Sign tool (near the end of the main CMakeLists.txt)
 add_executable(v1sign
-    v1sign/src/v1sign.cpp
+	v1sign/src/v1sign.cpp
 )
 
 target_link_libraries(v1sign
-    PRIVATE
-    monero-ots
-    ${CMAKE_THREAD_LIBS_INIT}
-    -static
+	PRIVATE
+	monero-minimal
+	${CMAKE_THREAD_LIBS_INIT}
+	-static
 )
 
 target_include_directories(v1sign
-    PRIVATE
-    ${MONERO_SOURCE_DIR}/src
-    ${EPEE_INCLUDE_DIR_BASE}
-    ${EASYLOGGING_INCLUDE_DIR_BASE}
-    ${MONERO_SOURCE_DIR}/external/boost/archive
+	PRIVATE
+	${MONERO_SOURCE_DIR}/src
+	${EPEE_INCLUDE_DIR_BASE}
+	${EASYLOGGING_INCLUDE_DIR_BASE}
+	${MONERO_SOURCE_DIR}/external/boost/archive
 )
 
 install(TARGETS v1sign
-    RUNTIME DESTINATION bin
+	RUNTIME DESTINATION bin
 )
