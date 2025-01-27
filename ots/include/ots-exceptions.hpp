@@ -113,6 +113,7 @@ namespace ots {
 		class BufferOverflowException: OutOfRange {
 			public:
 				inline explicit BufferOverflowException(): OutOfRange("The size is bigger as the buffer! Security related exception!") {};
+				inline explicit BufferOverflowException(const std::string& msg): OutOfRange(msg) {};
 		};
 
         /**
@@ -187,6 +188,24 @@ namespace ots {
                      * @brief a conversion to std::vector is not allowed
                      */
                     inline explicit UnsafeConversion(): SecurityException("Unsafe conversion to std::vector, use wipeableVector.insecure() instead, if you really need to do this!") {};
+            };
+        }
+
+        namespace sign {
+            class InvalidSignature: DomainError {
+                public:
+                    inline explicit InvalidSignature(): DomainError("Invalid signature") {};
+                    inline explicit InvalidSignature(const std::string& msg): DomainError(msg) {};
+            };
+
+            class EmptyMessage: DomainError {
+                public:
+                    inline explicit EmptyMessage(): DomainError("Empty message") {};
+            };
+
+            class EmptySignature: DomainError {
+                public:
+                    inline explicit EmptySignature(): DomainError("Empty signature") {};
             };
         }
 
