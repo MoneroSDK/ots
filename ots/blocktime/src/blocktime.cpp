@@ -6,13 +6,12 @@
 
 namespace ots {
     namespace blocktime {
-
-        BlockTimeData::BlockTimeData(size_t max_blocks) 
-            : blocks(new uint64_t[max_blocks]()), 
-            highest_block(0),
-            max_blocks(max_blocks) {
+        BlockTimeData::BlockTimeData(size_t maxBlocks) 
+            : blocks(new uint64_t[maxBlocks]()), 
+            m_highestBlock(0),
+            m_maxBlocks(maxBlocks) {
                 // Initialize all blocks to zero
-                std::fill_n(blocks.get(), max_blocks, uint64_t{0});
+                std::fill_n(blocks.get(), maxBlocks, uint64_t{0});
             }
 
         BlockTimeData::~BlockTimeData() = default;
@@ -25,10 +24,10 @@ namespace ots {
             if(!file)
                 return false;
             // Read the blocks
-            file.read(reinterpret_cast<char*>(blocks.get()), max_blocks * sizeof(uint64_t));
+            file.read(reinterpret_cast<char*>(blocks.get()), m_maxBlocks * sizeof(uint64_t));
             if(!file.good())
                 return false;
-            highest_block = max_blocks - 1;
+            m_highestBlock = m_maxBlocks - 1;
             return true;
         }
 
@@ -37,26 +36,26 @@ namespace ots {
             if(!file) return
                 false;
             // Only write up to the highest block we've seen, plus one to include that block
-            size_t blocks_to_write = highest_block + 1;
-            file.write(reinterpret_cast<const char*>(blocks.get()), 
-                    blocks_to_write * sizeof(uint64_t));
+            size_t blocks_to_write = m_highestBlock + 1;
+            file.write(
+                    reinterpret_cast<const char*>(blocks.get()), 
+                    blocks_to_write * sizeof(uint64_t)
+            );
             return file.good();
         }
 
-        uint64_t BlockTimeData::get_height_by_timestamp(uint64_t timestamp) const {
+        uint64_t BlockTimeData::heightByTimestamp(uint64_t timestamp) const {
             // Find the first block with timestamp greater than the target
-            for(size_t i = 0; i < max_blocks; ++i)
+            for(size_t i = 0; i < m_maxBlocks; ++i)
                 if(blocks[i] > timestamp)
                     return i > 0 ? i - 1 : 0;
-            return max_blocks - 1;
+            return m_maxBlocks - 1;
         }
 
-        uint64_t BlockTimeData::get_timestamp_by_height(uint64_t height) const {
-            if (height >= max_blocks) {
-                return blocks[max_blocks - 1];
-            }
+        uint64_t BlockTimeData::timestampByHeight(uint64_t height) const {
+            if(height >= m_maxBlocks)
+                return blocks[m_maxBlocks - 1];
             return blocks[height];
         }
     } // namespace blocktime
 } // namespace ots
-
