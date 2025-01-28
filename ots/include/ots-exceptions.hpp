@@ -453,6 +453,24 @@ namespace ots {
 					inline explicit ExportKeyImages(): DomainError("Import outputs failed") {};
 					inline explicit ExportKeyImages(const std::string& msg): DomainError(msg) {};
             };
+
+            class InvalidCiphertext: DomainError {
+                public:
+                    inline explicit InvalidCiphertext(): DomainError("Invalid ciphertext") {};
+                    inline explicit InvalidCiphertext(const std::string& msg): DomainError(msg) {};
+            };
+
+            class CiphertextAuthenticationFailed: DomainError {
+                public:
+                    inline explicit CiphertextAuthenticationFailed(): DomainError("Ciphertext authentication failed") {};
+                    inline explicit CiphertextAuthenticationFailed(const std::string& msg): DomainError(msg) {};
+            };
+
+            class InternalError: DomainError {
+                public:
+                    inline explicit InternalError(): DomainError("Internal error") {};
+                    inline explicit InternalError(const std::string& msg): DomainError(msg) {};
+            };
 		}
 
         namespace account {
