@@ -31,6 +31,7 @@ if(DEBUG)
 endif()
 option(BUILD_BLOCKTIME "Build blocktime analysis tools" OFF)
 option(BUILD_BLOCKTIME_TESTS "Include blocktime in test suite" OFF)
+option(BUILD_GEN_OTS_ERROR_HEADER "Build c_error_codes_generator tool" OFF)
 option(BUILD_TESTS "Build test suite" OFF)
 option(BUILD_DOCS "Build documentation" OFF)
 option(BUILD_V1SIGN "Build v1sign tool" OFF)
@@ -610,6 +611,27 @@ if(BUILD_V1SIGN)
 		${MONERO_SOURCE_DIR}/external/boost/archive
 	)
 	install(TARGETS v1sign
+		RUNTIME DESTINATION bin
+	)
+endif()
+
+# TODO: should restructure all this helper tools into a separate folder
+#       and make naming more consistent
+# gen-ots-error-header tool
+if(BUILD_GEN_OTS_ERROR_HEADER)
+	add_executable(gen-ots-error-header
+		gen-ots-error-header/src/gen-ots-error-header.cpp
+	)
+	target_link_libraries(gen-ots-error-header
+		PRIVATE
+		${CMAKE_THREAD_LIBS_INIT}
+		-static
+	)
+	target_include_directories(gen-ots-error-header
+		PRIVATE
+		${CMAKE_CURRENT_SOURCE_DIR}/include
+	)
+	install(TARGETS gen-ots-error-header
 		RUNTIME DESTINATION bin
 	)
 endif()

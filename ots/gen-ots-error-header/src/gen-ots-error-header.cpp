@@ -1,0 +1,140 @@
+#include <ots-exceptions.hpp>
+#include <fstream>
+#include <iostream>
+#include <string>
+#include <algorithm>
+#include <cxxabi.h>
+#include <memory>
+
+std::string toSnakeCase(const std::string& input) {
+    std::string result;
+    for(size_t i = 0; i < input.length(); ++i) {
+        if(i > 0 && std::isupper(input[i]))
+            result += '_';
+        result += std::toupper(input[i]);
+    }
+    return result;
+}
+
+
+std::string getFullErrorName(const std::type_info& type) {
+    int status;
+    char* demangled = abi::__cxa_demangle(type.name(), nullptr, nullptr, &status);
+    if(status != 0)
+        return "";
+    std::string fullName(demangled);
+    free(demangled);
+    // Remove "ots::exception::"
+    size_t start = fullName.find("ots::exception::");
+    if(start == std::string::npos) return "";
+    fullName = fullName.substr(start + 14); // length of "ots::exception::"
+    // Replace "::" with "_"
+    size_t pos = 0;
+    while((pos = fullName.find("::", pos)) != std::string::npos) {
+        fullName.replace(pos, 2, "_");
+        pos += 1;
+    }
+    // Convert to SNAKE_CASE
+    std::string result;
+    for(size_t i = 0; i < fullName.length(); ++i) {
+        if(
+            i > 0 && std::isupper(fullName[i]) && 
+            !std::isupper(fullName[i-1]) && 
+            fullName[i-1] != '_'
+        )
+            result += '_';
+        result += std::toupper(fullName[i]);
+    }
+    return result;
+}
+
+std::string getClass(const std::type_info& type) {
+    int status;
+    char* demangled = abi::__cxa_demangle(type.name(), nullptr, nullptr, &status);
+    if(status != 0)
+        return "";
+    std::string fullName(demangled);
+    free(demangled);
+    return fullName;
+}
+
+void generateHeader(const std::string& outputPath) {
+    std::ofstream file(outputPath);
+    if(!file.is_open()) {
+        std::cerr << "Failed to open output file: " << outputPath << std::endl;
+        exit(1);
+    }
+    // Write header
+    file << "/**\n"
+         << " * @file ots-errors.h\n"
+         << " * @brief Error codes for the C ABI\n"
+         << " * @note Auto-generated from ots-exceptions.hpp - DO NOT EDIT DIRECTLY\n"
+         << " */\n\n"
+         << "#ifndef OTS_ERRORS_H\n"
+         << "#define OTS_ERRORS_H\n\n"
+         << "#include <stdint.h>\n\n"
+         << "#ifdef __cplusplus\n"
+         << "extern \"C\" {\n"
+         << "#endif\n\n";
+    // Write error code enum
+    file << "/**\n"
+         << " * @brief Error codes matching C++ exceptions\n"
+         << " */\n"
+         << "typedef enum {\n"
+         << "    OTS_SUCCESS = 0,\n\n";
+    // Get registry and sort by error code, ascending
+    const auto& registry = ots::exception::Exception::registry();
+    std::vector<std::reference_wrapper<const ots::exception::Exception::RegisteredException>> sorted(
+        registry.begin(), registry.end());
+    std::sort(
+            sorted.begin(), sorted.end(),
+            [](const auto& a, const auto& b) {
+                return a.get().error_code > b.get().error_code;
+            }
+    );
+    // Generate enum entries
+    for(const auto& entry : sorted) {
+        const auto& e = entry.get();
+        std::string enumName = "OTS_ERROR" + getFullErrorName(e.type);
+        file << "    /**\n"
+             << "     * @brief " << e.error_class << "\n"
+             << "     * @see " << getClass(e.type) << " in @see ots.hpp\n"
+             << "     */\n"
+             << "    " << enumName << " = " << e.error_code << ",\n\n";
+    }
+    file << "} OTS_ERROR_CODE;\n\n";
+    // Close header guards and extern "C"
+    file << "#ifdef __cplusplus\n"
+         << "}\n"
+         << "#endif\n\n"
+         << "#endif // OTS_ERRORS_H\n";
+    file.close();
+}
+
+int main(int argc, const char* argv[]) {
+    if(argc < 2) {
+        std::cerr << "Usage: " << argv[0] << "<-f> <output-path>\n";
+        std::cerr << "       use -f to overwrite an existing file\n";
+        return 1;
+    }
+    try {
+        if(argc > 2 && std::string(argv[1]) != "-f") {
+            std::cerr << "Invalid argument: " << argv[1] << "\n";
+            return 1;
+        }
+        if(argc == 2) {
+            // check if file exists, if so, exit and give an error message
+            std::ifstream file(argv[argc > 2 ? 2 : 1]);
+            if(file.is_open()) {
+                std::cerr << "Output file already exists, use -f to overwrite\n";
+                return 1;
+            }
+            file.close();
+        }
+        generateHeader(argv[argc > 2 ? 2 : 1]);
+        return 0;
+    } catch(const std::exception& e) {
+        std::cerr << "Error generating headers: " << e.what() << "\n";
+        return 1;
+    }
+}
