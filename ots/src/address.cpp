@@ -81,6 +81,10 @@ namespace ots {
         throw ots::exception::address::Invalid(); // if it is none of the above must be invalid
     }
 
+    std::string Address::fingerprint(const std::string& address) {
+        return Address(address).fingerprint();
+    }
+
     bool Address::isIntegrated(const std::string& address) {
         std::string unused;
         uint64_t prefix;

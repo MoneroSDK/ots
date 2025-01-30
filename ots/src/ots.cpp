@@ -4,6 +4,7 @@
 #include "key-store.hpp"
 #include "ots-version.h"
 #include "crypto/crypto.h"
+#include "account.hpp"
 
 // needed to deactivate easy logging
 #include "easylogging++.h"
@@ -183,4 +184,14 @@ namespace ots {
         sMaxAccountDepth = (uint32_t)DEFAULT_MAX_ACCOUNT_DEPTH;
         sMaxIndexDepth = (uint32_t)DEFAULT_MAX_INDEX_DEPTH;
     }
+
+    bool OTS::verifyData(
+            const std::string& data,
+            const std::string& address,
+            const std::string& signature,
+            bool legacyFallback
+            ) {
+        return Wallet::verifyData(data, address, signature, legacyFallback);
+    }
+
 } // namespace ots

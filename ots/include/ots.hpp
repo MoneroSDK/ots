@@ -707,6 +707,11 @@ namespace ots {
 		public:
 			const WipeableString phrase(const SeedLanguage& language, const std::string& password = "") const override;
 			const SeedIndices indices(const std::string& password = "") const override;
+
+            /**
+             * @brief Gets the Monero seed from the Polyseed
+             * @return MoneroSeed Monero seed
+             */
             MoneroSeed moneroSeed() const;
 
             /**
@@ -927,6 +932,14 @@ namespace ots {
             /**
              * @brief check if a given string is a valid monero address
              * @param address the base58 encoded address
+             * @param network the network the address should be valid for
+             * @return base58 address as std::string
+             */
+			[[nodiscard]] static bool isValid(const std::string& address, const Network network = Network::MAIN) noexcept;
+
+            /**
+             * @brief check if a given string is a valid monero address
+             * @param address the base58 encoded address
              * @throws ots::exception::address::Invalid if not a valid monero address
              *
              * @return the network the address should be valid for
@@ -942,12 +955,12 @@ namespace ots {
 			[[nodiscard]] static AddressType type(const std::string& address);
 
             /**
-             * @brief check if a given string is a valid monero address
+             * @brief Generates a unique fingerprint for the Address
              * @param address the base58 encoded address
-             * @param network the network the address should be valid for
-             * @return base58 address as std::string
+             * @return std::string Address fingerprint
+             * @throws ots::exception::address::Invalid if not a valid monero address
              */
-			[[nodiscard]] static bool isValid(const std::string& address, const Network network = Network::MAIN) noexcept;
+			[[nodiscard]] static std::string fingerprint(const std::string& address);
 
             /**
              * @brief check if a given string is a valid monero address, and and integrated address
@@ -967,7 +980,7 @@ namespace ots {
             [[nodiscard]] static std::string paymentID(const std::string& address, Network network = Network::MAIN);
 
             /**
-             * @brief check if a given string is a valid monero address, and and integrated address
+             * @brief check if a given string is a valid monero address, and an integrated address
              * @param address the base58 encoded address
              * @param network the network the address should be valid for, default is MAIN
              * @return the base58 encoded integrated address
@@ -1100,6 +1113,29 @@ namespace ots {
              * @return the maximum depth of the index generation
              */
             static uint32_t maxIndexDepth(uint32_t depth = 0) noexcept;
+
+            /**
+             * @brief Verify a signed message
+             * @param data String of the message to sign
+             * @param address public Monero address as string
+             * @param signature for the message
+             * @param legacyFallback if true, will try to verify with legacy signature
+             * @return true if the signature is valid
+             * @throws ots::exception::address::Invalid if the address is not valid
+             *
+             * @todo TODO: not sure if better in Wallet only or move here, or keep alias.
+             *       How verification is not wallet dependent, maybe a user would search
+             *       here. On the other hand, if he user uses Wallet to sign data,
+             *       probably he would search in Wallet for the verification.
+             *
+             * @note is an alias for Wallet::verifyData(data, address, signature, false)
+             */
+			static bool verifyData(
+					const std::string& data, 
+					const std::string& address, 
+					const std::string& signature,
+                    bool legacyFallback = false
+					);
 
         protected:
             /**
@@ -1358,6 +1394,7 @@ namespace ots {
              * @param data String of the message to sign
              * @param address public Monero address
              * @param signature for the message
+             * @param legacyFallback if true, will try to verify with legacy signature
              * @throws ots::exception::address::Invalid if the address is not valid
              * @return true if the signature is valid
              */
@@ -1368,6 +1405,15 @@ namespace ots {
                     bool legacyFallback = false
 					);
 
+            /**
+             * @brief Verify a signed message
+             * @param data String of the message to sign
+             * @param address index of the account and subaddress
+             * @param signature for the message
+             * @param legacyFallback if true, will try to verify with legacy signature
+             * @throws ots::exception::address::Invalid if the address is not valid
+             * @return true if the signature is valid
+             */
 			bool verifyData(
 					const std::string& data, 
 					const std::pair<uint32_t, uint32_t>& index,
@@ -1375,6 +1421,14 @@ namespace ots {
                     bool legacyFallback = false
 					) const;
 
+            /**
+             * @brief Verify a signed message, for the wallet address
+             * @param data String of the message to sign
+             * @param signature for the message
+             * @param legacyFallback if true, will try to verify with legacy signature
+             * @throws ots::exception::address::Invalid if the address is not valid
+             * @return true if the signature is valid
+             */
 			bool verifyData(
 					const std::string& data, 
 					const std::string& signature,
