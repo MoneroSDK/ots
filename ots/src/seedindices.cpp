@@ -7,6 +7,16 @@
 
 namespace ots {
 
+    SeedIndices::SeedIndices(const uint16_t* data, size_t size) {
+        m_vec.reserve(size);
+        for(size_t i = 0; i < size; i++)
+            m_vec.emplace_back(data[i]);
+    }
+
+    SeedIndices::~SeedIndices() {
+        wipe();
+    }
+
     SeedIndices& SeedIndices::operator=(const SeedIndices& other) {
         if(this != &other) {
             wipe();
@@ -21,10 +31,6 @@ namespace ots {
             m_vec = std::move(other.m_vec);
         }
         return *this;
-    }
-
-    SeedIndices::~SeedIndices() {
-        wipe();
     }
 
     size_t SeedIndices::size() const noexcept {
@@ -106,6 +112,10 @@ namespace ots {
 
     SeedIndices::operator const std::vector<uint16_t>&() const noexcept {
         return m_vec;
+    }
+
+    SeedIndices::operator const uint16_t*() const noexcept {
+        return reinterpret_cast<const uint16_t*>(m_vec.data());
     }
 
     bool SeedIndices::operator==(const SeedIndices& other) const noexcept {
