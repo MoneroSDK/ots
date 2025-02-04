@@ -13,9 +13,9 @@
 #endif
 
 #define REGISTER_EXCEPTION(CLASS, CODE, NAME) \
+    protected: \
     static constexpr int32_t error_code = CODE; \
     static constexpr const char* error_class = NAME; \
-    protected: \
     static inline bool registered = ots::exception::Exception::registerException<CLASS>(error_code, error_class);
 
 
@@ -57,10 +57,14 @@ namespace ots {
                         registry().push_back({code, cls, typeid(T)});
                         return true;
                     }
+            static constexpr int32_t error_code = -1; // default error code, but should never be used anyway
+            static constexpr const char* error_class = "Exception"; // default error class, but should never be used anyway
 
             public:
                 virtual ~Exception() = default;
                 virtual const char* what() const noexcept = 0;
+                inline int32_t code() const { return error_code; }
+                inline const char* cls() const { return error_class; }
         };
 
         /**
