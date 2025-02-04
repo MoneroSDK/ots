@@ -174,6 +174,7 @@ namespace ots {
              * @brief The native language index
              * @param type SeedType to check support for (default: Monero), alternative Polyseed
              * @return index for the SeedType or -1 on unkown
+             * @internal
              */
 			[[nodiscard]] int index(SeedType type = SeedType::Monero) const noexcept;
 
@@ -1618,6 +1619,8 @@ namespace ots {
             /** @brief Construct from std::vector */
             inline explicit SeedIndices(const std::vector<uint16_t>& v): m_vec(v) {};
 
+            explicit SeedIndices(const uint16_t* v, size_t n);
+
             /** @brief Construct with size */
             explicit SeedIndices(size_t size): m_vec(size) {};
 
@@ -1644,6 +1647,8 @@ namespace ots {
 
             /** @brief conversion to const std::vector<uint16_t>& */
             operator const std::vector<uint16_t>&() const noexcept;
+
+            operator const uint16_t*() const noexcept;
 
             /** @brief Conversion to std::string @see numeric() */
             operator const std::string() const noexcept;
@@ -1722,13 +1727,13 @@ namespace ots {
 
             /**
              * @brief Create SeedIndices from numeric representation
-             * @param numeric numeric representation of the seed
+             * @param numeric numeric representation of the seed, 4 digits with leading zeros per 2 bytes concatenated with or without separator
              * @param separator optional separator between the digits
              */
             static SeedIndices fromNumeric(const std::string& numeric, const std::string& separator = "");
 
             /** @brief Create SeedIndices from hex representation
-             *  @param hex hex representation of the seed
+             *  @param hex hex representation of the seed, 2 digits per 1 byte concatenated with or without separator
              *  @param separator optional separator between the digits
              */
             static SeedIndices fromHex(const std::string& hex, const std::string& separator = "");
