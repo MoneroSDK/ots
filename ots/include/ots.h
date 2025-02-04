@@ -24,8 +24,8 @@
 
 /** @brief Maximum length for error messages */
 #define OTS_MAX_ERROR_MESSAGE 256
-/** @brief Maximum length for error location strings */
-#define OTS_MAX_ERROR_LOCATION 64
+/** @brief Maximum length for error class strings */
+#define OTS_MAX_ERROR_CLASS 64
 /** @brief Maximum length for version strings */
 #define OTS_MAX_VERSION_STRING 32
 
@@ -69,49 +69,72 @@ extern "C" {
      */
     typedef enum {
         OTS_HANDLE_INVALID = 0,
+        OTS_HANDLE_WIPEABLE_STRING,
+        OTS_HANDLE_SEED_INDICES,
+        OTS_HANDLE_SEED_LANGUAGE,
         OTS_HANDLE_SEED,
         OTS_HANDLE_WALLET,
         OTS_HANDLE_TX
     } ots_handle_type;
 
+    typedef enum {
+        OTS_RESULT_NONE       =  0,
+        OTS_RESULT_HANDLE     =  1,
+        OTS_RESULT_STRING     =  2,
+        OTS_RESULT_BOOLEAN    =  4,
+        OTS_RESULT_NUMBER     =  8,
+        OTS_RESULT_COMPARISON = 16,
+        OTS_RESULT_ARRAY      = 32
+    } ots_result_type;
+
+    typedef enum {
+        OTS_DATA_INVALID = 0,
+        OTS_DATA_INT,
+        OTS_DATA_CHAR,
+        OTS_DATA_UINT16,
+        OTS_DATA_HANDLE
+    } ots_data_type;
+
     /**
      * @brief Handle structure for C objects
      */
     typedef struct {
-        ots_handle_type type;
-        uint32_t version;
-        void* ptr;
+        ots_handle_type type; /**< Type of handle */
+        void* ptr;            /**< Pointer to object */
+        bool reference;       /**< If true, the handle does not own the object, don't free */
     } ots_handle_t;
 
     /** @brief Error structure for exception handling */
     typedef struct {
-        int32_t code;                                 /**< Error code, 0 for success */
+        int32_t code;                                /**< Error code, 0 for success */
         char message[OTS_MAX_ERROR_MESSAGE];         /**< Error message */
-        char location[OTS_MAX_ERROR_LOCATION];       /**< Error location */
+        char cls[OTS_MAX_ERROR_CLASS];               /**< Error class */
     } ots_error_t;
 
     /** @brief Result structure combining handle and error */
     typedef struct {
         union {
+            /* DO NOT CHANGE to pointer, the purpose is,
+             * to make sure to not copy pointer and then
+             * cut the branch your sitting on.
+             * Thought through now 5 times, STOP!
+             * Simply let it be, relax, the handle itself
+             * uses a pointer so there is no much overhead
+             * but it is much safer this way.
+             */
             ots_handle_t handle;                     /**< Handle for created objects */
-            void* ptr;                               /**< Pointer for returned data */
+            struct {
+                void* ptr;                           /**< Pointer to data */
+                size_t size;                         /**< Size of data */
+                ots_data_type type;                  /**< Type of data */
+                bool reference;                   /**< If true, the handle does not own the object, don't free */
+            } data;
             bool boolean;                            /**< Boolean result */
             int64_t number;                          /**< Numeric result */
         } result;
-        ots_error_t error;                          /**< Error information */
+        ots_result_type type;                        /**< Type of result, can be more then one */
+        ots_error_t error;                           /**< Error information */
     } ots_result_t;
-
-    /** @brief Wipeable string for sensitive data */
-    typedef struct {
-        char* data;                                  /**< String data */
-        size_t length;                              /**< String length */
-    } ots_wipeable_string_t;
-
-    /** @brief Seed indices container */
-    typedef struct {
-        uint16_t* indices;                          /**< Array of indices */
-        size_t count;                               /**< Number of indices */
-    } ots_seed_indices_t;
 
     /** @brief Transaction description */
     typedef struct {
@@ -131,15 +154,9 @@ extern "C" {
     /**
      * @brief Validate handle type
      */
-    static inline bool ots_handle_valid(ots_handle_t h, ots_handle_type expected) {
-        return h.type == expected && h.ptr != NULL;
+    static inline bool ots_handle_valid(const ots_handle_t* h, ots_handle_type expected) {
+        return h->type == expected && h->ptr != NULL;
     }
-
-    /**
-     * @brief Initialize error structure
-     * @param[out] error Error structure to initialize
-     */
-    void ots_error_init(ots_error_t* error);
 
     /**
      * @brief Check if result contains an error
@@ -149,129 +166,483 @@ extern "C" {
     bool ots_is_error(const ots_result_t* result);
 
     /**
-     * @brief Get error message for last error
-     * @return Result containing error message string
+     * @brief Get error message for result
+     * @param[in] result handle to get error message for
+     * @return Result containing error message string or NULL
      */
-    ots_result_t ots_get_last_error(void);
+    char* ots_get_error_message(const ots_result_t* result);
 
     /**
-     * @brief Get error message for specific error code
-     * @param[in] error_code Error code to get message for
-     * @return Result containing error message string
+     * @brief Get error class for result
+     * @param[in] result handle to get error class for
+     * @return Result containing error class string or NULL
      */
-    ots_result_t ots_get_error_message(int32_t error_code);
+    char* ots_get_error_class(const ots_result_t* result);
 
     /**
-     * @brief Clear last error state
+     * @brief Get error code for result
+     * @param[in] result handle to get error code for
+     * @return Error code
      */
-    void ots_clear_error(void);
+    int32_t ots_get_error_code(const ots_result_t* result);
 
     /**
-     * @brief Check if result contains an error
+     * @brief Check if result is a result and not an error
      * @param[in] result Result to check
-     * @return true if result contains an error
+     * @return true if result, false if error
+     * @see ots_is_error(), it is the opposite
      */
-    bool ots_has_error(const ots_result_t* result);
+    bool ots_is_result(const ots_result_t* result);
+
+    /**
+     * @brief Check if result has a specific type
+     * @param[in] result Result to check
+     * @param[in] type Type to check for
+     * @return true if result is the specified type
+     */
+    bool ots_result_is_type(const ots_result_t* result, ots_result_type type);
+
+    /**
+     * @brief Check if result has a specific data type
+     * @param[in] result Result to check
+     * @param[in] type Data type to check for
+     * @return true if result is the specified data type
+     */
+    bool ots_result_data_is_type(const ots_result_t* result, ots_data_type type);
+
+    /**
+     * @brief Check if result data is a reference
+     * @param[in] result Result to check
+     * @return true if result data is a reference
+     */
+    bool ots_result_data_is_reference(const ots_result_t* result);
+
+    /**
+     * @brief Get handle from result if result type OTS_RESULT_HANDLE is available
+     * @param[in] result Result to get handle from
+     * @return Handle or NULL
+     */
+    ots_handle_t* ots_result_handle(const ots_result_t* result);
+
+    /**
+     * @brief Check if handle is of a specific type
+     * @param[in] result with a handle to check
+     * @param[in] type Type to check for
+     * @return true if handle is the specified type
+     */
+    bool ots_result_handle_is_type(const ots_result_t* result, ots_handle_type type);
+
+    /**
+     * @brief Check if handle is a reference
+     * @param[in] result with a handle to check
+     * @return true if handle is a reference
+     */
+    bool ots_result_handle_is_reference(const ots_result_t* result);
+
+    /**
+     * @brief Get string from result if result type is
+     *        OTS_RESULT_STRING or
+     *        OTS_RESULT_HANDLE with ots_data_type OTS_HANDLE_WIPEABLE_STRING
+     * @param[in] result Result to get string from
+     * @return String or NULL
+     * @warning DO NOT free the string with ots_free_string()
+     *          content will be freed with the result.
+     *          Use simply like:
+     *          ```c
+     *          const char* str = ots_result_string(result);
+     *          // use string
+     *          // or simply use it directly without assignment to a variable
+     *          printf("String: %s\n", ots_result_string(result));
+     *          ots_free_result(&result); // content of the string will be freed
+     *          ```
+     */
+    const char* ots_result_string(const ots_result_t* result);
+
+    /**
+     * @brief Get string as copy from result if result type is
+     *        OTS_RESULT_STRING or
+     *        OTS_RESULT_HANDLE with ots_data_type OTS_HANDLE_WIPEABLE_STRING
+     * @param[in] result Result to get string from
+     * @return string or NULL
+     * @note use ots_free_string() to free the string, how this is a separate copy,
+     *       you can free the result without loosing the string content.
+     */
+    char* ots_result_string_copy(const ots_result_t* result);
+
+    /**
+     * @brief Get size of string from result if result type OTS_RESULT_STRING is available
+     * @param[in] result Result to get string size from
+     * @return Size of string or 0
+     */
+    size_t ots_result_string_size(const ots_result_t* result);
+
+    /**
+     * @brief Get boolean from result if result type OTS_RESULT_BOOLEAN is available
+     * @param[in] result Result to get boolean from
+     * @param[in] default_value Default value if result doesn't contain a boolean type
+     * @return Boolean value
+     */
+    bool ots_result_boolean(const ots_result_t* result, bool default_value);
+
+    /**
+     * @brief Get number from result if result type OTS_RESULT_NUMBER is available
+     * @param[in] result Result to get number from
+     * @param[in] default_value Default value if result doesn't contain a number type
+     * @return Number value
+     */
+    int64_t ots_result_number(const ots_result_t* result, int64_t default_value);
+
+    /**
+     * @brief Get array from result if result type OTS_RESULT_ARRAY is available
+     * @param[in] result Result to get array from
+     * @return Array pointer or NULL
+     */
+    void* ots_result_array(const ots_result_t* result);
+
+    /**
+     * @brief Check if result is a comparison result
+     * @param[in] result Result to check
+     * @return true if result is a comparison result
+     */
+    bool ots_result_is_comparison(const ots_result_t* result);
+
+    /**
+     * @brief Get comparison result from result
+     * @param[in] result Result to get comparison from
+     * @return Comparison result or 0
+     * @warning Use ots_result_is_comparison() to check if result is a comparison result before
+     */
+    int64_t ots_result_comparison(const ots_result_t* result);
+
+    /**
+     * @brief Check if comparison result is equals
+     * @param[in] result Result to check
+     * @return true if comparison result is 0
+     * @warning Use ots_result_is_comparison() to check if result is a comparison result before
+     */
+    bool ots_result_is_equal(const ots_result_t* result);
+
+    /**
+     * @brief returns the size of the result if it is an array or string
+     * @param[in] result Result to get size from
+     * @return Size of result or 0 if it is not a supported result type
+     */
+    size_t ots_result_size(const ots_result_t* result);
+
+    /**
+     * @brief Check if a pointer is NULL
+     * @param[in] ptr Pointer to check
+     * @return true if pointer is NULL
+     */
+    bool ots_is_null(const void* ptr);
+
+    /**
+     * @brief Get array from result if result type OTS_RESULT_ARRAY is available
+     * @param[in] result Result to get array from
+     * @return Array or NULL
+     */
+    void* ots_result_array(const ots_result_t* result);
+
+    /**
+     * @brief Check if handle is of a specific type
+     * @param[in] handle Handle to check
+     * @param[in] type Type to check for
+     * @return true if handle is the specified type
+     */
+    bool ots_handle_is_type(const ots_handle_t* handle, ots_handle_type type);
+
+    /**
+     * @brief Check if handle is a reference
+     * @param[in] handle Handle to check
+     * @return true if handle is a reference
+     */
+    bool ots_handle_is_reference(const ots_handle_t* handle);
 
     /*******************************************************************************
      * Memory Management Functions
      ******************************************************************************/
 
     /**
-     * @brief Free a wipeable string, securely wiping memory
-     * @param[in,out] str String to free
-     */
-    void ots_wipeable_string_free(ots_wipeable_string_t* str);
-
-    /**
-     * @brief Free seed indices, securely wiping memory
-     * @param[in,out] indices Indices to free
-     */
-    void ots_seed_indices_free(ots_seed_indices_t* indices);
-
-    /**
      * @brief Free a string allocated by the library
      * @param[in] str String to free
      */
-    void ots_free_string(char* str);
+    void ots_free_string(char** str);
 
     /**
      * @brief Free an array allocated by the library
      * @param[in] arr Array to free
+     * @param[in] elem_size Size of array elements
+     * @param[in] count Number of elements
      */
-    void ots_free_array(void* arr);
+    void ots_free_array(void** arr, size_t elem_size, size_t count);
+
+    /**
+     * @brief Free a result allocated by the library
+     * @param[in] result Result to free
+     */
+    void ots_free_result(ots_result_t** result);
 
     /**
      * @brief Free a handle
      * @param[in] handle Handle to free
      */
-    void ots_free_handle(ots_handle_t handle);
-
-    /**
-     * @brief Free transaction description
-     * @param[in] desc Transaction description to free
-     */
-    void ots_free_tx_description(ots_tx_description_t* desc);
+    void ots_free_handle(ots_handle_t** handle);
 
     /**
      * @brief Securely wipe and free a buffer
      * @param[in,out] buffer Buffer to wipe and free
      * @param[in] size Size of buffer
      */
-    void ots_secure_free(void* buffer, size_t size);
+    void ots_secure_free(void** buffer, size_t size);
 
     /**
      * @brief Create a new wipeable string
      * @param[in] str Initial string content
      * @return Result containing wipeable string
      */
-    ots_result_t ots_wipeable_string_create(const char* str);
+    ots_result_t* ots_wipeable_string_create(const char* str);
 
     /**
      * @brief Compare two wipeable strings
      * @param[in] str1 First string
      * @param[in] str2 Second string
-     * @return Result containing comparison result
+     * @return Result containing comparison result, bool true if equal, number comparison result
      */
-    ots_result_t ots_wipeable_string_compare(
-            const ots_wipeable_string_t* str1,
-            const ots_wipeable_string_t* str2
+    ots_result_t* ots_wipeable_string_compare(
+            const ots_handle_t* str1,
+            const ots_handle_t* str2
             );
 
     /**
-     * @brief Clear wipeable string content
-     * @param[in,out] str String to clear
+     * @brief Get string content of wipeable string
+     * @param[in] str Wipeable string handle
+     * @return C-string content of wipeable string or NULL
      */
-    void ots_wipeable_string_clear(ots_wipeable_string_t* str);
+    const char* ots_wipeable_string_c_str(const ots_handle_t* str);
 
     /**
      * @brief Create seed indices container
      * @param[in] size Number of indices
-     * @return Result containing seed indices container
+     * @return Result containing seed indices handle
      */
-    ots_result_t ots_seed_indices_create(size_t size);
+    ots_result_t* ots_seed_indices_create(uint16_t* indices, size_t size);
 
     /**
-     * @brief Clear seed indices content
-     * @param[in,out] indices Indices to clear
+     * @brief Create seed indices container from string
+     * @param[in] str String containing indices, 4 digits per 2 bytes with leading zero
+     * @param[in] separator separator between indices, set "" for default behavior
+     * @return Result containing seed indices handle
+     * @see ots::SeedIndices::fromNumeric()
      */
-    void ots_seed_indices_clear(ots_seed_indices_t* indices);
+    ots_result_t* ots_seed_indices_create_from_string(const char* str, const char* separator);
 
     /**
-     * @brief Get library version string
-     * @return Version string, must be freed with ots_free_string()
+     * @brief Create seed indices container from hex string
+     * @param[in] hex Hex string containing indices, 2 digits per 2 bytes with leading zero
+     * @param[in] separator separator between indices, set "" for default behavior
+     * @return Result containing seed indices handle
+     * @see ots::SeedIndices::fromHex()
      */
-    ots_result_t ots_version(void);
+    ots_result_t* ots_seed_indices_create_from_hex(const char* hex, const char* separator);
 
     /**
-     * @brief Get version components [major, minor, patch]
-     * @return Result containing version components array
+     * @brief Get seed indices values
+     * @param[in] handle Seed indices handle
+     * @return Pointer to indices array or NULL
      */
-    ots_result_t ots_version_components(void);
+    const uint16_t* ots_seed_indices_values(const ots_handle_t* handle);
+
+    /**
+     * @brief Get seed indices count
+     * @param[in] handle Seed indices handle
+     * @return Number of indices
+     */
+    size_t ots_seed_indices_count(const ots_handle_t* handle);
+
+    /**
+     * @brief Clear seed indices
+     * @param[in] handle Seed indices handle
+     */
+    void ots_seed_indices_clear(const ots_handle_t* handle);
+
+    /**
+     * @brief Append seed indices
+     * @param[in] handle Seed indices handle
+     * @param[in] value Index value to append
+     */
+    void ots_seed_indices_append(const ots_handle_t* handle, uint16_t value);
+
+    /**
+     * @brief Get numeric seed indices
+     * @param[in] handle Seed indices handle
+     * @param[in] separator separator between indices, set "" for default behavior
+     * @return Numeric representation of seed indices or NULL
+     */
+    char* ots_seed_indices_numeric(const ots_handle_t* handle, const char* separator);
+
+    /**
+     * @brief Get hex seed indices
+     * @param[in] handle Seed indices handle
+     * @param[in] separator separator between indices, set "" for default behavior
+     * @return Hex representation of seed indices or NULL
+     */
+    char* ots_seed_indices_hex(const ots_handle_t* handle, const char* separator);
 
     /*******************************************************************************
      * Seed Management Functions
      ******************************************************************************/
+
+    /**
+     * @brief Get all languages available
+     * @return Result containing array of language handles
+     */
+    ots_result_t* ots_seed_languages(void);
+
+    /**
+     * @brief Get supported languages for seed type
+     * @param[in] type Seed type
+     * @return Result containing array of language codes
+     */
+    ots_result_t* ots_seed_languages_for_type(OTS_SEED_TYPE type);
+
+    /**
+     * @brief Get language from language code
+     * @param[in] code Language code
+     * @return Result containing language handle
+     */
+    ots_result_t* ots_seed_language_for_code(const char* code);
+
+    /**
+     * @brief Get language from language name
+     * @param[in] name Language name
+     * @return Result containing language handle
+     */
+    ots_result_t* ots_seed_language_for_name(const char* name);
+
+    /**
+     * @brief Get language from English language name
+     * @param[in] name English language name
+     * @return Result containing language handle
+     */
+    ots_result_t* ots_seed_language_for_english_name(const char* name);
+
+    /**
+     * @brief Get default language for seed type
+     * @param[in] type Seed type
+     * @return Result containing language handle
+     */
+    ots_result_t* ots_seed_language_default(OTS_SEED_TYPE type);
+
+    /**
+     * @brief Set default language for seed type
+     * @param[in] type Seed type
+     * @param[in] language Language handle
+     * @return Result containing language handle for now current default
+     * @note Only need to `check ots_is_result(handle)` or `!ots_is_error(handle)`
+     */
+    ots_result_t* ots_seed_language_set_default(
+            OTS_SEED_TYPE type,
+            const ots_handle_t* language
+            );
+
+    /**
+     * @brief Seed language code
+     * @param[in] language Language handle
+     * @return Result containing language code
+     */
+    ots_result_t* ots_seed_language_from_code(const char* code);
+
+    /**
+     * @brief Seed language name
+     * @param[in] language Language handle
+     * @return Result containing language name
+     */
+    ots_result_t* ots_seed_language_from_name(const char* name);
+
+    /**
+     * @brief Seed language English name
+     * @param[in] language Language handle
+     * @return Result containing English language name
+     */
+    ots_result_t* ots_seed_language_from_english_name(const char* name);
+
+    /**
+     * @brief Seed language code
+     * @param[in] language Language handle
+     * @return Result containing language code
+     */
+    ots_result_t* ots_seed_language_code(const ots_handle_t* language);
+
+    /**
+     * @brief Seed language name
+     * @param[in] language Language handle
+     * @return Result containing language name
+     */
+    ots_result_t* ots_seed_language_name(const ots_handle_t* language);
+
+    /**
+     * @brief Seed language English name
+     * @param[in] language Language handle
+     * @return Result containing English language name
+     */
+    ots_result_t* ots_seed_language_english_name(const ots_handle_t* language);
+
+    /**
+     * @brief Seed language supported for seed type
+     * @param[in] language Language handle
+     * @param[in] type Seed type
+     * @return true if language supports seed type
+     */
+    ots_result_t* ots_seed_language_supported(
+            const ots_handle_t* language,
+            OTS_SEED_TYPE type
+            );
+
+    /**
+     * @brief Seed language is default for seed type
+     * @param[in] language Language handle
+     * @param[in] type Seed type
+     * @return true if language is default for seed type
+     */
+    ots_result_t* ots_seed_language_is_default(
+            const ots_handle_t* language,
+            OTS_SEED_TYPE type
+            );
+
+    /**
+     * @brief Seed language equals
+     * @param[in] language1 First language handle
+     * @param[in] language2 Second language handle
+     * @return true if languages are equal
+     */
+    ots_result_t* ots_seed_language_equals(
+            const ots_handle_t* language1,
+            const ots_handle_t* language2
+            );
+
+    /**
+     * @brief Seed language equals code
+     * @param[in] language Language handle
+     * @param[in] code Language code
+     * @return true if language code matches
+     */
+    ots_result_t* ots_seed_language_equals_code(
+            const ots_handle_t* language,
+            const char* code
+            );
+
+    /**
+     * @brief Get seed phrase in specified language
+     * @param[in] handle Seed handle
+     * @param[in] language Language handle
+     * @param[in] password Optional password for encrypted seeds (empty string for none)
+     * @return Result containing wipeable string
+     */
+    ots_result_t* ots_seed_phrase(
+            const ots_handle_t* seed,
+            const ots_handle_t* language,
+            const char* password
+            );
 
     /**
      * @brief Get seed phrase in specified language
@@ -280,18 +651,11 @@ extern "C" {
      * @param[in] password Optional password for encrypted seeds (empty string for none)
      * @return Result containing wipeable string
      */
-    ots_result_t ots_seed_phrase(
-            ots_handle_t handle,
+    ots_result_t* ots_seed_phrase_for_language_code(
+            const ots_handle_t* seed,
             const char* language_code,
             const char* password
             );
-
-    /**
-     * @brief Get supported languages for seed type
-     * @param[in] type Seed type
-     * @return Result containing array of language codes
-     */
-    ots_result_t ots_seed_languages(OTS_SEED_TYPE type);
 
     /**
      * @brief Get seed indices
@@ -299,8 +663,8 @@ extern "C" {
      * @param[in] password Optional password for encrypted seeds
      * @return Result containing seed indices
      */
-    ots_result_t ots_seed_indices(
-            ots_handle_t handle,
+    ots_result_t* ots_seed_indices(
+            const ots_handle_t* handle,
             const char* password
             );
 
@@ -309,77 +673,79 @@ extern "C" {
      * @param[in] handle Seed handle
      * @return Result containing fingerprint string
      */
-    ots_result_t ots_seed_fingerprint(ots_handle_t handle);
+    ots_result_t* ots_seed_fingerprint(const ots_handle_t* handle);
 
     /**
      * @brief Get seed address
      * @param[in] handle Seed handle
      * @return Result containing address handle
      */
-    ots_result_t ots_seed_address(ots_handle_t handle);
+    ots_result_t* ots_seed_address(const ots_handle_t* handle);
 
     /**
      * @brief Get seed creation timestamp
      * @param[in] handle Seed handle
      * @return Result containing timestamp
      */
-    ots_result_t ots_seed_timestamp(ots_handle_t handle);
+    ots_result_t* ots_seed_timestamp(const ots_handle_t* handle);
 
     /**
      * @brief Get seed blockchain height
      * @param[in] handle Seed handle
      * @return Result containing height
      */
-    ots_result_t ots_seed_height(ots_handle_t handle);
+    ots_result_t* ots_seed_height(const ots_handle_t* handle);
 
     /**
      * @brief Get seed network type
      * @param[in] handle Seed handle
      * @return Result containing network type
      */
-    ots_result_t ots_seed_network(ots_handle_t handle);
+    ots_result_t* ots_seed_network(const ots_handle_t* handle);
 
     /**
      * @brief Get wallet from seed
      * @param[in] handle Seed handle
      * @return Result containing wallet handle
      */
-    ots_result_t ots_seed_wallet(ots_handle_t handle);
+    ots_result_t* ots_seed_wallet(const ots_handle_t* handle);
 
     /**
      * @brief Merge two sets of seed values
-     * @param[in] values1 First set of values
-     * @param[in] values2 Second set of values
+     * @param[in] seed_indices1 handle of seed indices for first set of values
+     * @param[in] seed_indices2 handle of seed indices for second set of values
      * @return Result containing merged indices
      * @throws OTS_ERROR_LENGTH_MISMATCH if value sets have different sizes
      */
-    ots_result_t ots_seed_merge_values(
-            const ots_seed_indices_t* values1,
-            const ots_seed_indices_t* values2
+    ots_result_t* ots_seed_indices_merge_values(
+            const ots_handle_t* seed_indices1,
+            const ots_handle_t* seed_indices2
             );
 
     /**
      * @brief Merge seed values with password
      * @param[in] password Password to merge with
-     * @param[in] values Seed values to merge
+     * @param[in] seed_indices Seed values to merge
      * @return Result containing merged indices
      * @throws OTS_ERROR_MERGE_FAILED if merge operation fails
      */
-    ots_result_t ots_seed_merge_with_password(
+    ots_result_t* ots_seed_indices_merge_with_password(
             const char* password,
-            const ots_seed_indices_t* values
+            const ots_handle_t* seed_indices
             );
 
     /**
      * @brief Merge multiple sets of seed values
-     * @param[in] values Array of value sets to merge
+     * @param[in] seed_indices Array of value seed indices handles with sets to merge
+     * @param[in] elements Number of elements in each value set
      * @param[in] count Number of value sets
      * @return Result containing merged indices
      * @throws OTS_ERROR_LENGTH_MISMATCH if value sets have different sizes
      * @throws OTS_ERROR_TOO_FEW_VALUES if less than two value sets provided
      */
-    ots_result_t ots_seed_merge_multiple_values(
-            const ots_seed_indices_t* values[],
+    ots_result_t* ots_seed_indices_merge_multiple_values(
+            const ots_handle_t* seed_indices[],
+            size_t elements,
             size_t count
             );
 
@@ -391,9 +757,9 @@ extern "C" {
      * @return Result containing merged indices
      * @throws OTS_ERROR_LENGTH_MISMATCH if value sets have different sizes
      */
-    ots_result_t ots_seed_merge_values_and_zero(
-            ots_seed_indices_t* values1,
-            ots_seed_indices_t* values2,
+    ots_result_t* ots_seed_indices_merge_values_and_zero(
+            const ots_handle_t* seed_indices1,
+            const ots_handle_t* seed_indices2,
             bool delete_after
             );
 
@@ -405,23 +771,25 @@ extern "C" {
      * @return Result containing merged indices
      * @throws OTS_ERROR_MERGE_FAILED if merge operation fails
      */
-    ots_result_t ots_seed_merge_values_with_password_and_zero(
+    ots_result_t* ots_seed_indices_merge_values_with_password_and_zero(
             char* password,
-            ots_seed_indices_t* values,
+            const ots_handle_t* seed_indices,
             bool delete_after
             );
 
     /**
      * @brief Merge multiple sets of seed values and zero
      * @param[in,out] values Array of value sets to merge (will be zeroed)
+     * @param[in] elements Number of elements in each value set
      * @param[in] count Number of value sets
      * @param[in] delete_after Delete values after merging
      * @return Result containing merged indices
      * @throws OTS_ERROR_LENGTH_MISMATCH if value sets have different sizes
      * @throws OTS_ERROR_TOO_FEW_VALUES if less than two value sets provided
      */
-    ots_result_t ots_seed_merge_multiple_values_and_zero(
-            ots_seed_indices_t* values[],
+    ots_result_t* ots_seed_indices_merge_multiple_values_and_zero(
+            const ots_handle_t* seed_indices[],
+            size_t elements,
             size_t count,
             bool delete_after
             );
@@ -439,7 +807,7 @@ extern "C" {
      * @return Result containing seed handle
      * @throws OTS_ERROR_INVALID_SEED if decoding fails
      */
-    ots_result_t ots_legacy_seed_decode(
+    ots_result_t* ots_legacy_seed_decode(
             const char* phrase,
             uint64_t height,
             uint64_t time,
@@ -455,8 +823,8 @@ extern "C" {
      * @return Result containing seed handle
      * @throws OTS_ERROR_INVALID_SEED if decoding fails
      */
-    ots_result_t ots_legacy_seed_decode_indices(
-            const ots_seed_indices_t* indices,
+    ots_result_t* ots_legacy_seed_decode_indices(
+            const ots_handle_t* indices,
             uint64_t height,
             uint64_t time,
             OTS_NETWORK network
@@ -471,11 +839,12 @@ extern "C" {
      * @param[in] random 32-byte random input
      * @param[in] height Optional blockchain height (0 for none)
      * @param[in] time Optional timestamp (0 for none)
-     * @param[in] network Network type (default: MAIN)
+     * @param[in] network Network type
      * @return Result containing seed handle
      * @throws OTS_ERROR_INVALID_INPUT if random data is invalid
+     * @note height or timestamp must be set to 0
      */
-    ots_result_t ots_monero_seed_create(
+    ots_result_t* ots_monero_seed_create(
             const uint8_t random[32],
             uint64_t height,
             uint64_t time,
@@ -486,10 +855,11 @@ extern "C" {
      * @brief Generate a new Monero seed
      * @param[in] height Optional blockchain height (0 for none)
      * @param[in] time Optional timestamp (0 for none)
-     * @param[in] network Network type (default: MAIN)
+     * @param[in] network Network type
      * @return Result containing seed handle
+     * @note height or timestamp must be set to 0
      */
-    ots_result_t ots_monero_seed_generate(
+    ots_result_t* ots_monero_seed_generate(
             uint64_t height,
             uint64_t time,
             OTS_NETWORK network
@@ -505,7 +875,7 @@ extern "C" {
      * @return Result containing seed handle
      * @throws OTS_ERROR_INVALID_SEED if decoding fails
      */
-    ots_result_t ots_monero_seed_decode(
+    ots_result_t* ots_monero_seed_decode(
             const char* phrase,
             uint64_t height,
             uint64_t time,
@@ -523,8 +893,8 @@ extern "C" {
      * @return Result containing seed handle
      * @throws OTS_ERROR_INVALID_SEED if decoding fails
      */
-    ots_result_t ots_monero_seed_decode_indices(
-            const ots_seed_indices_t* indices,
+    ots_result_t* ots_monero_seed_decode_indices(
+            const ots_handle_t* indices,
             uint64_t height,
             uint64_t time,
             OTS_NETWORK network,
@@ -544,7 +914,7 @@ extern "C" {
      * @return Result containing seed handle
      * @throws OTS_ERROR_INVALID_INPUT if random data is invalid
      */
-    ots_result_t ots_polyseed_create(
+    ots_result_t* ots_polyseed_create(
             const uint8_t random[19],
             OTS_NETWORK network,
             uint64_t time,
@@ -558,7 +928,7 @@ extern "C" {
      * @param[in] passphrase Optional passphrase for seed offset (empty string for none)
      * @return Result containing seed handle
      */
-    ots_result_t ots_polyseed_generate(
+    ots_result_t* ots_polyseed_generate(
             OTS_NETWORK network,
             uint64_t time,
             const char* passphrase
@@ -573,7 +943,7 @@ extern "C" {
      * @return Result containing seed handle
      * @throws OTS_ERROR_INVALID_SEED if decoding fails
      */
-    ots_result_t ots_polyseed_decode(
+    ots_result_t* ots_polyseed_decode(
             const char* phrase,
             OTS_NETWORK network,
             const char* password,
@@ -583,14 +953,14 @@ extern "C" {
     /**
      * @brief Decode a Polyseed from indices
      * @param[in] indices Array of seed word indices
-     * @param[in] network Network type (default: MAIN)
+     * @param[in] network Network type
      * @param[in] password Optional decryption password (empty string for none)
      * @param[in] passphrase Optional passphrase for seed offset (empty string for none)
      * @return Result containing seed handle
      * @throws OTS_ERROR_INVALID_SEED if decoding fails
      */
-    ots_result_t ots_polyseed_decode_indices(
-            const ots_seed_indices_t* indices,
+    ots_result_t* ots_polyseed_decode_indices(
+            const ots_handle_t* indices,
             OTS_NETWORK network,
             const char* password,
             const char* passphrase
@@ -599,14 +969,32 @@ extern "C" {
     /**
      * @brief Decode a Polyseed from phrase with specific language
      * @param[in] phrase The seed phrase
-     * @param[in] language_code Language code for the phrase
-     * @param[in] network Network type (default: MAIN)
+     * @param[in] language_code Language code
+     * @param[in] network Network type
      * @param[in] password Optional decryption password (empty string for none)
      * @param[in] passphrase Optional passphrase for seed offset (empty string for none)
      * @return Result containing seed handle
      * @throws OTS_ERROR_INVALID_SEED if decoding fails
      */
-    ots_result_t ots_polyseed_decode_with_language(
+    ots_result_t* ots_polyseed_decode_with_language(
+            const char* phrase,
+            const ots_handle_t* language,
+            OTS_NETWORK network,
+            const char* password,
+            const char* passphrase
+            );
+
+    /**
+     * @brief Decode a Polyseed from phrase with specific language code
+     * @param[in] phrase The seed phrase
+     * @param[in] language_code Language code
+     * @param[in] network Network type
+     * @param[in] password Optional decryption password (empty string for none)
+     * @param[in] passphrase Optional passphrase for seed offset (empty string for none)
+     * @return Result containing seed handle
+     * @throws OTS_ERROR_INVALID_SEED if decoding fails
+     */
+    ots_result_t* ots_polyseed_decode_with_language_code(
             const char* phrase,
             const char* language_code,
             OTS_NETWORK network,
@@ -623,7 +1011,7 @@ extern "C" {
      * @param[in] address Address to check
      * @return Result containing address type
      */
-    ots_result_t ots_address_type(ots_handle_t address);
+    ots_result_t* ots_address_type(const ots_handle_t* address);
 
     /**
      * @brief Get network type for an address
@@ -631,7 +1019,7 @@ extern "C" {
      * @return Result containing network type
      * @throws OTS_ERROR_INVALID_ADDRESS if address is invalid
      */
-    ots_result_t ots_address_network(ots_handle_t address);
+    ots_result_t* ots_address_network(const ots_handle_t* address);
 
     /**
      * @brief Generate fingerprint for an address
@@ -640,7 +1028,7 @@ extern "C" {
      * @throws OTS_ERROR_INVALID_ADDRESS if address is invalid
      * @note Fingerprint is the last 6 digits of sha256(address) as uppercase hex
      */
-    ots_result_t ots_address_fingerprint(ots_handle_t address);
+    ots_result_t* ots_address_fingerprint(const ots_handle_t* address);
 
     /**
      * @brief Check if address is an integrated address
@@ -648,7 +1036,7 @@ extern "C" {
      * @return Result containing boolean status
      * @throws OTS_ERROR_INVALID_ADDRESS if address is invalid
      */
-    ots_result_t ots_address_is_integrated(ots_handle_t address);
+    ots_result_t* ots_address_is_integrated(const ots_handle_t* address);
 
     /**
      * @brief Extract payment ID from integrated address
@@ -657,7 +1045,7 @@ extern "C" {
      * @throws OTS_ERROR_INVALID_ADDRESS if address is invalid
      * @throws OTS_ERROR_NOT_INTEGRATED if address is not an integrated address
      */
-    ots_result_t ots_address_payment_id(ots_handle_t address);
+    ots_result_t* ots_address_payment_id(const ots_handle_t* address);
 
     /**
      * @brief Get base address from integrated address
@@ -666,7 +1054,7 @@ extern "C" {
      * @throws OTS_ERROR_INVALID_ADDRESS if address is invalid
      * @throws OTS_ERROR_NOT_INTEGRATED if address is not an integrated address
      */
-    ots_result_t ots_address_from_integrated(ots_handle_t address);
+    ots_result_t* ots_address_from_integrated(const ots_handle_t* address);
 
     /**
      * @brief Get address length
@@ -674,14 +1062,14 @@ extern "C" {
      * @return Result containing address length
      * @throws OTS_ERROR_INVALID_ADDRESS if address is invalid
      */
-    ots_result_t ots_address_length(ots_handle_t address);
+    ots_result_t* ots_address_length(const ots_handle_t* address);
 
     /**
      * @brief Get base58 string representation of address
      * @param[in] address_handle Address handle
      * @return Result containing address string
      */
-    ots_result_t ots_address_base58_string(ots_handle_t address_handle);
+    ots_result_t* ots_address_base58_string(const ots_handle_t* address_handle);
 
     /**
      * @brief Compare two addresses for equality
@@ -690,9 +1078,9 @@ extern "C" {
      * @return Result containing boolean equality status
      * @throws OTS_ERROR_INVALID_ADDRESS if either address is invalid
      */
-    ots_result_t ots_address_equal(
-            ots_handle_t address1,
-            ots_handle_t address2
+    ots_result_t* ots_address_equal(
+            const ots_handle_t* address1,
+            const ots_handle_t* address2
             );
 
     /**
@@ -701,8 +1089,8 @@ extern "C" {
      * @param[in] address_string Address string to compare
      * @return Result containing boolean equality status
      */
-    ots_result_t ots_address_equal_string(
-            ots_handle_t address_handle,
+    ots_result_t* ots_address_equal_string(
+            const ots_handle_t* address_handle,
             const char* address_string
             );
 
@@ -713,13 +1101,13 @@ extern "C" {
      * @throws OTS_ERROR_INVALID_ADDRESS if address is invalid
      * @note This creates a managed address object that can be used with other functions
      */
-    ots_result_t ots_address_create(const char* address);
+    ots_result_t* ots_address_create(const char* address);
 
     /**
      * @brief Free address handle
      * @param[in] handle Address handle to free
      */
-    void ots_address_free(ots_handle_t handle);
+    void ots_address_free(const ots_handle_t* handle);
 
     /**
      * @brief Validate a Monero address
@@ -727,7 +1115,7 @@ extern "C" {
      * @param[in] network Network to validate against
      * @return Result containing validation status
      */
-    ots_result_t ots_address_string_valid(const char* address, OTS_NETWORK network);
+    ots_result_t* ots_address_string_valid(const char* address, OTS_NETWORK network);
 
     /**
      * @brief Get network type for an address string
@@ -735,7 +1123,7 @@ extern "C" {
      * @return Result containing network type
      * @throws OTS_ERROR_INVALID_ADDRESS if address is invalid
      */
-    ots_result_t ots_address_string_network(const char* address);
+    ots_result_t* ots_address_string_network(const char* address);
 
     /**
      * @brief Get type for an address string
@@ -743,7 +1131,7 @@ extern "C" {
      * @return Result containing address type
      * @throws OTS_ERROR_INVALID_ADDRESS if address is invalid
      */
-    ots_result_t ots_address_string_type(const char* address);
+    ots_result_t* ots_address_string_type(const char* address);
 
     /**
      * @brief Generate fingerprint for an address string
@@ -751,7 +1139,7 @@ extern "C" {
      * @return Result containing fingerprint string
      * @throws OTS_ERROR_INVALID_ADDRESS if address is invalid
      */
-    ots_result_t ots_address_string_fingerprint(const char* address);
+    ots_result_t* ots_address_string_fingerprint(const char* address);
 
     /**
      * @brief Check if address string is integrated
@@ -759,7 +1147,7 @@ extern "C" {
      * @return Result containing boolean status
      * @throws OTS_ERROR_INVALID_ADDRESS if address is invalid
      */
-    ots_result_t ots_address_string_is_integrated(const char* address);
+    ots_result_t* ots_address_string_is_integrated(const char* address);
 
     /**
      * @brief Extract payment ID from integrated address string
@@ -768,7 +1156,7 @@ extern "C" {
      * @throws OTS_ERROR_INVALID_ADDRESS if address is invalid
      * @throws OTS_ERROR_NOT_INTEGRATED if address is not integrated
      */
-    ots_result_t ots_address_string_payment_id(const char* address);
+    ots_result_t* ots_address_string_payment_id(const char* address);
 
     /**
      * @brief Get base address from integrated address string
@@ -777,7 +1165,7 @@ extern "C" {
      * @throws OTS_ERROR_INVALID_ADDRESS if address is invalid
      * @throws OTS_ERROR_NOT_INTEGRATED if address is not integrated
      */
-    ots_result_t ots_address_string_integrated(const char* address);
+    ots_result_t* ots_address_string_integrated(const char* address);
 
 
     /*******************************************************************************
@@ -791,7 +1179,7 @@ extern "C" {
      * @param[in] network Network type
      * @return Result containing wallet handle
      */
-    ots_result_t ots_wallet_create(
+    ots_result_t* ots_wallet_create(
             const uint8_t key[32],
             uint64_t height,
             OTS_NETWORK network
@@ -802,7 +1190,7 @@ extern "C" {
      * @param[in] wallet_handle Wallet handle
      * @return Result containing height
      */
-    ots_result_t ots_wallet_height(ots_handle_t wallet_handle);
+    ots_result_t* ots_wallet_height(const ots_handle_t* wallet_handle);
 
     /**
      * @brief Generate address for wallet
@@ -811,7 +1199,7 @@ extern "C" {
      * @param[in] index Address index
      * @return Result containing address string
      */
-    ots_result_t ots_wallet_address(ots_handle_t wallet_handle, uint32_t account, uint32_t index);
+    ots_result_t* ots_wallet_address(const ots_handle_t* wallet_handle, uint32_t account, uint32_t index);
 
     /**
      * @brief Get list of accounts in wallet
@@ -820,8 +1208,8 @@ extern "C" {
      * @param[in] offset Starting account index
      * @return Result containing array of address strings
      */
-    ots_result_t ots_wallet_accounts(
-            ots_handle_t wallet_handle,
+    ots_result_t* ots_wallet_accounts(
+            const ots_handle_t* wallet_handle,
             uint32_t max,
             uint32_t offset
             );
@@ -834,8 +1222,8 @@ extern "C" {
      * @param[in] offset Starting subaddress index
      * @return Result containing array of address strings
      */
-    ots_result_t ots_wallet_subaddresses(
-            ots_handle_t wallet_handle,
+    ots_result_t* ots_wallet_subaddresses(
+            const ots_handle_t* wallet_handle,
             uint32_t account,
             uint32_t max,
             uint32_t offset
@@ -849,8 +1237,8 @@ extern "C" {
      * @param[in] max_index_depth Maximum index depth to search
      * @return Result containing boolean status
      */
-    ots_result_t ots_wallet_has_address(
-            ots_handle_t wallet_handle,
+    ots_result_t* ots_wallet_has_address(
+            const ots_handle_t* wallet_handle,
             const char* address,
             uint32_t max_account_depth,
             uint32_t max_index_depth
@@ -864,9 +1252,9 @@ extern "C" {
      * @param[in] max_index_depth Maximum index depth to search
      * @return Result containing boolean status
      */
-    ots_result_t ots_wallet_has_address_handle(
-            ots_handle_t wallet_handle,
-            ots_handle_t address_handle,
+    ots_result_t* ots_wallet_has_address_handle(
+            const ots_handle_t* wallet_handle,
+            const ots_handle_t* address_handle,
             uint32_t max_account_depth,
             uint32_t max_index_depth
             );
@@ -880,8 +1268,8 @@ extern "C" {
      * @return Result containing account/index pair
      * @throws OTS_ERROR_ADDRESS_NOT_FOUND if address not found in wallet
      */
-    ots_result_t ots_wallet_address_index(
-            ots_handle_t wallet_handle,
+    ots_result_t* ots_wallet_address_index(
+            const ots_handle_t* wallet_handle,
             const char* address,
             uint32_t max_account_depth,
             uint32_t max_index_depth
@@ -896,9 +1284,9 @@ extern "C" {
      * @return Result containing account/index pair
      * @throws OTS_ERROR_ADDRESS_NOT_FOUND if address not found in wallet
      */
-    ots_result_t ots_wallet_address_index_handle(
-            ots_handle_t wallet_handle,
-            ots_handle_t address_handle,
+    ots_result_t* ots_wallet_address_index_handle(
+            const ots_handle_t* wallet_handle,
+            const ots_handle_t* address_handle,
             uint32_t max_account_depth,
             uint32_t max_index_depth
             );
@@ -908,28 +1296,28 @@ extern "C" {
      * @param[in] wallet_handle Wallet handle
      * @return Result containing wipeable string with key
      */
-    ots_result_t ots_wallet_secret_view_key(ots_handle_t wallet_handle);
+    ots_result_t* ots_wallet_secret_view_key(const ots_handle_t* wallet_handle);
 
     /**
      * @brief Get public view key
      * @param[in] wallet_handle Wallet handle
      * @return Result containing wipeable string with key
      */
-    ots_result_t ots_wallet_public_view_key(ots_handle_t wallet_handle);
+    ots_result_t* ots_wallet_public_view_key(const ots_handle_t* wallet_handle);
 
     /**
      * @brief Get secret spend key
      * @param[in] wallet_handle Wallet handle
      * @return Result containing wipeable string with key
      */
-    ots_result_t ots_wallet_secret_spend_key(ots_handle_t wallet_handle);
+    ots_result_t* ots_wallet_secret_spend_key(const ots_handle_t* wallet_handle);
 
     /**
      * @brief Get public spend key
      * @param[in] wallet_handle Wallet handle
      * @return Result containing wipeable string with key
      */
-    ots_result_t ots_wallet_public_spend_key(ots_handle_t wallet_handle);
+    ots_result_t* ots_wallet_public_spend_key(const ots_handle_t* wallet_handle);
 
     /**
      * @brief Import outputs from string
@@ -938,8 +1326,8 @@ extern "C" {
      * @return Result containing number of imported outputs
      * @throws OTS_ERROR_INVALID_OUTPUTS if outputs data is invalid
      */
-    ots_result_t ots_wallet_import_outputs(
-            ots_handle_t wallet_handle,
+    ots_result_t* ots_wallet_import_outputs(
+            const ots_handle_t* wallet_handle,
             const char* outputs
             );
 
@@ -949,7 +1337,7 @@ extern "C" {
      * @return Result containing wipeable string with key images
      * @throws OTS_ERROR_NO_KEY_IMAGES if no outputs were imported
      */
-    ots_result_t ots_wallet_export_key_images(ots_handle_t wallet_handle);
+    ots_result_t* ots_wallet_export_key_images(const ots_handle_t* wallet_handle);
 
     /**
      * @brief Describe unsigned transaction
@@ -957,7 +1345,7 @@ extern "C" {
      * @param[in] unsigned_tx Unsigned transaction data
      * @return Result containing transaction description
      */
-    ots_result_t ots_wallet_describe_tx(ots_handle_t wallet_handle, const char* unsigned_tx);
+    ots_result_t* ots_wallet_describe_tx(const ots_handle_t* wallet_handle, const char* unsigned_tx);
 
     /**
      * @brief Check transaction for warnings
@@ -965,7 +1353,7 @@ extern "C" {
      * @param[in] unsigned_tx_handle unsigned transaction handle
      * @return Result containing array of warnings
      */
-    ots_result_t ots_wallet_check_tx(ots_handle_t wallet_handle, ots_handle_t unsigned_tx_handle);
+    ots_result_t* ots_wallet_check_tx(const ots_handle_t* wallet_handle, const ots_handle_t* unsigned_tx_handle);
 
     /**
      * @brief Check transaction string for warnings
@@ -973,8 +1361,8 @@ extern "C" {
      * @param[in] unsigned_tx Unsigned transaction string
      * @return Result containing array of warnings
      */
-    ots_result_t ots_wallet_check_tx_string(
-            ots_handle_t wallet_handle,
+    ots_result_t* ots_wallet_check_tx_string(
+            const ots_handle_t* wallet_handle,
             const char* unsigned_tx
             );
 
@@ -985,8 +1373,8 @@ extern "C" {
      * @return Result containing signed transaction string
      * @throws OTS_ERROR_INVALID_TRANSACTION if transaction is invalid
      */
-    ots_result_t ots_wallet_sign_transaction(
-            ots_handle_t wallet_handle,
+    ots_result_t* ots_wallet_sign_transaction(
+            const ots_handle_t* wallet_handle,
             const char* unsigned_tx
             );
 
@@ -996,7 +1384,7 @@ extern "C" {
      * @param[in] data Data to sign
      * @return Result containing signature
      */
-    ots_result_t ots_wallet_sign_data(ots_handle_t wallet_handle, const char* data);
+    ots_result_t* ots_wallet_sign_data(const ots_handle_t* wallet_handle, const char* data);
 
     /**
      * @brief Sign data with specific subaddress
@@ -1006,8 +1394,8 @@ extern "C" {
      * @param[in] subaddr Subaddress index
      * @return Result containing signature string
      */
-    ots_result_t ots_wallet_sign_data_with_index(
-            ots_handle_t wallet_handle,
+    ots_result_t* ots_wallet_sign_data_with_index(
+            const ots_handle_t* wallet_handle,
             const char* data,
             uint32_t account,
             uint32_t subaddr
@@ -1021,10 +1409,10 @@ extern "C" {
      * @return Result containing signature string
      * @throws OTS_ERROR_ADDRESS_NOT_FOUND if address not found in wallet
      */
-    ots_result_t ots_wallet_sign_data_with_address(
-            ots_handle_t wallet_handle,
+    ots_result_t* ots_wallet_sign_data_with_address(
+            const ots_handle_t* wallet_handle,
             const char* data,
-            ots_handle_t address_handle
+            const ots_handle_t* address_handle
             );
 
     /**
@@ -1034,7 +1422,7 @@ extern "C" {
      * @param[in] legacy_fallback Try legacy verification if modern fails
      * @return Result containing verification status
      */
-    ots_result_t ots_wallet_verify_data(
+    ots_result_t* ots_wallet_verify_data(
             const char* data,
             const char* signature,
             bool legacy_fallback
@@ -1050,8 +1438,8 @@ extern "C" {
      * @param[in] legacy_fallback Try legacy verification if modern fails
      * @return Result containing verification status
      */
-    ots_result_t ots_wallet_verify_data_with_index(
-            ots_handle_t wallet_handle,
+    ots_result_t* ots_wallet_verify_data_with_index(
+            const ots_handle_t* wallet_handle,
             const char* data,
             uint32_t account,
             uint32_t subaddr,
@@ -1069,10 +1457,10 @@ extern "C" {
      * @return Result containing verification status
      * @throws OTS_ERROR_ADDRESS_NOT_FOUND if address not found in wallet
      */
-    ots_result_t ots_wallet_verify_data_with_address(
-            ots_handle_t wallet_handle,
+    ots_result_t* ots_wallet_verify_data_with_address(
+            const ots_handle_t* wallet_handle,
             const char* data,
-            ots_handle_t address_handle,
+            const ots_handle_t* address_handle,
             const char* signature,
             bool legacy_fallback
             );
@@ -1082,12 +1470,24 @@ extern "C" {
      ******************************************************************************/
 
     /**
+     * @brief Get library version string
+     * @return Version string, must be freed with ots_free_string()
+     */
+    ots_result_t* ots_version(void);
+
+    /**
+     * @brief Get version components [major, minor, patch]
+     * @return Result containing version components array
+     */
+    ots_result_t* ots_version_components(void);
+
+    /**
      * @brief Convert timestamp to estimated block height
      * @param[in] timestamp Unix timestamp
      * @param[in] network Network type
      * @return Result containing estimated block height
      */
-    ots_result_t ots_height_from_timestamp(
+    ots_result_t* ots_height_from_timestamp(
             uint64_t timestamp,
             OTS_NETWORK network
             );
@@ -1098,7 +1498,7 @@ extern "C" {
      * @param[in] network Network type
      * @return Result containing estimated timestamp
      */
-    ots_result_t ots_timestamp_from_height(
+    ots_result_t* ots_timestamp_from_height(
             uint64_t height,
             OTS_NETWORK network
             );
@@ -1110,7 +1510,7 @@ extern "C" {
      * @return Result containing status
      * @warning Entropy quality depends on system random number generator
      */
-    ots_result_t ots_random_bytes(
+    ots_result_t* ots_random_bytes(
             uint8_t* buffer,
             size_t size
             );
@@ -1120,7 +1520,7 @@ extern "C" {
      * @return Result containing 32-byte array
      * @warning Entropy quality depends on system random number generator
      */
-    ots_result_t ots_random_32(void);
+    ots_result_t* ots_random_32(void);
 
     /**
      * @brief Check data entropy level
@@ -1129,7 +1529,7 @@ extern "C" {
      * @param[in] min_entropy Minimum required entropy
      * @return Result containing boolean (true if entropy is sufficient)
      */
-    ots_result_t ots_check_entropy(
+    ots_result_t* ots_check_entropy(
             const uint8_t* data,
             size_t size,
             double min_entropy
@@ -1186,7 +1586,7 @@ extern "C" {
      * @param[in] signature Signature to verify
      * @return Result containing verification status
      */
-    ots_result_t ots_verify_data(const char* data, const char* address, const char* signature);
+    ots_result_t* ots_verify_data(const char* data, const char* address, const char* signature);
 
 #ifdef __cplusplus
 }

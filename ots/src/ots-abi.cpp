@@ -4,131 +4,1316 @@
 #include <cstring>
 #include <memory>
 
-// Minimal implementation of the C API LLM generated so it compiles and we can run `make test` without any explotions.
-// TODO: throw away and implement right
 namespace {
-    void translate_exception(ots_error_t* error, const std::exception& e) {
-        if (!error) return;
-        error->code = -1;
+    void translate_exception(ots_error_t* error, const ots::exception::Exception& e) {
+        if(!error)
+            return;
+        error->code = e.code();
         strncpy(error->message, e.what(), OTS_MAX_ERROR_MESSAGE - 1);
         error->message[OTS_MAX_ERROR_MESSAGE - 1] = '\0';
-        error->location[0] = '\0';
+        error->cls[0] = e.cls()[0];
     }
 
     void set_success(ots_result_t* result) {
-        if (!result) return;
+        if(!result)
+            return;
+        result->type = OTS_RESULT_NONE;
+        result->result.data.ptr = nullptr;
+        result->result.data.size = 0;
+        result->result.data.type = OTS_DATA_INVALID;
         result->error.code = 0;
         result->error.message[0] = '\0';
-        result->error.location[0] = '\0';
+        result->error.cls[0] = '\0';
     }
 
-    void set_error(ots_result_t* result, const std::exception& e) {
-        if (!result) return;
-        translate_exception(&result->error, e);
-        result->result.ptr = nullptr;
+    void set_result_type(ots_result_t* result, ots_result_type type) {
+        if(result == nullptr)
+            return;
+        set_success(result);
+        result->type = type;
+    }
+
+    ots_handle_t create_handle(ots_handle_type type, void* ptr) {
+        return ots_handle_t {
+            .type = type,
+            .ptr = ptr,
+            .reference = false
+        };
+    }
+
+    ots_handle_t create_handle_reference(ots_handle_type type, void* ptr) {
+        return ots_handle_t {
+            .type = type,
+            .ptr = ptr,
+            .reference = true
+        };
     }
 
     char* create_string_copy(const std::string& str) {
-        char* copy = static_cast<char*>(malloc(str.length() + 1));
-        if (copy) {
-            strcpy(copy, str.c_str());
-        }
+        char* copy = new char[str.length() + 1];
+        std::strncpy(copy, str.c_str(), str.length());
+        copy[str.length()] = '\0';
         return copy;
+    }
+
+    void set_handle(ots_result_t* result, ots_handle_type handle_type, void* handle) {
+        if(!result)
+            return;
+        set_result_type(result, OTS_RESULT_HANDLE);
+        result->result.handle = create_handle(handle_type, handle);
+    }
+
+    void set_handle_reference(ots_result_t* result, ots_handle_type handle_type, void* handle) {
+        if(!result)
+            return;
+        set_result_type(result, OTS_RESULT_HANDLE);
+        result->result.handle = create_handle_reference(handle_type, handle);
+    }
+
+    void set_string(ots_result_t* result, const std::string& str) {
+        if(result == nullptr)
+            return;
+        set_result_type(result, OTS_RESULT_STRING);
+        result->result.data.ptr = create_string_copy(str);
+        result->result.data.size = str.length();
+        result->result.data.type = OTS_DATA_CHAR;
+        result->result.data.reference = false;
+    }
+
+    void set_boolean(ots_result_t* result, bool value) {
+        if(!result)
+            return;
+        set_result_type(result, OTS_RESULT_BOOLEAN);
+        result->result.boolean = value;
+    }
+
+    void set_number(ots_result_t* result, int64_t value) {
+        if(!result)
+            return;
+        set_result_type(result, OTS_RESULT_NUMBER);
+        result->result.number = value;
+    }
+
+    void set_comparison(ots_result_t* result, int64_t value) {
+        if(!result)
+            return;
+        set_result_type(result, OTS_RESULT_COMPARISON);
+        result->result.number = value;
+    }
+
+    void set_array(ots_result_t* result, void* arr, size_t size, ots_data_type data_type, bool reference) {
+        if(!result)
+            return;
+        set_result_type(result, OTS_RESULT_ARRAY);
+        result->result.data.ptr = arr;
+        result->result.data.size = size;
+        result->result.data.type = data_type;
+        result->result.data.reference = reference;
+    }
+
+    void set_error(ots_result_t* result, const ots::exception::Exception& e) {
+        if(!result)
+            return;
+        translate_exception(&result->error, e);
+        result->result.data.ptr = nullptr;
+    }
+
+    ots::Network to_cpp_network(OTS_NETWORK network) {
+        switch(network) {
+            case OTS_NETWORK_TEST:
+                return ots::Network::TEST;
+            case OTS_NETWORK_STAGE:
+                return ots::Network::STAGE;
+            default:
+                return ots::Network::MAIN;
+        }
     }
 }
 
 extern "C" {
-    void ots_error_init(ots_error_t* error) {
-        if (!error) return;
-        error->code = 0;
-        error->message[0] = '\0';
-        error->location[0] = '\0';
-    }
-
     bool ots_is_error(const ots_result_t* result) {
         return result && result->error.code != 0;
     }
 
-    bool ots_has_error(const ots_result_t* result) {
-        return ots_is_error(result);
+    char* ots_get_error_message(const ots_result_t* result) {
+        if(!result)
+            return nullptr;
+        return create_string_copy(result->error.message);
     }
 
-    ots_result_t ots_get_last_error(void) {
-        ots_result_t result = {};
-        result.result.ptr = create_string_copy("Not implemented");
-        return result;
+    char* ots_get_error_class(const ots_result_t* result) {
+        if(!result)
+            return nullptr;
+        return create_string_copy(result->error.cls);
     }
 
-    ots_result_t ots_get_error_message(int32_t error_code) {
-        ots_result_t result = {};
-        result.result.ptr = create_string_copy("Not implemented");
-        return result;
+    int32_t ots_get_error_code(const ots_result_t* result) {
+        if(!result)
+            return 0;
+        return result->error.code;
     }
 
-    void ots_clear_error(void) {
-        // Nothing to do yet
+    bool ots_is_result(const ots_result_t* result) {
+        return result && result->error.code == 0;
     }
 
-    void ots_free_string(char* str) {
-        free(str);
+    bool ots_result_is_type(const ots_result_t* result, ots_result_type type) {
+        if(result == nullptr)
+            return false;
+        return result->type == type;
     }
 
-    void ots_free_array(void* arr) {
-        free(arr);
-    }
-
-    void ots_free_handle(ots_handle_t handle) {
-        if (handle.ptr) {
-            free(handle.ptr);
+    bool ots_result_data_is_type(const ots_result_t* result, ots_data_type type) {
+        if(!result)
+            return false;
+        switch(result->type) {
+            case OTS_RESULT_ARRAY:
+            case OTS_RESULT_STRING:
+                return result->result.data.type == type;
+            default:
+                return false;
         }
     }
 
-    void ots_wipeable_string_free(ots_wipeable_string_t* str) {
-        if (!str) return;
-        if (str->data) {
-            memset(str->data, 0, str->length);
-            free(str->data);
+    bool ots_result_data_is_reference(const ots_result_t* result) {
+        if(!result)
+            return false;
+        switch(result->type) {
+            case OTS_RESULT_HANDLE:
+            case OTS_RESULT_ARRAY:
+            case OTS_RESULT_STRING:
+                return result->result.data.reference;
+            default:
+                return false;
         }
     }
 
-    void ots_seed_indices_free(ots_seed_indices_t* indices) {
-        if (!indices) return;
-        if (indices->indices) {
-            free(indices->indices);
+    const char* ots_result_string(const ots_result_t* result) {
+        if(!result)
+            return nullptr;
+        if(ots_result_is_type(result, OTS_RESULT_STRING))
+            return static_cast<char*>(result->result.data.ptr);
+        if(
+            ots_result_is_type(result, OTS_RESULT_HANDLE) ||
+            result->result.handle.type == OTS_HANDLE_WIPEABLE_STRING
+            ) {
+            try {
+                return static_cast<ots::WipeableString*>(result->result.handle.ptr)->c_str();
+            } catch(const ots::exception::Exception& e) {}
         }
+        return nullptr;
     }
 
-    void ots_free_tx_description(ots_tx_description_t* desc) {
-        if (!desc) return;
-        free(desc);
+    size_t ots_result_string_size(const ots_result_t* result) {
+        if(!result)
+            return 0;
+        if(ots_result_is_type(result, OTS_RESULT_STRING))
+            return result->result.data.size;
+        if(
+            ots_result_is_type(result, OTS_RESULT_HANDLE) ||
+            result->result.handle.type == OTS_HANDLE_WIPEABLE_STRING
+            ) {
+            try {
+                return static_cast<ots::WipeableString*>(result->result.handle.ptr)->size();
+            } catch(const ots::exception::Exception& e) {}
+        }
+        return 0;
     }
 
-    ots_result_t ots_version(void) {
-        ots_result_t result = {};
+    char* ots_result_string_copy(const ots_result_t* result) {
+        const char* out = ots_result_string(result);
+        if(!out)
+            return nullptr;
+        return create_string_copy(out);
+    }
+
+    bool ots_result_boolean(const ots_result_t* result, bool default_value) {
+        if(!result || !ots_result_is_type(result, OTS_RESULT_BOOLEAN))
+            return default_value;
+        return result->result.boolean;
+    }
+
+    int64_t ots_result_number(const ots_result_t* result, int64_t default_value) {
+        if(!result || !ots_result_is_type(result, OTS_RESULT_NUMBER))
+            return default_value;
+        return result->result.number;
+    }
+
+    void* ots_result_array(const ots_result_t* result) {
+        if(!result || !ots_result_is_type(result, OTS_RESULT_ARRAY))
+            return nullptr;
+        return result->result.data.ptr;
+    }
+
+    bool ots_result_is_comparison(const ots_result_t* result) {
+        return ots_result_is_type(result, OTS_RESULT_COMPARISON);
+    }
+
+    int64_t ots_result_comparison(const ots_result_t* result) {
+        if(!result || !ots_result_is_type(result, OTS_RESULT_COMPARISON))
+            return 0;
+        return result->result.number;
+    }
+
+    bool ots_result_is_equal(const ots_result_t* result) {
+        return ots_result_comparison(result) == 0;
+    }
+
+    size_t ots_result_size(const ots_result_t* result) {
+        if(!result)
+            return 0;
+        return result->result.data.size;
+    }
+
+    ots_handle_t* ots_result_handle(const ots_result_t* result) {
+        if(!result || !ots_result_is_type(result, OTS_RESULT_HANDLE))
+            return nullptr;
+        return new ots_handle_t{result->result.handle};
+    }
+
+    bool ots_result_handle_is_type(const ots_result_t* result, ots_handle_type type) {
+        if(!result || !ots_result_is_type(result, OTS_RESULT_HANDLE))
+            return false;
+        return result->result.handle.type == type;
+    }
+
+    bool ots_result_handle_is_reference(const ots_result_t* result) {
+        if(!result || !ots_result_is_type(result, OTS_RESULT_HANDLE))
+            return false;
+        return result->result.handle.reference;
+    }
+
+    void ots_free_string(char** str) {
+        if(!*str)
+            return;
+        memset(*str, 0, strlen(*str)); // Securely wipe memory always, cost is low, see no reason not to do it
+        delete[] *str;
+        *str = nullptr;
+    }
+
+    void ots_free_array(void** arr, size_t elem_size, size_t count) {
+        if (!arr || !*arr)
+            return;
+        size_t total_size = elem_size * count;
+        if (total_size > 0)
+            memset(*arr, 0, total_size);
+        delete[] static_cast<unsigned char*>(*arr); 
+        *arr = nullptr;
+    }
+
+    void ots_free_result(ots_result_t** result) {
+        if(!result || !*result)
+            return;
+        switch((*result)->type) {
+            case OTS_RESULT_STRING:
+                memset(&(*result)->result.data, 0, (*result)->result.data.size);
+                break;
+            case OTS_RESULT_ARRAY: {
+                if((*result)->result.data.reference)
+                    break;
+                size_t size = (*result)->result.data.size;
+                switch((*result)->result.data.type) {
+                    case OTS_DATA_UINT16:
+                        size *= sizeof(uint16_t);
+                        break;
+                    default:
+                        break;
+                }
+                void** data = &(*result)->result.data.ptr;
+                ots_free_array(data, size, (*result)->result.data.size);
+                break;
+            }
+            case OTS_RESULT_HANDLE: {
+                if((*result)->result.handle.reference)
+                    break;
+                switch((*result)->result.handle.type) {
+                    OTS_HANDLE_WIPEABLE_STRING:
+                        delete static_cast<ots::WipeableString*>((*result)->result.handle.ptr);
+                        break;
+                    case OTS_HANDLE_SEED_INDICES:
+                        delete static_cast<ots::SeedIndices*>((*result)->result.handle.ptr);
+                        break;
+                    case OTS_HANDLE_SEED:
+                        delete static_cast<ots::Seed*>((*result)->result.handle.ptr);
+                        break;
+                    case OTS_HANDLE_WALLET:
+                        delete static_cast<ots::Wallet*>((*result)->result.handle.ptr);
+                        break;
+                    case OTS_HANDLE_TX:
+                        delete static_cast<ots::TxDescription*>((*result)->result.handle.ptr);
+                        break;
+                    default:
+                        break;
+                }
+                break;
+            }
+            default:
+                break;
+        }
+        delete *result;
+        *result = nullptr;
+    }
+
+    void ots_free_handle(ots_handle_t** handle) {
+        if(!*handle)
+            return;
+        if(!(*handle)->reference)
+            switch((*handle)->type) {
+                case OTS_HANDLE_WIPEABLE_STRING:
+                    delete static_cast<ots::WipeableString*>((*handle)->ptr);
+                    break;
+                case OTS_HANDLE_SEED_INDICES:
+                    delete static_cast<ots::SeedIndices*>((*handle)->ptr);
+                    break;
+                case OTS_HANDLE_SEED:
+                    delete static_cast<ots::Seed*>((*handle)->ptr);
+                    break;
+                case OTS_HANDLE_WALLET:
+                    delete static_cast<ots::Wallet*>((*handle)->ptr);
+                    break;
+                case OTS_HANDLE_TX:
+                    delete static_cast<ots::TxDescription*>((*handle)->ptr);
+                    break;
+                case OTS_HANDLE_SEED_LANGUAGE: // is always a reference
+                default:
+                    break;
+            }
+        delete *handle;
+        *handle = nullptr;
+    }
+
+    void ots_secure_free(void** buffer, size_t size) {
+        if(!buffer || !*buffer || size == 0)
+            return;
+        memset(*buffer, 0, size);
+        delete[] static_cast<unsigned char*>(*buffer);
+        *buffer = nullptr;
+    }
+
+    ots_result_t* ots_wipeable_string_create(const char* str) {
+        ots_result_t* result = new ots_result_t();
         try {
-            std::string version = ots::OTS::version();
-            result.result.ptr = create_string_copy(version);
-            set_success(&result);
-        } catch (const std::exception& e) {
-            set_error(&result, e);
+            set_handle(result, OTS_HANDLE_WIPEABLE_STRING, new ots::WipeableString(str));
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
         }
         return result;
     }
 
-    ots_result_t ots_version_components(void) {
-        ots_result_t result = {};
+    ots_result_t* ots_wipeable_string_compare(
+            const ots_handle_t* str1,
+            const ots_handle_t* str2
+            ) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            if(!str1 || !str2 || str1->type != OTS_HANDLE_WIPEABLE_STRING || str2->type != OTS_HANDLE_WIPEABLE_STRING)
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            set_comparison(
+                result,
+                static_cast<ots::WipeableString*>(str1->ptr)->compare(
+                    *static_cast<ots::WipeableString*>(str2->ptr)
+                )
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    const char* ots_wipeable_string_c_str(const ots_handle_t* str) {
+        if(!str || str->type != OTS_HANDLE_WIPEABLE_STRING)
+            return nullptr;
+        try {
+            return static_cast<ots::WipeableString*>(str->ptr)->c_str();
+        } catch(const ots::exception::Exception& e) {
+            return nullptr;
+        }
+    }
+
+    ots_result_t* ots_seed_indices_create(uint16_t* indices, size_t size) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            set_handle(result, OTS_HANDLE_SEED_INDICES, new ots::SeedIndices(indices, size));
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_seed_indices_create_from_string(const char* str, const char* separator) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            set_handle(
+                result,
+                OTS_HANDLE_SEED_INDICES,
+                new ots::SeedIndices(ots::SeedIndices::fromNumeric(str, separator))
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_seed_indices_create_from_hex(const char* hex, const char* separator) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            set_handle(
+                result,
+                OTS_HANDLE_SEED_INDICES,
+                new ots::SeedIndices(ots::SeedIndices::fromHex(hex, separator))
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    const uint16_t* ots_seed_indices_values(const ots_handle_t* handle) {
+        if(handle->type != OTS_HANDLE_SEED_INDICES)
+            return nullptr;
+        return *static_cast<ots::SeedIndices*>(handle->ptr);
+    }
+
+    size_t ots_seed_indices_count(const ots_handle_t* handle) {
+        if(handle->type != OTS_HANDLE_SEED_INDICES)
+            return 0;
+        return static_cast<ots::SeedIndices*>(handle->ptr)->size();
+    }
+
+    void ots_seed_indices_clear(const ots_handle_t* handle) {
+        if(handle->type != OTS_HANDLE_SEED_INDICES)
+            return;
+        static_cast<ots::SeedIndices*>(handle->ptr)->clear();
+    }
+
+    void ots_seed_indices_append(const ots_handle_t* handle, uint16_t index) {
+        if(handle->type != OTS_HANDLE_SEED_INDICES)
+            return;
+        static_cast<ots::SeedIndices*>(handle->ptr)->emplace_back(index);
+    }
+
+    char* ots_seed_indices_numeric(const ots_handle_t* handle, const char* separator) {
+        if(handle->type != OTS_HANDLE_SEED_INDICES)
+            return nullptr;
+        return create_string_copy(static_cast<ots::SeedIndices*>(handle->ptr)->numeric(separator));
+    }
+
+    char* ots_seed_indices_hex(const ots_handle_t* handle, const char* separator) {
+        if(handle->type != OTS_HANDLE_SEED_INDICES)
+            return nullptr;
+        return create_string_copy(static_cast<ots::SeedIndices*>(handle->ptr)->hex(separator));
+    }
+
+    ots_result_t* ots_seed_languages(void) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            auto languages = ots::SeedLanguage::list();
+            ots_handle_t* out = new ots_handle_t[languages.size()];
+            for (size_t i = 0; i < languages.size(); ++i)
+                out[i] = create_handle_reference(OTS_HANDLE_SEED_LANGUAGE, (void *)&(languages[i].get())); // references
+            set_array(result, out, languages.size(), OTS_DATA_HANDLE, false); // handles itself are no references
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_seed_languages_for_type(OTS_SEED_TYPE type) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            auto languages = ots::SeedLanguage::listFor(static_cast<ots::SeedType>(type));
+            ots_handle_t* out = new ots_handle_t[languages.size()];
+            for (size_t i = 0; i < languages.size(); ++i)
+                out[i] = create_handle_reference(OTS_HANDLE_SEED_LANGUAGE, (void *)&(languages[i].get())); // references
+            set_array(result, out, languages.size(), OTS_DATA_HANDLE, false); // handles itself are no references
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_seed_language_for_code(const char* code) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            auto language = ots::SeedLanguage::fromCode(code);
+            set_handle_reference(result, OTS_HANDLE_SEED_LANGUAGE, (void *)&language);
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_seed_language_for_name(const char* name) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            auto language = ots::SeedLanguage::fromName(name);
+            set_handle_reference(result, OTS_HANDLE_SEED_LANGUAGE, (void *)&language);
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_seed_language_for_english_name(const char* name) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            auto language = ots::SeedLanguage::fromEnglishName(name);
+            set_handle_reference(result, OTS_HANDLE_SEED_LANGUAGE, (void *)&language);
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_seed_language_default(OTS_SEED_TYPE type) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            auto language = ots::SeedLanguage::defaultLanguage(static_cast<ots::SeedType>(type));
+            set_handle_reference(result, OTS_HANDLE_SEED_LANGUAGE, (void *)&language);
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_seed_language_set_default(OTS_SEED_TYPE type, const ots_handle_t* language) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            if(language->type != OTS_HANDLE_SEED_LANGUAGE)
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            ots::SeedLanguage::setDefaultLanguage(static_cast<ots::SeedType>(type), *static_cast<const ots::SeedLanguage*>(language->ptr));
+            set_handle_reference(result, OTS_HANDLE_SEED_LANGUAGE, (void *)&(ots::SeedLanguage::defaultLanguage(static_cast<ots::SeedType>(type))));
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_seed_language_from_code(const char* code) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            auto language = ots::SeedLanguage::fromCode(code);
+            set_handle_reference(result, OTS_HANDLE_SEED_LANGUAGE, (void *)&language);
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_seed_language_from_name(const char* name) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            auto language = ots::SeedLanguage::fromName(name);
+            set_handle_reference(result, OTS_HANDLE_SEED_LANGUAGE, (void *)&language);
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_seed_language_from_english_name(const char* name) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            auto language = ots::SeedLanguage::fromEnglishName(name);
+            set_handle_reference(result, OTS_HANDLE_SEED_LANGUAGE, (void *)&language);
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_seed_language_code(const ots_handle_t* language) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            if(language->type != OTS_HANDLE_SEED_LANGUAGE)
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            set_string(result, static_cast<const ots::SeedLanguage*>(language->ptr)->code());
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_seed_language_name(const ots_handle_t* language) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            if(language->type != OTS_HANDLE_SEED_LANGUAGE)
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            set_string(result, static_cast<const ots::SeedLanguage*>(language->ptr)->name());
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_seed_language_english_name(const ots_handle_t* language) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            if(language->type != OTS_HANDLE_SEED_LANGUAGE)
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            set_string(result, static_cast<const ots::SeedLanguage*>(language->ptr)->englishName());
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_seed_language_supported(const ots_handle_t* language, OTS_SEED_TYPE type) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            if(language->type != OTS_HANDLE_SEED_LANGUAGE)
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            set_boolean(
+                result,
+                static_cast<const ots::SeedLanguage*>(language->ptr)->supported(static_cast<ots::SeedType>(type))
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_seed_language_is_default(const ots_handle_t* language, OTS_SEED_TYPE type) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            if(language->type != OTS_HANDLE_SEED_LANGUAGE)
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            set_boolean(
+                result,
+                static_cast<const ots::SeedLanguage*>(language->ptr)->isDefault(static_cast<ots::SeedType>(type))
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_seed_language_equals(const ots_handle_t* language1, const ots_handle_t* language2) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            if(language1->type != OTS_HANDLE_SEED_LANGUAGE || language2->type != OTS_HANDLE_SEED_LANGUAGE)
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            set_boolean(
+                result,
+                *static_cast<const ots::SeedLanguage*>(language1->ptr) == *static_cast<const ots::SeedLanguage*>(language2->ptr)
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_seed_language_equals_code(const ots_handle_t* language, const char* code) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            if(language->type != OTS_HANDLE_SEED_LANGUAGE)
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            set_boolean(
+                result,
+                *static_cast<const ots::SeedLanguage*>(language->ptr) == code
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_seed_phrase(
+            const ots_handle_t* seed,
+            const ots_handle_t* language,
+            const char* password
+            ){
+        ots_result_t* result = new ots_result_t();
+        try {
+            if(seed->type != OTS_HANDLE_SEED)
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            if(language->type != OTS_HANDLE_SEED_LANGUAGE)
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            set_handle(
+                    result,
+                    OTS_HANDLE_WIPEABLE_STRING,
+                    new ots::WipeableString(static_cast<ots::Seed*>(seed->ptr)->phrase(*static_cast<ots::SeedLanguage*>(language->ptr), password))
+                    );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_seed_phrase_for_language_code(
+            const ots_handle_t* seed,
+            const char* language_code,
+            const char* password
+            ) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            if(seed->type != OTS_HANDLE_SEED)
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            auto language = ots::SeedLanguage::fromCode(language_code);
+            set_handle(
+                    result,
+                    OTS_HANDLE_WIPEABLE_STRING,
+                    new ots::WipeableString(static_cast<ots::Seed*>(seed->ptr)->phrase(language, password))
+                    );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_seed_indices(
+            const ots_handle_t* handle,
+            const char* password
+            ) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            if(handle->type != OTS_HANDLE_SEED)
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            set_handle(
+                    result,
+                    OTS_HANDLE_SEED_INDICES,
+                    new ots::SeedIndices(static_cast<ots::Seed*>(handle->ptr)->indices(password))
+                    );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_seed_fingerprint(const ots_handle_t* handle) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            if(handle->type != OTS_HANDLE_SEED)
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            set_string(result, static_cast<ots::Seed*>(handle->ptr)->fingerprint());
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_seed_address(const ots_handle_t* handle) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            if(handle->type != OTS_HANDLE_SEED)
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            set_string(result, static_cast<ots::Seed*>(handle->ptr)->address());
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_seed_timestamp(const ots_handle_t* handle) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            if(handle->type != OTS_HANDLE_SEED)
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            set_number(result, static_cast<ots::Seed*>(handle->ptr)->timestamp());
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_seed_height(const ots_handle_t* handle) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            if(handle->type != OTS_HANDLE_SEED)
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            set_number(result, static_cast<ots::Seed*>(handle->ptr)->height());
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_seed_network(const ots_handle_t* handle) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            if(handle->type != OTS_HANDLE_SEED)
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            set_number(result, static_cast<int64_t>(static_cast<ots::Seed*>(handle->ptr)->network()));
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_seed_wallet(const ots_handle_t* handle) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            if(handle->type != OTS_HANDLE_SEED)
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            set_handle_reference(
+                result,
+                OTS_HANDLE_WALLET,
+                static_cast<ots::Seed*>(handle->ptr)->wallet().get()
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_seed_indices_merge_values(
+            const ots_handle_t* seed_indices1,
+            const ots_handle_t* seed_indices2
+            ) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            if(
+                seed_indices1->type != OTS_HANDLE_SEED ||
+                seed_indices2->type != OTS_HANDLE_SEED_INDICES
+            )
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            set_handle(
+                result,
+                OTS_HANDLE_SEED_INDICES,
+                new ots::SeedIndices(
+                    ots::Seed::mergeValues(
+                        static_cast<const std::vector<uint16_t>>(
+                            *static_cast<ots::SeedIndices*>(seed_indices1->ptr)),
+                        static_cast<const std::vector<uint16_t>>(
+                            *static_cast<ots::SeedIndices*>(seed_indices2->ptr))
+                    )
+                )
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_seed_indices_merge_with_password(
+            const char* password,
+            const ots_handle_t* seed_indices
+            ) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            if(
+                seed_indices->type != OTS_HANDLE_SEED_INDICES
+            )
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            set_handle(
+                result,
+                OTS_HANDLE_SEED_INDICES,
+                new ots::SeedIndices(
+                    ots::Seed::mergeWithPassword(
+                        password,
+                        static_cast<const std::vector<uint16_t>>(
+                            *static_cast<ots::SeedIndices*>(seed_indices->ptr))
+                    )
+                )
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_seed_indices_merge_multiple_values(
+            const ots_handle_t* seed_indices[],
+            size_t elements,
+            size_t count
+            ) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            std::vector<std::vector<uint16_t>> indices;
+            for(size_t i = 0; i < count; ++i) {
+                if(seed_indices[i]->type != OTS_HANDLE_SEED_INDICES)
+                    throw ots::exception::InvalidArgument("Invalid handle type");
+                indices.emplace_back(static_cast<const std::vector<uint16_t>>(
+                            *static_cast<ots::SeedIndices*>(seed_indices[i]->ptr)));
+            }
+            set_handle(
+                result,
+                OTS_HANDLE_SEED_INDICES,
+                new ots::SeedIndices(ots::Seed::mergeValues(indices))
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_seed_indices_merge_values_and_zero(
+            const ots_handle_t* seed_indices1,
+            const ots_handle_t* seed_indices2,
+            bool delete_after
+            ) {
+        ots_result_t* result = ots_seed_indices_merge_values(seed_indices1, seed_indices2);
+        if(ots_is_error(result))
+            return result;
+        try {
+            if(delete_after) {
+                ots_free_handle(const_cast<ots_handle_t**>(&seed_indices1));
+                ots_free_handle(const_cast<ots_handle_t**>(&seed_indices2));
+            }
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_seed_indices_merge_with_password_and_zero(
+            const char* password,
+            const ots_handle_t* seed_indices,
+            bool delete_after
+            ) {
+        ots_result_t* result = ots_seed_indices_merge_with_password(password, seed_indices);
+        if(ots_is_error(result))
+            return result;
+        try {
+            if(delete_after)
+                ots_free_handle(const_cast<ots_handle_t**>(&seed_indices));
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_seed_indices_merge_multiple_values_and_zero(
+            const ots_handle_t* seed_indices[],
+            size_t elements,
+            size_t count,
+            bool delete_after
+            ) {
+        ots_result_t* result = ots_seed_indices_merge_multiple_values(seed_indices, elements, count);
+        if(ots_is_error(result))
+            return result;
+        try {
+            if(delete_after)
+                for(size_t i = 0; i < count; ++i)
+                    ots_free_handle(const_cast<ots_handle_t**>(&seed_indices[i]));
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_legacy_seed_decode(
+            const char* phrase,
+            uint64_t height,
+            uint64_t timestamp,
+            OTS_NETWORK network
+            ) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            set_handle(
+                result,
+                OTS_HANDLE_SEED,
+                new ots::LegacySeed(ots::LegacySeed::decode(phrase, height, timestamp, to_cpp_network(network)))
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_legacy_seed_decode_indices(
+            const ots_handle_t* indices,
+            uint64_t height,
+            uint64_t timestamp,
+            OTS_NETWORK network
+            ) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            if(indices->type != OTS_HANDLE_SEED_INDICES)
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            set_handle(
+                result,
+                OTS_HANDLE_SEED,
+                new ots::LegacySeed(ots::LegacySeed::decode(
+                    static_cast<const std::vector<uint16_t>>(
+                        *static_cast<ots::SeedIndices*>(indices->ptr)
+                    ),
+                    height,
+                    timestamp,
+                    to_cpp_network(network)
+                ))
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_monero_seed_create(
+            const uint8_t random[32],
+            uint64_t height,
+            uint64_t timestamp,
+            OTS_NETWORK network
+            ) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            std::array<uint8_t, 32> random_array;
+            memcpy(random_array.data(), random, 32);
+            set_handle(
+                result,
+                OTS_HANDLE_SEED,
+                new ots::MoneroSeed(ots::MoneroSeed::create(random_array, height, timestamp, to_cpp_network(network)))
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_monero_seed_generate(
+            uint64_t height,
+            uint64_t timestamp,
+            OTS_NETWORK network
+            ) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            set_handle(
+                result,
+                OTS_HANDLE_SEED,
+                new ots::MoneroSeed(ots::MoneroSeed::generate(height, timestamp, to_cpp_network(network)))
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_monero_seed_decode(
+            const char* phrase,
+            uint64_t height,
+            uint64_t timestamp,
+            OTS_NETWORK network,
+            const char* password
+            ) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            set_handle(
+                result,
+                OTS_HANDLE_SEED,
+                new ots::MoneroSeed(ots::MoneroSeed::decode(phrase, height, timestamp, to_cpp_network(network), password))
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_monero_seed_decode_indices(
+            const ots_handle_t* indices,
+            uint64_t height,
+            uint64_t timestamp,
+            OTS_NETWORK network,
+            const char* password
+            ) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            if(indices->type != OTS_HANDLE_SEED_INDICES)
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            set_handle(
+                result,
+                OTS_HANDLE_SEED,
+                new ots::MoneroSeed(ots::MoneroSeed::decode(
+                    *static_cast<ots::SeedIndices*>(indices->ptr),
+                    height,
+                    timestamp,
+                    to_cpp_network(network),
+                    password
+                ))
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_polyseed_create(
+            const uint8_t random[19],
+            OTS_NETWORK network,
+            uint64_t timestamp,
+            const char* passphrase
+            ) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            std::array<uint8_t, 19> random_array;
+            memcpy(random_array.data(), random, 19);
+            set_handle(
+                result,
+                OTS_HANDLE_SEED,
+                new ots::Polyseed(
+                    ots::Polyseed::create(
+                        random_array,
+                        to_cpp_network(network),
+                        timestamp,
+                        passphrase
+                    )
+                )
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_polyseed_generate(
+            OTS_NETWORK network,
+            uint64_t timestamp,
+            const char* passphrase
+            ) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            set_handle(
+                result,
+                OTS_HANDLE_SEED,
+                new ots::Polyseed(
+                    ots::Polyseed::generate(
+                        to_cpp_network(network),
+                        timestamp,
+                        passphrase
+                    )
+                )
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_polyseed_decode(
+            const char* phrase,
+            OTS_NETWORK network,
+            const char* password,
+            const char* passphrase
+            ) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            set_handle(
+                result,
+                OTS_HANDLE_SEED,
+                new ots::Polyseed(
+                    ots::Polyseed::decode(
+                        phrase,
+                        to_cpp_network(network),
+                        password,
+                        passphrase
+                    )
+                )
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_polyseed_decode_indices(
+            const ots_handle_t* indices,
+            OTS_NETWORK network,
+            const char* password,
+            const char* passphrase
+            ) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            if(indices->type != OTS_HANDLE_SEED_INDICES)
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            set_handle(
+                result,
+                OTS_HANDLE_SEED,
+                new ots::Polyseed(
+                    ots::Polyseed::decode(
+                        *static_cast<ots::SeedIndices*>(indices->ptr),
+                        to_cpp_network(network),
+                        password,
+                        passphrase
+                    )
+                )
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_polyseed_decode_with_language(
+            const char* phrase,
+            const ots_handle_t* language,
+            OTS_NETWORK network,
+            const char* password,
+            const char* passphrase
+            ) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            if(language->type != OTS_HANDLE_SEED_LANGUAGE)
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            set_handle(
+                result,
+                OTS_HANDLE_SEED,
+                new ots::Polyseed(
+                    ots::Polyseed::decode(
+                        phrase,
+                        *static_cast<const ots::SeedLanguage*>(language->ptr),
+                        to_cpp_network(network),
+                        password,
+                        passphrase
+                    )
+                )
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_polyseed_decode_with_language_code(
+            const char* phrase,
+            const char* language_code,
+            OTS_NETWORK network,
+            const char* password,
+            const char* passphrase
+            ) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            set_handle(
+                result,
+                OTS_HANDLE_SEED,
+                new ots::Polyseed(
+                    ots::Polyseed::decode(
+                        phrase,
+                        ots::SeedLanguage::fromCode(language_code),
+                        to_cpp_network(network),
+                        password,
+                        passphrase
+                    )
+                )
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+    
+
+
+
+
+    ots_result_t* ots_version(void) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            set_string(result, ots::OTS::version());
+        } catch (const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_version_components(void) {
+        ots_result_t* result = new ots_result_t();
         try {
             auto components = ots::OTS::versionComponents();
-            int* arr = static_cast<int*>(malloc(3 * sizeof(int)));
-            if (!arr) throw std::bad_alloc();
-            
-            arr[0] = components[0];
-            arr[1] = components[1];
-            arr[2] = components[2];
-            result.result.ptr = arr;
-            set_success(&result);
-        } catch (const std::exception& e) {
-            set_error(&result, e);
+            size_t size = components.size();
+            int* arr = new int[size];
+            memcpy(arr, components.data(), size * sizeof(int));
+            set_array(result, arr, size, OTS_DATA_INT, false);
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
         }
         return result;
     }
