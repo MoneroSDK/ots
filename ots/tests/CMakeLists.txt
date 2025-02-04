@@ -1,4 +1,5 @@
 # Use Monero's GTest from parent directory
+# TODO: will move to external/gtest: https://github.com/monero-project/monero/pull/9715
 set(GTEST_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../tests/gtest)
 set(GTEST_INCLUDE_DIRS ${GTEST_ROOT}/include)
 
