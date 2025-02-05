@@ -5,6 +5,12 @@
 #include <memory>
 
 namespace {
+    /**
+     * @brief Translate C++ exception to C error
+     * @param[out] error Error to fill
+     * @param[in] e Exception to translate
+     * @internal
+     */
     void translate_exception(ots_error_t* error, const ots::exception::Exception& e) {
         if(!error)
             return;
@@ -14,6 +20,11 @@ namespace {
         error->cls[0] = e.cls()[0];
     }
 
+    /**
+     * @brief Set result to success
+     * @param[out] result Result to set
+     * @internal
+     */
     void set_success(ots_result_t* result) {
         if(!result)
             return;
@@ -26,6 +37,12 @@ namespace {
         result->error.cls[0] = '\0';
     }
 
+    /**
+     * @brief Set result type
+     * @param[out] result Result to set
+     * @param[in] type Type to set
+     * @internal
+     */
     void set_result_type(ots_result_t* result, ots_result_type type) {
         if(result == nullptr)
             return;
@@ -33,6 +50,13 @@ namespace {
         result->type = type;
     }
 
+    /**
+     * @brief Create handle
+     * @param[in] type Handle type
+     * @param[in] ptr Pointer to object
+     * @return Handle
+     * @internal
+     */
     ots_handle_t create_handle(ots_handle_type type, void* ptr) {
         return ots_handle_t {
             .type = type,
@@ -41,6 +65,13 @@ namespace {
         };
     }
 
+    /**
+     * @brief Create handle reference (no ownership)
+     * @param[in] type Handle type
+     * @param[in] ptr Pointer to object
+     * @return Handle
+     * @internal
+     */
     ots_handle_t create_handle_reference(ots_handle_type type, void* ptr) {
         return ots_handle_t {
             .type = type,
@@ -49,6 +80,12 @@ namespace {
         };
     }
 
+    /**
+     * @brief Create a copy of a string
+     * @param[in] str String to copy
+     * @return Copy of the string
+     * @internal
+     */
     char* create_string_copy(const std::string& str) {
         char* copy = new char[str.length() + 1];
         std::strncpy(copy, str.c_str(), str.length());
@@ -56,6 +93,13 @@ namespace {
         return copy;
     }
 
+    /**
+     * @brief Set handle to result
+     * @param[out] result Result to set
+     * @param[in] handle_type Handle type
+     * @param[in] handle Handle to set
+     * @internal
+     */
     void set_handle(ots_result_t* result, ots_handle_type handle_type, void* handle) {
         if(!result)
             return;
@@ -63,6 +107,13 @@ namespace {
         result->result.handle = create_handle(handle_type, handle);
     }
 
+    /**
+     * @brief Set handle reference to result (no ownership)
+     * @param[out] result Result to set
+     * @param[in] handle_type Handle type
+     * @param[in] handle Handle to set
+     * @internal
+     */
     void set_handle_reference(ots_result_t* result, ots_handle_type handle_type, void* handle) {
         if(!result)
             return;
@@ -70,6 +121,12 @@ namespace {
         result->result.handle = create_handle_reference(handle_type, handle);
     }
 
+    /**
+     * @brief Set string to result
+     * @param[out] result Result to set
+     * @param[in] str String to set
+     * @internal
+     */
     void set_string(ots_result_t* result, const std::string& str) {
         if(result == nullptr)
             return;
@@ -80,6 +137,12 @@ namespace {
         result->result.data.reference = false;
     }
 
+    /**
+     * @brief Set boolean to result
+     * @param[out] result Result to set
+     * @param[in] value Boolean value
+     * @internal
+     */
     void set_boolean(ots_result_t* result, bool value) {
         if(!result)
             return;
@@ -87,6 +150,12 @@ namespace {
         result->result.boolean = value;
     }
 
+    /**
+     * @brief Set number to result
+     * @param[out] result Result to set
+     * @param[in] value Number value
+     * @internal
+     */
     void set_number(ots_result_t* result, int64_t value) {
         if(!result)
             return;
@@ -94,6 +163,12 @@ namespace {
         result->result.number = value;
     }
 
+    /**
+     * @brief Set comparison result to result
+     * @param[out] result Result to set
+     * @param[in] value Comparison result
+     * @internal
+     */
     void set_comparison(ots_result_t* result, int64_t value) {
         if(!result)
             return;
@@ -101,6 +176,15 @@ namespace {
         result->result.number = value;
     }
 
+    /**
+     * @brief Set array to result
+     * @param[out] result Result to set
+     * @param[in] arr Array to set
+     * @param[in] size Size of array
+     * @param[in] data_type Data type of array
+     * @param[in] reference If true, the handle does not own the object, don't free
+     * @internal
+     */
     void set_array(ots_result_t* result, void* arr, size_t size, ots_data_type data_type, bool reference) {
         if(!result)
             return;
@@ -111,6 +195,51 @@ namespace {
         result->result.data.reference = reference;
     }
 
+    /**
+     * @brief Set address type to result
+     * @param[out] result Result to set
+     * @param[in] type Address type
+     * @internal
+     */
+    void set_address_type(ots_result_t* result, ots::AddressType type) {
+        if(!result)
+            return;
+        set_result_type(result, OTS_RESULT_ADDRESS_TYPE);
+        result->result.number = static_cast<int64_t>(type);
+    }
+
+    /**
+     * @brief Set network to result
+     * @param[out] result Result to set
+     * @param[in] network Network
+     * @internal
+     */
+    void set_network(ots_result_t* result, ots::Network network) {
+        if(!result)
+            return;
+        set_result_type(result, OTS_RESULT_NETWORK);
+        result->result.number = static_cast<int64_t>(network);
+    }
+
+    /**
+     * @brief Set seed type to result
+     * @param[out] result Result to set
+     * @param[in] type Seed type
+     * @internal
+     */
+    void set_seed_type(ots_result_t* result, ots::SeedType type) {
+        if(!result)
+            return;
+        set_result_type(result, OTS_RESULT_SEED_TYPE);
+        result->result.number = static_cast<int64_t>(type);
+    }
+
+    /**
+     * @brief Set error to result
+     * @param[out] result Result to set
+     * @param[in] e Exception to set
+     * @internal
+     */
     void set_error(ots_result_t* result, const ots::exception::Exception& e) {
         if(!result)
             return;
@@ -118,6 +247,12 @@ namespace {
         result->result.data.ptr = nullptr;
     }
 
+    /**
+     * @brief Convert C network to C++ network
+     * @param[in] network Network to convert
+     * @return C++ network
+     * @internal
+     */
     ots::Network to_cpp_network(OTS_NETWORK network) {
         switch(network) {
             case OTS_NETWORK_TEST:
@@ -263,6 +398,36 @@ extern "C" {
         if(!result)
             return 0;
         return result->result.data.size;
+    }
+
+    bool ots_result_is_address_type(const ots_result_t* result) {
+        return ots_result_is_type(result, OTS_RESULT_ADDRESS_TYPE);
+    }
+
+    bool ots_result_address_type_is_type(const ots_result_t* result, OTS_ADDRESS_TYPE type) {
+        if(!result || !ots_result_is_type(result, OTS_RESULT_ADDRESS_TYPE))
+            return false;
+        return result->result.number == static_cast<int64_t>(type);
+    }
+
+    bool ots_result_is_network(const ots_result_t* result) {
+        return ots_result_is_type(result, OTS_RESULT_NETWORK);
+    }
+
+    bool ots_result_network_is_type(const ots_result_t* result, OTS_NETWORK network) {
+        if(!result || !ots_result_is_type(result, OTS_RESULT_NETWORK))
+            return false;
+        return result->result.number == static_cast<int64_t>(network);
+    }
+
+    bool ots_result_is_seed_type(const ots_result_t* result) {
+        return ots_result_is_type(result, OTS_RESULT_SEED_TYPE);
+    }
+
+    bool ots_result_seed_type_is_type(const ots_result_t* result, OTS_SEED_TYPE type) {
+        if(!result || !ots_result_is_type(result, OTS_RESULT_SEED_TYPE))
+            return false;
+        return result->result.number == static_cast<int64_t>(type);
     }
 
     ots_handle_t* ots_result_handle(const ots_result_t* result) {
@@ -797,7 +962,11 @@ extern "C" {
         try {
             if(handle->type != OTS_HANDLE_SEED)
                 throw ots::exception::InvalidArgument("Invalid handle type");
-            set_string(result, static_cast<ots::Seed*>(handle->ptr)->address());
+            set_handle_reference(
+                    result,
+                    OTS_HANDLE_ADDRESS,
+                    (void*)&static_cast<ots::Seed*>(handle->ptr)->address()
+            );
         } catch(const ots::exception::Exception& e) {
             set_error(result, e);
         }
@@ -1283,6 +1452,287 @@ extern "C" {
                         passphrase
                     )
                 )
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_address_create(
+            const char* address
+            ) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            set_handle(
+                result,
+                OTS_HANDLE_ADDRESS,
+                new ots::Address(address)
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_address_type(const ots_handle_t* handle) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            if(handle->type != OTS_HANDLE_ADDRESS)
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            set_address_type(
+                result,
+                static_cast<ots::Address*>(handle->ptr)->type()
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_address_network(const ots_handle_t* handle) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            if(handle->type != OTS_HANDLE_ADDRESS)
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            set_network(
+                result,
+                static_cast<ots::Address*>(handle->ptr)->network()
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_address_fingerprint(const ots_handle_t* handle) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            if(handle->type != OTS_HANDLE_ADDRESS)
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            set_string(
+                result,
+                static_cast<ots::Address*>(handle->ptr)->fingerprint()
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_address_is_integrated(const ots_handle_t* handle) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            if(handle->type != OTS_HANDLE_ADDRESS)
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            set_boolean(
+                result,
+                static_cast<ots::Address*>(handle->ptr)->isIntegrated()
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_address_payment_id(const ots_handle_t* handle) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            if(handle->type != OTS_HANDLE_ADDRESS)
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            set_string(
+                result,
+                static_cast<ots::Address*>(handle->ptr)->paymentID()
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_address_from_integrated(
+            const ots_handle_t* handle
+            ) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            if(handle->type != OTS_HANDLE_ADDRESS)
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            set_handle(
+                result,
+                OTS_HANDLE_ADDRESS,
+                new ots::Address(static_cast<ots::Address*>(handle->ptr)->integratedAddress())
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_address_length(const ots_handle_t* handle) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            if(handle->type != OTS_HANDLE_ADDRESS)
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            set_number(
+                result,
+                static_cast<int64_t>(static_cast<ots::Address*>(handle->ptr)->length())
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_address_base58_string(const ots_handle_t* handle) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            if(handle->type != OTS_HANDLE_ADDRESS)
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            set_string(
+                result,
+                *static_cast<ots::Address*>(handle->ptr)
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_address_equal(
+            const ots_handle_t* address1,
+            const ots_handle_t* address2
+            ) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            if(address1->type != OTS_HANDLE_ADDRESS || address2->type != OTS_HANDLE_ADDRESS)
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            set_boolean(
+                result,
+                *static_cast<ots::Address*>(address1->ptr) == *static_cast<ots::Address*>(address2->ptr)
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_address_equal_string(
+            const ots_handle_t* address,
+            const char* string
+            ) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            if(address->type != OTS_HANDLE_ADDRESS)
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            set_boolean(
+                result,
+                *static_cast<ots::Address*>(address->ptr) == string
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_address_string_valid(
+            const char* address,
+            OTS_NETWORK network
+            ) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            set_boolean(
+                result,
+                ots::Address::isValid(address, to_cpp_network(network))
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_address_string_network(
+            const char* address
+            ) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            set_network(
+                result,
+                ots::Address::network(address)
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_address_string_type(
+            const char* address
+            ) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            set_address_type(
+                result,
+                ots::Address::type(address)
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_address_string_fingerprint(
+            const char* address
+            ) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            set_string(
+                result,
+                ots::Address::fingerprint(address)
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_address_string_is_integrated(
+            const char* address
+            ) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            set_boolean(
+                result,
+                ots::Address::isIntegrated(address)
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_address_string_payment_id(
+            const char* address
+            ) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            set_string(
+                result,
+                ots::Address::paymentID(address)
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_address_string_integrated(
+            const char* address
+            ) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            set_string(
+                result,
+                ots::Address::integratedAddress(address)
             );
         } catch(const ots::exception::Exception& e) {
             set_error(result, e);

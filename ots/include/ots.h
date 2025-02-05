@@ -72,19 +72,23 @@ extern "C" {
         OTS_HANDLE_WIPEABLE_STRING,
         OTS_HANDLE_SEED_INDICES,
         OTS_HANDLE_SEED_LANGUAGE,
+        OTS_HANDLE_ADDRESS,
         OTS_HANDLE_SEED,
         OTS_HANDLE_WALLET,
         OTS_HANDLE_TX
     } ots_handle_type;
 
     typedef enum {
-        OTS_RESULT_NONE       =  0,
-        OTS_RESULT_HANDLE     =  1,
-        OTS_RESULT_STRING     =  2,
-        OTS_RESULT_BOOLEAN    =  4,
-        OTS_RESULT_NUMBER     =  8,
-        OTS_RESULT_COMPARISON = 16,
-        OTS_RESULT_ARRAY      = 32
+        OTS_RESULT_NONE         =   0,
+        OTS_RESULT_HANDLE       =   1,
+        OTS_RESULT_STRING       =   2,
+        OTS_RESULT_BOOLEAN      =   4,
+        OTS_RESULT_NUMBER       =   8,
+        OTS_RESULT_COMPARISON   =  16,
+        OTS_RESULT_ARRAY        =  32,
+        OTS_RESULT_ADDRESS_TYPE =  64,
+        OTS_RESULT_NETWORK      = 128,
+        OTS_RESULT_SEED_TYPE    = 256,
     } ots_result_type;
 
     typedef enum {
@@ -328,6 +332,51 @@ extern "C" {
      * @return Size of result or 0 if it is not a supported result type
      */
     size_t ots_result_size(const ots_result_t* result);
+
+    /**
+     * @brief Check if result is an address type
+     * @param[in] result Result to check
+     * @return true if result is an address type
+     */
+    bool ots_result_is_address_type(const ots_result_t* result);
+
+    /**
+     * @brief Check if result is a specific address type
+     * @param[in] result Result to check
+     * @param[in] type Address type to check for
+     * @return true if result is the specified address type
+     */
+    bool ots_result_address_type_is_type(const ots_result_t* result, OTS_ADDRESS_TYPE type);
+
+    /**
+     * @brief Check if result is a network type
+     * @param[in] result Result to check
+     * @return true if result is a network type
+     */
+    bool ots_result_is_network(const ots_result_t* result);
+
+    /**
+     * @brief Check if result is a specific network type
+     * @param[in] result Result to check
+     * @param[in] network Network type to check for
+     * @return true if result is the specified network type
+     */
+    bool ots_result_network_is_type(const ots_result_t* result, OTS_NETWORK network);
+
+    /**
+     * @brief Check if result is a seed type
+     * @param[in] result Result to check
+     * @return true if result is a seed type
+     */
+    bool ots_result_is_seed_type(const ots_result_t* result);
+
+    /**
+     * @brief Check if result is a specific seed type
+     * @param[in] result Result to check
+     * @param[in] type Seed type to check for
+     * @return true if result is the specified seed type
+     */
+    bool ots_result_seed_type_is_type(const ots_result_t* result, OTS_SEED_TYPE type);
 
     /**
      * @brief Check if a pointer is NULL
@@ -1007,6 +1056,15 @@ extern "C" {
      ******************************************************************************/
 
     /**
+     * @brief Create address object from string
+     * @param[in] address Address string
+     * @return Result containing address handle
+     * @throws OTS_ERROR_INVALID_ADDRESS if address is invalid
+     * @note This creates a managed address object that can be used with other functions
+     */
+    ots_result_t* ots_address_create(const char* address);
+
+    /**
      * @brief Get address type
      * @param[in] address Address to check
      * @return Result containing address type
@@ -1017,7 +1075,6 @@ extern "C" {
      * @brief Get network type for an address
      * @param[in] address The address to check
      * @return Result containing network type
-     * @throws OTS_ERROR_INVALID_ADDRESS if address is invalid
      */
     ots_result_t* ots_address_network(const ots_handle_t* address);
 
@@ -1025,7 +1082,6 @@ extern "C" {
      * @brief Generate fingerprint for an address
      * @param[in] address The address to generate fingerprint for
      * @return Result containing fingerprint string
-     * @throws OTS_ERROR_INVALID_ADDRESS if address is invalid
      * @note Fingerprint is the last 6 digits of sha256(address) as uppercase hex
      */
     ots_result_t* ots_address_fingerprint(const ots_handle_t* address);
@@ -1034,7 +1090,6 @@ extern "C" {
      * @brief Check if address is an integrated address
      * @param[in] address The address to check
      * @return Result containing boolean status
-     * @throws OTS_ERROR_INVALID_ADDRESS if address is invalid
      */
     ots_result_t* ots_address_is_integrated(const ots_handle_t* address);
 
@@ -1042,8 +1097,6 @@ extern "C" {
      * @brief Extract payment ID from integrated address
      * @param[in] address The integrated address
      * @return Result containing payment ID string
-     * @throws OTS_ERROR_INVALID_ADDRESS if address is invalid
-     * @throws OTS_ERROR_NOT_INTEGRATED if address is not an integrated address
      */
     ots_result_t* ots_address_payment_id(const ots_handle_t* address);
 
@@ -1093,21 +1146,6 @@ extern "C" {
             const ots_handle_t* address_handle,
             const char* address_string
             );
-
-    /**
-     * @brief Create address object from string
-     * @param[in] address Address string
-     * @return Result containing address handle
-     * @throws OTS_ERROR_INVALID_ADDRESS if address is invalid
-     * @note This creates a managed address object that can be used with other functions
-     */
-    ots_result_t* ots_address_create(const char* address);
-
-    /**
-     * @brief Free address handle
-     * @param[in] handle Address handle to free
-     */
-    void ots_address_free(const ots_handle_t* handle);
 
     /**
      * @brief Validate a Monero address
