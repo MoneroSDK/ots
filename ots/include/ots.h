@@ -75,27 +75,32 @@ extern "C" {
         OTS_HANDLE_ADDRESS,
         OTS_HANDLE_SEED,
         OTS_HANDLE_WALLET,
-        OTS_HANDLE_TX
+        OTS_HANDLE_TX,
+        OTS_HANDLE_TX_DESCRIPTION,
+        OTS_HANDLE_TX_WARNING
     } ots_handle_type;
 
     typedef enum {
-        OTS_RESULT_NONE         =   0,
-        OTS_RESULT_HANDLE       =   1,
-        OTS_RESULT_STRING       =   2,
-        OTS_RESULT_BOOLEAN      =   4,
-        OTS_RESULT_NUMBER       =   8,
-        OTS_RESULT_COMPARISON   =  16,
-        OTS_RESULT_ARRAY        =  32,
-        OTS_RESULT_ADDRESS_TYPE =  64,
-        OTS_RESULT_NETWORK      = 128,
-        OTS_RESULT_SEED_TYPE    = 256,
+        OTS_RESULT_NONE          =   0,
+        OTS_RESULT_HANDLE        =   1,
+        OTS_RESULT_STRING        =   2,
+        OTS_RESULT_BOOLEAN       =   4,
+        OTS_RESULT_NUMBER        =   8,
+        OTS_RESULT_COMPARISON    =  16,
+        OTS_RESULT_ARRAY         =  32,
+        OTS_RESULT_ADDRESS_TYPE  =  64,
+        OTS_RESULT_NETWORK       = 128,
+        OTS_RESULT_SEED_TYPE     = 256,
+        OTS_RESULT_ADDRESS_INDEX = 512
     } ots_result_type;
 
     typedef enum {
         OTS_DATA_INVALID = 0,
         OTS_DATA_INT,
         OTS_DATA_CHAR,
+        OTS_DATA_UINT8,
         OTS_DATA_UINT16,
+        OTS_DATA_UINT32,
         OTS_DATA_HANDLE
     } ots_data_type;
 
@@ -347,6 +352,26 @@ extern "C" {
      * @return true if result is the specified address type
      */
     bool ots_result_address_type_is_type(const ots_result_t* result, OTS_ADDRESS_TYPE type);
+
+    /**
+     * @brief Check if result is an address index
+     * @param[in] result to check
+     */
+    bool ots_result_is_address_index(const ots_result_t* result);
+
+    /**
+     * @brief Get the account part of the address index
+     * @param[in] result to check
+     * @note Use ots_result_is_address_index(const ots_result_t*) first!
+     */
+    uint32_t ots_result_address_index_account(const ots_result_t* result);
+
+    /**
+     * @brief Get the account part of the address index
+     * @param[in] result to check
+     * @note Use ots_result_is_address_index(const ots_result_t*) first!
+     */
+    uint32_t ots_result_address_index_index(const ots_result_t* result);
 
     /**
      * @brief Check if result is a network type
@@ -1225,88 +1250,83 @@ extern "C" {
 
     /**
      * @brief Get wallet restore height
-     * @param[in] wallet_handle Wallet handle
+     * @param[in] wallet Wallet handle
      * @return Result containing height
      */
-    ots_result_t* ots_wallet_height(const ots_handle_t* wallet_handle);
+    ots_result_t* ots_wallet_height(const ots_handle_t* wallet);
 
     /**
      * @brief Generate address for wallet
-     * @param[in] wallet_handle Wallet handle
+     * @param[in] wallet Wallet handle
+     * @return Result containing wallet address
+     */
+    ots_result_t* ots_wallet_address(const ots_handle_t* wallet);
+
+    /**
+     * @brief Generate subaddress for wallet
+     * @param[in] wallet Wallet handle
      * @param[in] account Account index
      * @param[in] index Address index
-     * @return Result containing address string
+     * @return Result containing address
      */
-    ots_result_t* ots_wallet_address(const ots_handle_t* wallet_handle, uint32_t account, uint32_t index);
+    ots_result_t* ots_wallet_subaddress(
+            const ots_handle_t* wallet,
+            uint32_t account,
+            uint32_t index
+            );
 
     /**
      * @brief Get list of accounts in wallet
-     * @param[in] wallet_handle Wallet handle
+     * @param[in] wallet Wallet handle
      * @param[in] max Maximum number of accounts to return
      * @param[in] offset Starting account index
-     * @return Result containing array of address strings
+     * @return Result containing array of address handles
      */
     ots_result_t* ots_wallet_accounts(
-            const ots_handle_t* wallet_handle,
+            const ots_handle_t* wallet,
             uint32_t max,
             uint32_t offset
             );
 
     /**
      * @brief Get list of subaddresses for an account
-     * @param[in] wallet_handle Wallet handle
+     * @param[in] wallet Wallet handle
      * @param[in] account Account index
      * @param[in] max Maximum number of addresses to return
      * @param[in] offset Starting subaddress index
-     * @return Result containing array of address strings
+     * @return Result containing array of address handles
      */
     ots_result_t* ots_wallet_subaddresses(
-            const ots_handle_t* wallet_handle,
+            const ots_handle_t* wallet,
             uint32_t account,
             uint32_t max,
             uint32_t offset
             );
 
     /**
-     * @brief Check if address belongs to wallet
-     * @param[in] wallet_handle Wallet handle
-     * @param[in] address Address to check
+     * @brief Check if address belongs to wallet using Address handle
+     * @param[in] wallet Wallet handle
+     * @param[in] address Address handle to check
      * @param[in] max_account_depth Maximum account depth to search
      * @param[in] max_index_depth Maximum index depth to search
      * @return Result containing boolean status
      */
     ots_result_t* ots_wallet_has_address(
-            const ots_handle_t* wallet_handle,
-            const char* address,
+            const ots_handle_t* wallet,
+            const ots_handle_t* address,
             uint32_t max_account_depth,
             uint32_t max_index_depth
             );
 
     /**
-     * @brief Check if address belongs to wallet using Address handle
-     * @param[in] wallet_handle Wallet handle
-     * @param[in] address_handle Address handle to check
+     * @brief Check if address belongs to wallet
+     * @param[in] wallet Wallet handle
+     * @param[in] address address string to check
      * @param[in] max_account_depth Maximum account depth to search
      * @param[in] max_index_depth Maximum index depth to search
      * @return Result containing boolean status
      */
-    ots_result_t* ots_wallet_has_address_handle(
-            const ots_handle_t* wallet_handle,
-            const ots_handle_t* address_handle,
-            uint32_t max_account_depth,
-            uint32_t max_index_depth
-            );
-
-    /**
-     * @brief Get account and index for address in wallet
-     * @param[in] wallet_handle Wallet handle
-     * @param[in] address Address to look up
-     * @param[in] max_account_depth Maximum account depth to search
-     * @param[in] max_index_depth Maximum index depth to search
-     * @return Result containing account/index pair
-     * @throws OTS_ERROR_ADDRESS_NOT_FOUND if address not found in wallet
-     */
-    ots_result_t* ots_wallet_address_index(
+    ots_result_t* ots_wallet_has_address_string(
             const ots_handle_t* wallet_handle,
             const char* address,
             uint32_t max_account_depth,
@@ -1315,125 +1335,145 @@ extern "C" {
 
     /**
      * @brief Get account and index for address handle in wallet
-     * @param[in] wallet_handle Wallet handle
-     * @param[in] address_handle Address handle to look up
+     * @param[in] wallet Wallet handle
+     * @param[in] address Address handle to look up
+     * @param[in] max_account_depth Maximum account depth to search
+     * @param[in] max_index_depth Maximum index depth to search
+     * @return Result containing account/index array[2]
+     * @throws OTS_ERROR_ADDRESS_NOT_FOUND if address not found in wallet
+     */
+    ots_result_t* ots_wallet_address_index(
+            const ots_handle_t* wallet,
+            const ots_handle_t* address,
+            uint32_t max_account_depth,
+            uint32_t max_index_depth
+            );
+
+    /**
+     * @brief Get account and index for address in wallet
+     * @param[in] wallet Wallet handle
+     * @param[in] address Address string to look up
      * @param[in] max_account_depth Maximum account depth to search
      * @param[in] max_index_depth Maximum index depth to search
      * @return Result containing account/index pair
      * @throws OTS_ERROR_ADDRESS_NOT_FOUND if address not found in wallet
      */
-    ots_result_t* ots_wallet_address_index_handle(
+    ots_result_t* ots_wallet_address_string_index(
             const ots_handle_t* wallet_handle,
-            const ots_handle_t* address_handle,
+            const char* address,
             uint32_t max_account_depth,
             uint32_t max_index_depth
             );
 
     /**
      * @brief Get secret view key
-     * @param[in] wallet_handle Wallet handle
+     * @param[in] wallet Wallet handle
      * @return Result containing wipeable string with key
      */
-    ots_result_t* ots_wallet_secret_view_key(const ots_handle_t* wallet_handle);
+    ots_result_t* ots_wallet_secret_view_key(const ots_handle_t* wallet);
 
     /**
      * @brief Get public view key
-     * @param[in] wallet_handle Wallet handle
+     * @param[in] wallet Wallet handle
      * @return Result containing wipeable string with key
      */
-    ots_result_t* ots_wallet_public_view_key(const ots_handle_t* wallet_handle);
+    ots_result_t* ots_wallet_public_view_key(const ots_handle_t* wallet);
 
     /**
      * @brief Get secret spend key
      * @param[in] wallet_handle Wallet handle
      * @return Result containing wipeable string with key
      */
-    ots_result_t* ots_wallet_secret_spend_key(const ots_handle_t* wallet_handle);
+    ots_result_t* ots_wallet_secret_spend_key(const ots_handle_t* wallet);
 
     /**
      * @brief Get public spend key
      * @param[in] wallet_handle Wallet handle
      * @return Result containing wipeable string with key
      */
-    ots_result_t* ots_wallet_public_spend_key(const ots_handle_t* wallet_handle);
+    ots_result_t* ots_wallet_public_spend_key(const ots_handle_t* wallet);
 
     /**
      * @brief Import outputs from string
-     * @param[in] wallet_handle Wallet handle
+     * @param[in] wallet Wallet handle
      * @param[in] outputs Outputs string from view wallet
      * @return Result containing number of imported outputs
      * @throws OTS_ERROR_INVALID_OUTPUTS if outputs data is invalid
+     * @throws OTS_ERROR_RANGE_ERROR if imported outputs are bigger then 9,223,372,036,854,775,807 (should never happen IMO), if so, contact me and kick me for this stupid decision
      */
     ots_result_t* ots_wallet_import_outputs(
-            const ots_handle_t* wallet_handle,
+            const ots_handle_t* wallet,
             const char* outputs
             );
 
     /**
      * @brief Export key images
-     * @param[in] wallet_handle Wallet handle
+     * @param[in] wallet Wallet handle
      * @return Result containing wipeable string with key images
      * @throws OTS_ERROR_NO_KEY_IMAGES if no outputs were imported
      */
-    ots_result_t* ots_wallet_export_key_images(const ots_handle_t* wallet_handle);
+    ots_result_t* ots_wallet_export_key_images(const ots_handle_t* wallet);
 
     /**
      * @brief Describe unsigned transaction
-     * @param[in] wallet_handle Wallet handle
+     * @param[in] wallet Wallet handle
      * @param[in] unsigned_tx Unsigned transaction data
      * @return Result containing transaction description
      */
-    ots_result_t* ots_wallet_describe_tx(const ots_handle_t* wallet_handle, const char* unsigned_tx);
+    ots_result_t* ots_wallet_describe_tx(const ots_handle_t* wallet, const char* unsigned_tx);
 
     /**
      * @brief Check transaction for warnings
-     * @param[in] wallet_handle Wallet handle
-     * @param[in] unsigned_tx_handle unsigned transaction handle
+     * @param[in] wallet Wallet handle
+     * @param[in] unsigned_tx unsigned transaction handle
      * @return Result containing array of warnings
      */
-    ots_result_t* ots_wallet_check_tx(const ots_handle_t* wallet_handle, const ots_handle_t* unsigned_tx_handle);
+    ots_result_t* ots_wallet_check_tx(const ots_handle_t* wallet, const ots_handle_t* unsigned_tx);
 
     /**
      * @brief Check transaction string for warnings
-     * @param[in] wallet_handle Wallet handle
+     * @param[in] wallet Wallet handle
      * @param[in] unsigned_tx Unsigned transaction string
      * @return Result containing array of warnings
      */
     ots_result_t* ots_wallet_check_tx_string(
-            const ots_handle_t* wallet_handle,
+            const ots_handle_t* wallet,
             const char* unsigned_tx
             );
 
     /**
      * @brief Sign unsigned transaction
-     * @param[in] wallet_handle Wallet handle
+     * @param[in] wallet Wallet handle
      * @param[in] unsigned_tx Unsigned transaction string
      * @return Result containing signed transaction string
      * @throws OTS_ERROR_INVALID_TRANSACTION if transaction is invalid
      */
     ots_result_t* ots_wallet_sign_transaction(
-            const ots_handle_t* wallet_handle,
+            const ots_handle_t* wallet,
             const char* unsigned_tx
             );
 
     /**
      * @brief Sign arbitrary data
-     * @param[in] wallet_handle Wallet handle
+     * @param[in] wallet Wallet handle
      * @param[in] data Data to sign
      * @return Result containing signature
      */
-    ots_result_t* ots_wallet_sign_data(const ots_handle_t* wallet_handle, const char* data);
+    ots_result_t* ots_wallet_sign_data(
+            const ots_handle_t* wallet,
+            const char* data
+            );
 
     /**
      * @brief Sign data with specific subaddress
-     * @param[in] wallet_handle Wallet handle
+     * @param[in] wallet Wallet handle
      * @param[in] data Data to sign
      * @param[in] account Account index
      * @param[in] subaddr Subaddress index
      * @return Result containing signature string
      */
     ots_result_t* ots_wallet_sign_data_with_index(
-            const ots_handle_t* wallet_handle,
+            const ots_handle_t* wallet,
             const char* data,
             uint32_t account,
             uint32_t subaddr
@@ -1441,26 +1481,42 @@ extern "C" {
 
     /**
      * @brief Sign data with specific address
-     * @param[in] wallet_handle Wallet handle
+     * @param[in] wallet Wallet handle
      * @param[in] data Data to sign
-     * @param[in] address_handle Address to sign with
+     * @param[in] address Address to sign with
      * @return Result containing signature string
      * @throws OTS_ERROR_ADDRESS_NOT_FOUND if address not found in wallet
      */
     ots_result_t* ots_wallet_sign_data_with_address(
-            const ots_handle_t* wallet_handle,
+            const ots_handle_t* wallet,
             const char* data,
-            const ots_handle_t* address_handle
+            const ots_handle_t* address
+            );
+
+    /**
+     * @brief Sign data with specific address
+     * @param[in] wallet Wallet handle
+     * @param[in] data Data to sign
+     * @param[in] address Address string to sign with
+     * @return Result containing signature string
+     * @throws OTS_ERROR_ADDRESS_NOT_FOUND if address not found in wallet
+     */
+    ots_result_t* ots_wallet_sign_data_with_address_string(
+            const ots_handle_t* wallet,
+            const char* data,
+            const char* address
             );
 
     /**
      * @brief Verify signed data for the wallet address with legacy support
+     * @param[in] wallet Wallet handle
      * @param[in] data Original data
      * @param[in] signature Signature to verify
      * @param[in] legacy_fallback Try legacy verification if modern fails
      * @return Result containing verification status
      */
     ots_result_t* ots_wallet_verify_data(
+            const ots_handle_t* wallet,
             const char* data,
             const char* signature,
             bool legacy_fallback
@@ -1468,7 +1524,7 @@ extern "C" {
 
     /**
      * @brief Verify signed data with specific subaddress
-     * @param[in] wallet_handle Wallet handle
+     * @param[in] wallet Wallet handle
      * @param[in] data Original data
      * @param[in] account Account index  
      * @param[in] subaddr Subaddress index
@@ -1477,7 +1533,7 @@ extern "C" {
      * @return Result containing verification status
      */
     ots_result_t* ots_wallet_verify_data_with_index(
-            const ots_handle_t* wallet_handle,
+            const ots_handle_t* wallet,
             const char* data,
             uint32_t account,
             uint32_t subaddr,
@@ -1487,18 +1543,36 @@ extern "C" {
 
     /**
      * @brief Verify signed data with specific address
-     * @param[in] wallet_handle Wallet handle
+     * @param[in] wallet Wallet handle
      * @param[in] data Original data
-     * @param[in] address_handle Address to verify with
+     * @param[in] address Address handle to verify with
      * @param[in] signature Signature to verify
      * @param[in] legacy_fallback Try legacy verification if modern fails
      * @return Result containing verification status
      * @throws OTS_ERROR_ADDRESS_NOT_FOUND if address not found in wallet
      */
     ots_result_t* ots_wallet_verify_data_with_address(
-            const ots_handle_t* wallet_handle,
+            const ots_handle_t* wallet,
             const char* data,
-            const ots_handle_t* address_handle,
+            const ots_handle_t* address,
+            const char* signature,
+            bool legacy_fallback
+            );
+
+    /**
+     * @brief Verify signed data with specific address
+     * @param[in] wallet Wallet handle
+     * @param[in] data Original data
+     * @param[in] address Address string to verify with
+     * @param[in] signature Signature to verify
+     * @param[in] legacy_fallback Try legacy verification if modern fails
+     * @return Result containing verification status
+     * @throws OTS_ERROR_ADDRESS_NOT_FOUND if address not found in wallet
+     */
+    ots_result_t* ots_wallet_verify_data_with_address_string(
+            const ots_handle_t* wallet,
+            const char* data,
+            const char* address,
             const char* signature,
             bool legacy_fallback
             );
@@ -1543,15 +1617,11 @@ extern "C" {
 
     /**
      * @brief Generate random bytes
-     * @param[out] buffer Buffer to receive random bytes
      * @param[in] size Number of bytes to generate
-     * @return Result containing status
+     * @return Result random bytes as array
      * @warning Entropy quality depends on system random number generator
      */
-    ots_result_t* ots_random_bytes(
-            uint8_t* buffer,
-            size_t size
-            );
+    ots_result_t* ots_random_bytes(size_t size);
 
     /**
      * @brief Generate 32 random bytes
@@ -1561,13 +1631,13 @@ extern "C" {
     ots_result_t* ots_random_32(void);
 
     /**
-     * @brief Check data entropy level
+     * @brief Check data for low entropy level
      * @param[in] data Data to check
      * @param[in] size Size of data
      * @param[in] min_entropy Minimum required entropy
      * @return Result containing boolean (true if entropy is sufficient)
      */
-    ots_result_t* ots_check_entropy(
+    ots_result_t* ots_check_low_entropy(
             const uint8_t* data,
             size_t size,
             double min_entropy
