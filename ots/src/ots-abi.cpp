@@ -2316,7 +2316,6 @@ extern "C" {
         return result;
     }
 
-
     ots_result_t* ots_version(void) {
         ots_result_t* result = new ots_result_t();
         try {
