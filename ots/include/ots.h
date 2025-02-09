@@ -14,6 +14,17 @@
  * All functions that return pointers or handles require explicit memory management
  * using the corresponding free functions to prevent memory leaks.
  *
+ * all implementations are in src/c-abi/
+ *       - internal: src/c-abi/internal.cpp
+ *       - general: src/c-abi/ots.cpp
+ *       - wallet: src/c-abi/wallet.cpp
+ *       - address: src/c-abi/address.cpp
+ *       - seed: src/c-abi/seed.cpp
+ *       - legacy seed: src/c-abi/seed-legacy.cpp
+ *       - monero seed: src/c-abi/seed-monero.cpp
+ *       - polyseed: src/c-abi/seed-polyseed.cpp
+ *       - wipeable string: src/c-abi/wipeable-string.cpp
+ *
  * @note All functions returning an ots_result_t must be checked for errors using
  *       ots_is_error() before accessing the result.
  */

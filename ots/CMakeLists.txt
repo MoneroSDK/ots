@@ -442,7 +442,6 @@ set_target_properties(utf8proc PROPERTIES
 add_library(monero-ots
 	${MONERO_SOURCE_DIR}/src/version.cpp
 	src/ots.cpp
-	src/ots-abi.cpp
 	src/wipeable-string.cpp
 	src/seedindices.cpp
 	src/address.cpp
@@ -457,6 +456,18 @@ add_library(monero-ots
 	src/entropy.cpp
 	src/polyseed-key-store.cpp
 	src/account.cpp
+	src/c-abi/internal.cpp
+	src/c-abi/common.cpp
+	src/c-abi/ots.cpp
+	src/c-abi/wipeable-string.cpp
+	src/c-abi/seed-indices.cpp
+	src/c-abi/seed-language.cpp
+	src/c-abi/seed.cpp
+	src/c-abi/seed-legacy.cpp
+	src/c-abi/seed-monero.cpp
+	src/c-abi/seed-polyseed.cpp
+	src/c-abi/address.cpp
+	src/c-abi/wallet.cpp
 	${EASYLOGGING} # WTF! All this chingadera makes me desires to rewrite the whole thing :@ But need to calm my horses because it will probably take a eternity to get it done
 )
 
