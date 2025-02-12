@@ -81,15 +81,6 @@ namespace ots {
             const size_t word_list_length = 1626,
             const size_t bytes_per_chunk = 4,
             const size_t words_per_chunk = 3
-            );
-
-    /** @todo TODO: documentation missing */
-    template<size_t byte_count>
-    std::array<unsigned char, byte_count> seedBytes(
-            const SeedIndices& indices,
-            const size_t word_list_length,
-            const size_t bytes_per_chunk,
-            const size_t words_per_chunk
             ) {
         size_t words = indices.size();
         if (byte_count * words_per_chunk / bytes_per_chunk != words)
