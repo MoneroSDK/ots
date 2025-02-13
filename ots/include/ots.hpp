@@ -1169,7 +1169,7 @@ namespace ots {
              * @note Attempt to store various times the same Seed object, results in receiving same handle,
              *       without duplicating reference of the Seed object
              */
-			seed_handle_t store(const Seed& seed) const noexcept;
+			static seed_handle_t store(const Seed& seed) noexcept;
             
             /**
              * @brief retrieve a Seed object via a handle
@@ -1177,20 +1177,68 @@ namespace ots {
              * @return The Seed object if in the jar
              * @throws ots::exception::seedjar::SeedNotFound if the Seed object is not in the jar
              */
-			const Seed& get(seed_handle_t handle) const;
+			static const Seed& get(seed_handle_t handle);
 
             /**
              * @brief retrieve a Seed object from the jar from the fingerprint of the Seed object
-             * @param fingerprint 6digit fingerprint of the Seed object
+             * @param fingerprint 6 digit fingerprint of the Seed object
              * @return The Seed object if in the jar
              * @throws ots::exception::seedjar::SeedNotFound if the Seed object is not in the jar
              */
-			const Seed& get(const std::string& fingerprint) const;
-            uint32_t count() const noexcept;
-			bool has(seed_handle_t handle) const noexcept;
-			bool has(const std::string& fingerprint) const;
+			static const Seed& get(const std::string& fingerprint);
+
+            /**
+             * @brief remove a Seed object from the jar
+             * @param handle the handle of the Seed object
+             */
+            static void remove(seed_handle_t handle) noexcept;
+
+            /**
+             * @brief remove a Seed object from the jar
+             * @param fingerprint the fingerprint of the Seed object
+             */
+            static void remove(const std::string& fingerprint) noexcept;
+
+            /**
+             * @brief clear the jar from all stored Seed objects
+             */
+            static void clear() noexcept;
+
+            /**
+             * @brief get the count of stored Seed objects
+             * @return the count of stored Seed objects
+             */
+            static uint32_t count() noexcept;
+
+            /**
+             * @brief check if a Seed object is in the jar
+             * @param handle the handle of the Seed object
+             * @return true if the Seed object is in the jar
+             */
+			static bool has(seed_handle_t handle) noexcept;
+
+            /**
+             * @brief check if a Seed object is in the jar
+             * @param fingerprint the fingerprint of the Seed object
+             * @return true if the Seed object is in the jar
+             */
+			static bool has(const std::string& fingerprint) noexcept;
+
+            /**
+             * @brief get a list of all stored Seed objects
+             * @return a list of all stored Seed objects
+             */
 			std::vector<std::reference_wrapper<const Seed>> list() const noexcept;
-			static const SeedJar& instance() noexcept;
+
+            /**
+             * @brief get a list of all stored Seed objects
+             * @return a list of pointer for all stored Seed objects
+             */
+            std::vector<const Seed*> listPtr() const noexcept;
+
+        protected:
+            SeedJar() = delete;
+            static std::map<seed_handle_t, std::unique_ptr<Seed>> s_seeds;
 	};
 
     /**
