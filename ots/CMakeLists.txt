@@ -445,7 +445,6 @@ add_library(monero-ots
 	src/wipeable-string.cpp
 	src/seedindices.cpp
 	src/address.cpp
-	src/seed-jar.cpp
 	src/seed-language.cpp
 	src/seed.cpp
 	src/seed-legacy.cpp
@@ -468,6 +467,7 @@ add_library(monero-ots
 	src/c-abi/seed-polyseed.cpp
 	src/c-abi/address.cpp
 	src/c-abi/wallet.cpp
+	src/c-abi/seed-jar.cpp
 	${EASYLOGGING} # WTF! All this chingadera makes me desires to rewrite the whole thing :@ But need to calm my horses because it will probably take a eternity to get it done
 )
 

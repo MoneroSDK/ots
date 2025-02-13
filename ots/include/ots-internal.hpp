@@ -74,7 +74,29 @@ namespace ots {
      */
     SeedIndices seedIndices(const unsigned char* bytes, size_t byte_length, size_t word_list_length = 1626, size_t bytes_per_chunk = 4, size_t words_per_chunk = 3);
 
-    /** @todo TODO: documentation missing */
+    /** 
+     * @brief Function to convert seed indices to bytes, the monero way.
+     * @param indices A collection of seed indices.
+     * @param word_list_length The length of the word list (default 1626).
+     * @param bytes_per_chunk The number of bytes per chunk (default 4).
+     * @param words_per_chunk The number of words per chunk (default 3).
+     * @return An array of seed bytes.
+     * @throws ots::exception::seed::SeedDecodingFailed If the number of indices is invalid for the byte count.
+     * @note The function is copying the behaviour extracted from the monero codebase.
+     *       I tried to make the function easier understandable, how I needed to think
+     *       some time to understand the monero code. Also tried to make it somehow reusable
+     *       for other seed types, although not used, so at the moment the parameters
+     *       `word_list_length`, `bytes_per_chunk` and `words_per_chunk` are always the
+     *       default because this applies to monero seeds (includes legacy seeds (12/13 words)).
+     *       Highly dislike this function but found no more elegant and simpler way to
+     *       reimplemnt.
+     * @see https://github.com/monero-project/monero/blob/84df77404e8bcbe1cf409f64c81e4e4f9c84885b/src/mnemonics/electrum-words.cpp#L264
+     * @note added it here as an internal template function in the header to avoid code
+     *       duplication. Not very happy with it but probably best I can do about it.
+     *       @see src/seed-legacy.cpp `LegacySeed::decode(const SeedIndices&, uint64_t, uint64_t, Network)`
+     *       @see src/seed-monero.cpp `MoneroSeed::decode(const SeedIndices&, uint64_t, uint64_t, Network, const std::string&)`
+     * @internal
+     */
     template<size_t byte_count>
     std::array<unsigned char, byte_count> seedBytes(
             const SeedIndices& indices,
@@ -85,20 +107,26 @@ namespace ots {
         size_t words = indices.size();
         if (byte_count * words_per_chunk / bytes_per_chunk != words)
             throw ots::exception::seed::SeedDecodingFailed("Invalid number of indices for byte count.");
-
         std::array<unsigned char, byte_count> out;
-        for (size_t pos = 0; pos < words; pos += words_per_chunk) {
+        for (size_t pos = 0; pos < words; pos += words_per_chunk) { // iterates over the chunks
             uint32_t chunk = 0;
             uint32_t previous = 0;
             uint32_t multiplier = 1;
-            for (size_t word = 0; word < words_per_chunk; word++) {
+            for (size_t word = 0; word < words_per_chunk; word++) { // iterate over words in the current chunk
+                // current index for word in chunk
                 uint32_t current = indices[pos + word];
-                chunk += (multiplier * (((word_list_length - previous) + current) % word_list_length));
+                // add to current chunk:
+                // word_list_length^word * ((word_list_length - previous + current) mod word_list_length)
+                chunk += (multiplier * ((word_list_length - previous + current) % word_list_length));
+                // we store the current value to substract it in the next iteration from the word_list_length
                 previous = current;
+                // it is uglier then using pow, but pow is float and could fuck up the correct result,
+                // additional it is more efficient. But mathematically or logically it seem easier (to me)
+                // to think about word_list_length^word
                 multiplier *= word_list_length;
             }
-
-            chunk = SWAP32LE(chunk);
+            chunk = SWAP32LE(chunk); // make sure that byte order is correct
+            // copy the calculated chunk into the right position of the secret spent key
             memcpy(out.data() + (pos / words_per_chunk) * bytes_per_chunk, &chunk, bytes_per_chunk);
         }
         return out;

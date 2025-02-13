@@ -94,7 +94,7 @@ namespace ots {
             ) {
         if(indices.size() != LEGACY_SEED_WORDS)
             throw ots::exception::seed::SeedDecodingFailed();
-        auto out = ots::seedBytes<LEGACY_SEED_BYTES>(indices);
+        auto out = ots::seedBytes<LEGACY_SEED_BYTES>(indices); // @see ots-internal.hpp
         LegacySeed seed;
         const unsigned char* data = out.data();
         seed.m_seed->set((uint8_t*)data, (size_t)LEGACY_SEED_BYTES);

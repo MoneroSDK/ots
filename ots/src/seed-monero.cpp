@@ -83,7 +83,7 @@ namespace ots {
             ) {
         if(indices.size() != MONERO_SEED_INDICES)
             throw ots::exception::seed::SeedDecodingFailed();
-        std::array<unsigned char, (size_t)MONERO_SEED_BYTES> recovery_bytes = ots::seedBytes<(size_t)MONERO_SEED_BYTES>(indices);
+        std::array<unsigned char, (size_t)MONERO_SEED_BYTES> recovery_bytes = ots::seedBytes<(size_t)MONERO_SEED_BYTES>(indices); // @see ots-internal.hpp
         MoneroSeed seed;
         seed.m_height = height;
         seed.m_timestamp = time;

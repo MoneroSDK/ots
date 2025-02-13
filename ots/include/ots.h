@@ -1589,6 +1589,96 @@ extern "C" {
             );
 
     /*******************************************************************************
+     * Seed Jar Functions
+     ******************************************************************************/
+
+    /**
+     * @brief Add a seed to the seed jar
+     * @param[in|out] seed Seed handle, will be set to reference only
+     * @param[in] name Optional seed name, empty string for none
+     * @return Result containing seed jar handle, esentially the same as the seed handle
+     */
+    ots_result_t* ots_seed_jar_add_seed(ots_handle_t* seed, const char* name);
+
+    /**
+     * @brief Remove a seed from the seed jar
+     * @param[in|out] seed Seed handle, will be freed
+     * @return Result true on success
+     */
+    ots_result_t* ots_seed_jar_remove_seed(ots_handle_t** seed);
+
+    /**
+     * @brief Move the seed from the handle to the jar
+     * @param[in|out] seed Seed handle, will be freed
+     * @return Result with reference handle to seed in jar
+     */
+    ots_result_t* ots_seed_jar_transfer_seed_in(ots_handle_t** seed, const char* name);
+
+    /**
+     * @brief Move the seed from the jar to a new handle
+     * @param[in|out] seed Seed handle, will be freed
+     * @return Result with handle to seed before in jar
+     * @note The seed will be removed from the jar, the
+     *       provided handle needs now to be freed with
+     *       `ots_free_handle` if not needed anymore.
+     */
+    ots_result_t* ots_seed_jar_transfer_seed_out(ots_handle_t** seed);
+
+    /**
+     * @brief Clear and free all seeds from the seed jar
+     * @return Result true on success
+     */
+    ots_result_t* ots_seed_jar_clear(void);
+
+    /**
+     * @brief Get a list of all seeds as handle array
+     * @return Result containing array of seed handles
+     */
+    ots_result_t* ots_seed_jar_seeds(void);
+
+    /**
+     * @brief Get the number of seeds in the seed jar
+     * @return Result containing seed count
+     */
+    ots_result_t* ots_seed_jar_seed_count(void);
+
+    /**
+     * @brief Get seed with the given fingerprint
+     * @param[in] fingerprint Fingerprint to search for
+     * @return Result containing seed handle
+     */
+    ots_result_t* ots_seed_jar_seed_for_fingerprint(const char* fingerprint);
+
+    /**
+     * @brief Get seed with the given address
+     * @param[in] address Address to search for
+     * @return Result containing seed handle
+     */
+    ots_result_t* ots_seed_jar_seed_for_address(const char* address);
+
+    /**
+     * @brief Get seed with the given name
+     * @param[in] name Name to search for
+     * @return Result containing seed handle
+     */
+    ots_result_t* ots_seed_jar_seed_for_name(const char* name);
+
+    /**
+     * @brief Get seed name
+     * @param[in] seed Seed handle
+     * @return Result containing seed name
+     */
+    ots_result_t* ots_seed_jar_seed_name(const ots_handle_t* seed);
+
+    /**
+     * @brief Rename seed in the seed jar
+     * @param[in] seed Seed handle
+     * @param[in] name New name
+     * @return Result containing seed handle
+     */
+    ots_result_t* ots_seed_jar_seed_rename(const ots_handle_t* seed, const char* name);
+
+    /*******************************************************************************
      * OTS Utility Functions
      ******************************************************************************/
 
