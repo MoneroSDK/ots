@@ -38,7 +38,7 @@ namespace ots {
          * @internal
          * @brief Base for all OTS exceptions with virtual what()
          */
-        class Exception {
+        class Exception : public std::runtime_error {
             public:
                 struct RegisteredException {
                     int32_t error_code;
@@ -51,18 +51,19 @@ namespace ots {
                     return instances;
                 }
 
+                explicit Exception(const std::string& msg) : std::runtime_error(msg) {}
+
             protected:
                 template<typename T>
                     static bool registerException(int32_t code, const char* cls) {
                         registry().push_back({code, cls, typeid(T)});
                         return true;
                     }
-            static constexpr int32_t error_code = -1; // default error code, but should never be used anyway
-            static constexpr const char* error_class = "Exception"; // default error class, but should never be used anyway
+                static constexpr int32_t error_code = -1; // default error code, but should never be used anyway
+                static constexpr const char* error_class = "Exception"; // default error class, but should never be used anyway
 
             public:
                 virtual ~Exception() = default;
-                virtual const char* what() const noexcept = 0;
                 inline int32_t code() const { return error_code; }
                 inline const char* cls() const { return error_class; }
         };
@@ -73,11 +74,10 @@ namespace ots {
          * @internal
          * @note Should not used directly, is to override only
          */
-        class RuntimeError: public std::runtime_error, public Exception {
+        class RuntimeError: public Exception {
             REGISTER_EXCEPTION(RuntimeError, -1, "RuntimeError")
             public:
-                inline explicit RuntimeError(const std::string& msg): std::runtime_error(msg) {};
-                const char* what() const noexcept override { return std::runtime_error::what(); }
+                inline explicit RuntimeError(const std::string& msg): Exception(msg) {}
         };
 
         /**
@@ -86,11 +86,10 @@ namespace ots {
          * @internal
          * @note Should not used directly, is to override only
          */
-        class LogicError: public std::logic_error, public Exception {
+        class LogicError: public Exception {
             REGISTER_EXCEPTION(LogicError, -2, "LogicError")
             public:
-                inline explicit LogicError(const std::string& msg): std::logic_error(msg) {};
-                const char* what() const noexcept override { return std::logic_error::what(); }
+                inline explicit LogicError(const std::string& msg): Exception(msg) {};
         };
 
         /**
@@ -99,11 +98,10 @@ namespace ots {
          * @internal
          * @note Should not used directly, is to override only
          */
-        class InvalidArgument: public std::invalid_argument, public Exception {
+        class InvalidArgument: public Exception {
             REGISTER_EXCEPTION(InvalidArgument, -3, "InvalidArgument")
             public:
-                inline explicit InvalidArgument(const std::string& msg): std::invalid_argument(msg) {};
-                const char* what() const noexcept override { return std::invalid_argument::what(); }
+                inline explicit InvalidArgument(const std::string& msg): Exception(msg) {};
         };
 
         /**
@@ -111,23 +109,21 @@ namespace ots {
          * @brief range error in internal computation
          * @note Should not used directly, is to override only
          */
-        class RangeError: public std::range_error, public Exception {
+        class RangeError: public Exception {
             REGISTER_EXCEPTION(RangeError, -4, "RangeError")
             public:
-                inline explicit RangeError(const std::string& msg): std::range_error(msg) {};
-                const char* what() const noexcept override { return std::range_error::what(); }
+                inline explicit RangeError(const std::string& msg): Exception(msg) {};
         };
 
         /**
          * @class NotImplementedYet
          * @brief Sole purpose of this exception is to create already the stub and mark as incomplete, you should never get such exception in the complete library
          */
-        class NotImplementedYet: public std::logic_error, public Exception {
+        class NotImplementedYet: public Exception {
             REGISTER_EXCEPTION(NotImplementedYet, -5, "NotImplementedYet")
             public:
-                inline NotImplementedYet(): std::logic_error("Not implemented yet") {};
-                inline explicit NotImplementedYet(const std::string& msg): std::logic_error(std::string("Not implemented yet: ") + msg) {};
-                const char* what() const noexcept override { return std::logic_error::what(); }
+                inline NotImplementedYet(): Exception("Not implemented yet") {};
+                inline explicit NotImplementedYet(const std::string& msg): Exception(std::string("Not implemented yet: ") + msg) {};
         };
 
         /**
@@ -135,11 +131,10 @@ namespace ots {
          * @brief errors related to the library use itself
          * @note Should not used directly, is to override only
          */
-        class DomainError: public std::domain_error, public Exception {
+        class DomainError: public Exception {
             REGISTER_EXCEPTION(DomainError, -6, "DomainError")
             public:
-                inline explicit DomainError(const std::string& msg): std::domain_error(msg) {};
-                const char* what() const noexcept override { return std::domain_error::what(); }
+                inline explicit DomainError(const std::string& msg): Exception(msg) {};
         };
 
         /**
@@ -148,18 +143,16 @@ namespace ots {
          * @internal
          * @note Should not used directly, is to override only
          */
-        class OutOfRange: public std::out_of_range, public Exception {
+        class OutOfRange: public Exception {
             REGISTER_EXCEPTION(OutOfRange, -7, "OutOfRange")
             public:
-                inline explicit OutOfRange(const std::string& msg): std::out_of_range(msg) {};
-                const char* what() const noexcept override { return std::out_of_range::what(); }
+                inline explicit OutOfRange(const std::string& msg): Exception(msg) {};
         };
-
         /**
          * @class BufferOverflowException
          * @brief size is bigger then buffer
          */
-        class BufferOverflowException: OutOfRange {
+        class BufferOverflowException: public OutOfRange {
             REGISTER_EXCEPTION(BufferOverflowException, -71, "BufferOverflowException")
             public:
                 inline explicit BufferOverflowException(): OutOfRange("The size is bigger as the buffer! Security related exception!") {};
@@ -170,7 +163,7 @@ namespace ots {
          * @class MemoryAllocationError
          * @brief Could not allocate memory
          */
-        class MemoryAllocationError: RuntimeError {
+        class MemoryAllocationError: public RuntimeError {
             REGISTER_EXCEPTION(MemoryAllocationError, -11, "MemoryAllocationError")
             public:
                 inline explicit MemoryAllocationError(): RuntimeError("Couldn't allocate memory!") {};
@@ -180,7 +173,7 @@ namespace ots {
          * @class SecurityException
          * @brief Any security realted issue
          */
-        class SecurityException: DomainError {
+        class SecurityException: public DomainError {
             REGISTER_EXCEPTION(SecurityException, -61, "SecurityException")
             public:
                 inline explicit SecurityException(const std::string& msg): DomainError(std::string("SECURITY EXCEPTION: ") + msg) {};
@@ -190,7 +183,7 @@ namespace ots {
          * @class SecurityError
          * @brief Any security realted error: like no random generator available
          */
-        class SecurityError: RuntimeError {
+        class SecurityError: public RuntimeError {
             REGISTER_EXCEPTION(SecurityError, -12, "SecurityError")
             public:
                 inline explicit SecurityError(const std::string& msg): RuntimeError(std::string("SECURITY ERROR: ") + msg) {};
@@ -200,7 +193,7 @@ namespace ots {
          * @class LowEntropy
          * @brief Low entropy detected
          */
-        class LowEntropy: SecurityError {
+        class LowEntropy: public SecurityError {
             REGISTER_EXCEPTION(LowEntropy, -121, "LowEntropy")
             public:
                 inline explicit LowEntropy(): SecurityError("Low entropy detected!") {};
@@ -210,7 +203,7 @@ namespace ots {
          * @class UnknownNetwork
          * @brief a network is not known
          */
-        class UnknownNetwork: DomainError {
+        class UnknownNetwork: public DomainError {
             REGISTER_EXCEPTION(UnknownNetwork, -62, "UnknownNetwork")
             public:
                 inline explicit UnknownNetwork(): DomainError("Unknown network") {};
@@ -227,7 +220,7 @@ namespace ots {
              * @class UnsafeConversion
              * @brief a conversion to std::string is not allowed
              */
-            class UnsafeConversion: SecurityException {
+            class UnsafeConversion: public SecurityException {
                 REGISTER_EXCEPTION(UnsafeConversion, -1001, "UnsafeConversion")
                 public:
                     inline explicit UnsafeConversion(): SecurityException("Unsafe conversion to std::string, use wipeableString.insecure() instead, if you really need to do this!") {};
@@ -243,7 +236,7 @@ namespace ots {
             /**
              * @brief a conversion to std::vector is not allowed
              */
-            class UnsafeConversion: SecurityException {
+            class UnsafeConversion: public SecurityException {
                 REGISTER_EXCEPTION(UnsafeConversion, -2001, "UnsafeConversion")
                 public:
                     inline explicit UnsafeConversion(): SecurityException("Unsafe conversion to std::vector, use wipeableVector.insecure() instead, if you really need to do this!") {};
@@ -260,7 +253,7 @@ namespace ots {
              * @class InvalidSignature
              * @brief a signature is invalid
              */
-            class InvalidSignature: DomainError {
+            class InvalidSignature: public DomainError {
                 REGISTER_EXCEPTION(InvalidSignature, -3001, "InvalidSignature")
                 public:
                     inline explicit InvalidSignature(): DomainError("Invalid signature") {};
@@ -271,7 +264,7 @@ namespace ots {
              * @class EmptyMessage
              * @brief a message is empty
              */
-            class EmptyMessage: DomainError {
+            class EmptyMessage: public DomainError {
                 REGISTER_EXCEPTION(EmptyMessage, -3002, "EmptyMessage")
                 public:
                     inline explicit EmptyMessage(): DomainError("Empty message") {};
@@ -281,7 +274,7 @@ namespace ots {
              * @class EmptySignature
              * @brief a signature is empty
              */
-            class EmptySignature: DomainError {
+            class EmptySignature: public DomainError {
                 REGISTER_EXCEPTION(EmptySignature, -3003, "EmptySignature")
                 public:
                     inline explicit EmptySignature(): DomainError("Empty signature") {};
@@ -298,7 +291,7 @@ namespace ots {
              * @class NoDefaultLanguageSet
              * @brief a default language is expected but not set
              */
-            class NoDefaultLanguageSet: DomainError {
+            class NoDefaultLanguageSet: public DomainError {
                 REGISTER_EXCEPTION(NoDefaultLanguageSet, -4001, "NoDefaultLanguageSet")
                 public:
                     inline explicit NoDefaultLanguageSet(): DomainError("No default language set for seed type") {};
@@ -308,7 +301,7 @@ namespace ots {
              * @class LanguageNotFound
              * @brief a language expected if not found
              */
-            class LanguageNotFound: OutOfRange {
+            class LanguageNotFound: public OutOfRange {
                 REGISTER_EXCEPTION(LanguageNotFound, -4002, "LanguageNotFound")
                 public:
                     inline explicit LanguageNotFound(): OutOfRange("Language not found") {};
@@ -319,7 +312,7 @@ namespace ots {
              * @class LanguageNotSupportedBySeedType
              * @brief a language is not supported by the seed type
              */
-            class LanguageNotSupportedBySeedType: DomainError {
+            class LanguageNotSupportedBySeedType: public DomainError {
                 REGISTER_EXCEPTION(LanguageNotSupportedBySeedType, -4003, "LanguageNotSupportedBySeedType")
                 public:
                     inline explicit LanguageNotSupportedBySeedType(): DomainError("Language not supported by seed type") {};
@@ -329,7 +322,7 @@ namespace ots {
              * @class WordCount
              * @brief a seed expected has a different word count. Polyseed are 16 words, Monero Seeds are 25 words, Legacy Seeds are 13 words
              */
-            class WordCount: OutOfRange {
+            class WordCount: public OutOfRange {
                 REGISTER_EXCEPTION(WordCount, -4004, "WordCount")
                 public:
                     inline explicit WordCount(): OutOfRange("Wrong number of words in seed phrase") {};
@@ -339,7 +332,7 @@ namespace ots {
              * @class SeedEncodingFailed
              * @brief a seed could not be encoded
              */
-            class SeedEncodingFailed: DomainError {
+            class SeedEncodingFailed: public DomainError {
                 REGISTER_EXCEPTION(SeedEncodingFailed, -4005, "SeedEncodingFailed")
                 public:
                     inline explicit SeedEncodingFailed(): DomainError("Unable to encode seed") {};
@@ -350,7 +343,7 @@ namespace ots {
              * @class SeedDecodingFailed
              * @brief a seed could not be encoded
              */
-            class SeedDecodingFailed: DomainError {
+            class SeedDecodingFailed: public DomainError {
                 REGISTER_EXCEPTION(SeedDecodingFailed, -4006, "SeedDecodingFailed")
                 public:
                     inline explicit SeedDecodingFailed(): DomainError("Unable to decode seed") {};
@@ -362,7 +355,7 @@ namespace ots {
              * @brief a seed expected has a different length, and is used instead of WordCount on merging Values/seed phrases together.
              *        The length of the seed phrases or values must be the same, you can't merge a 25 words Monero Seed with a 16 words Polyseed e.g.
              */
-            class LengthMismatch: DomainError {
+            class LengthMismatch: public DomainError {
                 REGISTER_EXCEPTION(LengthMismatch, -4007, "LengthMismatch")
                 public:
                     inline explicit LengthMismatch(): DomainError("Seed length mismatch") {};
@@ -372,7 +365,7 @@ namespace ots {
              * @class TooFewValues
              * @brief you need at least two values to merge.
              */
-            class TooFewValues: DomainError {
+            class TooFewValues: public DomainError {
                 REGISTER_EXCEPTION(TooFewValues, -4008, "TooFewValues")
                 public:
                     inline explicit TooFewValues(): DomainError("Too few values provided") {};
@@ -382,7 +375,7 @@ namespace ots {
              * @class PasswordNotSupported
              * @brief a password is not supported for the seed type
              */
-            class PasswordNotSupported: DomainError {
+            class PasswordNotSupported: public DomainError {
                 REGISTER_EXCEPTION(PasswordNotSupported, -4009, "PasswordNotSupported")
                 public:
                     inline explicit PasswordNotSupported(): DomainError("Password not supported for seed type") {};
@@ -409,7 +402,7 @@ namespace ots {
              * @class WordCount
              * @brief a polyseed expected has a different word count. Polyseed are 16 words
              */
-            class WordCount: ots::exception::seed::WordCount {
+            class WordCount: public ots::exception::seed::WordCount {
                 REGISTER_EXCEPTION(WordCount, -5001, "WordCount")
             };
 
@@ -417,7 +410,7 @@ namespace ots {
              * @class UnsupportedLanguage
              * @brief a language is not supported by polyseed
              */
-            class UnsupportedLanguage: ots::exception::seed::LanguageNotFound {
+            class UnsupportedLanguage: public ots::exception::seed::LanguageNotFound {
                 REGISTER_EXCEPTION(UnsupportedLanguage, -5002, "UnsupportedLanguage")
                 public:
                     inline explicit UnsupportedLanguage(): ots::exception::seed::LanguageNotFound("Unsupported Language") {};
@@ -427,7 +420,7 @@ namespace ots {
              * @class ChecksumMismatch
              * @brief a checksum mismatch detected
              */
-            class ChecksumMismatch: DomainError {
+            class ChecksumMismatch: public DomainError {
                 REGISTER_EXCEPTION(ChecksumMismatch, -5003, "ChecksumMismatch")
                 public:
                     inline explicit ChecksumMismatch(): DomainError("Checksum mismatch") {};
@@ -437,7 +430,7 @@ namespace ots {
              * @class UnsupportedFeatures
              * @brief a feature is not supported by polyseed
              */
-            class UnsupportedFeatures: DomainError {
+            class UnsupportedFeatures: public DomainError {
                 REGISTER_EXCEPTION(UnsupportedFeatures, -5004, "UnsupportedFeatures")
                 public:
                     inline explicit UnsupportedFeatures(): DomainError("One or more features are not supported") {};
@@ -447,7 +440,7 @@ namespace ots {
              * @class InvalidSeedFormat
              * @brief a seed phrase is not in the expected format
              */
-            class InvalidSeedFormat: DomainError {
+            class InvalidSeedFormat: public DomainError {
                 REGISTER_EXCEPTION(InvalidSeedFormat, -5005, "InvalidSeedFormat")
                 public:
                     inline explicit InvalidSeedFormat(): DomainError("Invalid format of provided seed phrase") {};
@@ -457,7 +450,7 @@ namespace ots {
              * @class MemoryAllocationError
              * @brief Could not allocate memory
              */
-            class MemoryAllocationError: ots::exception::MemoryAllocationError {
+            class MemoryAllocationError: public ots::exception::MemoryAllocationError {
                 REGISTER_EXCEPTION(MemoryAllocationError, -5006, "MemoryAllocationError")
             };
 
@@ -465,7 +458,7 @@ namespace ots {
              * @class AmbigousLanguage
              * @brief Seed phrase language is ambigous. Language must be explicit specified
              */
-            class AmbigousLanguage: DomainError {
+            class AmbigousLanguage: public DomainError {
                 REGISTER_EXCEPTION(AmbigousLanguage, -5007, "AmbigousLanguage")
                 public:
                     inline explicit AmbigousLanguage(): DomainError("Seed phrase language is ambigous. Language must be explicit specified") {};
@@ -475,7 +468,7 @@ namespace ots {
              * @class NoPasswordProvided
              * @brief Seed encrypted, but no password provided
              */
-            class NoPasswordProvided: DomainError {
+            class NoPasswordProvided: public DomainError {
                 REGISTER_EXCEPTION(NoPasswordProvided, -5008, "NoPasswordProvided")
                 public:
                     inline explicit NoPasswordProvided(): DomainError("Seed is encrypted, but no password provided") {};
@@ -488,7 +481,7 @@ namespace ots {
          * @note error codes start with -60xx
          */
         namespace legacyseed {
-            class InvalidSeedFormat: ots::exception::seed::SeedDecodingFailed {
+            class InvalidSeedFormat: public ots::exception::seed::SeedDecodingFailed {
                 REGISTER_EXCEPTION(InvalidSeedFormat, -6001, "InvalidSeedFormat")
                 public:
                     inline explicit InvalidSeedFormat(): ots::exception::seed::SeedDecodingFailed("Invalid format of provided seed phrase") {};
@@ -506,7 +499,7 @@ namespace ots {
              * @class SeedNotFound
              * @brief a seed expected if not found
              */
-            class SeedNotFound: OutOfRange {
+            class SeedNotFound: public OutOfRange {
                 REGISTER_EXCEPTION(SeedNotFound, -7001, "SeedNotFound")
                 public:
                     inline SeedNotFound(): OutOfRange("Seed not found") {};
@@ -523,7 +516,7 @@ namespace ots {
              * @class LockedAccessAttempt
              * @brief a process tried to access locked key data
              */
-            class LockedAccessAttempt: SecurityException {
+            class LockedAccessAttempt: public SecurityException {
                 REGISTER_EXCEPTION(LockedAccessAttempt, -8001, "LockedAccessAttempt")
                 public:
                     inline explicit LockedAccessAttempt(): SecurityException("Attempted to access locked key data") {};
@@ -534,7 +527,7 @@ namespace ots {
              * @class LockedWriteAttempt
              * @brief a process tried to write to locked key data
              */
-            class LockedWriteAttempt: LockedAccessAttempt {
+            class LockedWriteAttempt: public LockedAccessAttempt {
                 REGISTER_EXCEPTION(LockedWriteAttempt, -8002, "LockedWriteAttempt")
                 public:
                     inline LockedWriteAttempt(): LockedAccessAttempt("Attempted to write to locked key data") {};
@@ -550,7 +543,7 @@ namespace ots {
                  * @class ActivePolyseedDataSession
                  * @brief a process tried to start a new session during an active session ongoing
                  */
-                class ActivePolyseedDataSession: DomainError {
+                class ActivePolyseedDataSession: public DomainError {
                     REGISTER_EXCEPTION(ActivePolyseedDataSession, -8101, "ActivePolyseedDataSession")
                     public:
                         inline explicit ActivePolyseedDataSession(): DomainError("There is already an active polyseed data session running. Only one session at a time allowed") {};
@@ -560,7 +553,7 @@ namespace ots {
                  * @class NoActivePolyseedDataSession
                  * @brief no active session ongoing which could be commited or discarded
                  */
-                class NoActivePolyseedDataSession: DomainError {
+                class NoActivePolyseedDataSession: public DomainError {
                     REGISTER_EXCEPTION(NoActivePolyseedDataSession, -8102, "NoActivePolyseedDataSession")
                     public:
                         inline explicit NoActivePolyseedDataSession(): DomainError("There is no active polyseed data session running. Can't work on no existing session") {};
@@ -570,7 +563,7 @@ namespace ots {
                  * @class PolyseedDataReadOnlySession
                  * @brief write attempt while read only session
                  */
-                class PolyseedDataReadOnlySession: DomainError {
+                class PolyseedDataReadOnlySession: public DomainError {
                     REGISTER_EXCEPTION(PolyseedDataReadOnlySession, -8103, "PolyseedDataReadOnlySession")
                     public:
                         inline explicit PolyseedDataReadOnlySession(): DomainError("Attempt to write in read only session") {};
@@ -589,7 +582,7 @@ namespace ots {
              * @class AddressNotFound
              * @brief wallet does not contain the provided address
              */
-            class AddressNotFound: OutOfRange {
+            class AddressNotFound: public OutOfRange {
                 REGISTER_EXCEPTION(AddressNotFound, -9001, "AddressNotFound")
                 public:
                     inline AddressNotFound(): OutOfRange("Address not found in wallet") {};
@@ -599,7 +592,7 @@ namespace ots {
              * @class ImportOutputs
              * @brief Import outputs failed
              */
-            class ImportOutputs: InvalidArgument {
+            class ImportOutputs: public InvalidArgument {
                 REGISTER_EXCEPTION(ImportOutputs, -9002, "ImportOutputs")
                 public:
                     inline explicit ImportOutputs(): InvalidArgument("Import outputs failed") {};
@@ -610,7 +603,7 @@ namespace ots {
              * @class ExportKeyImages
              * @brief export key images failed
              */
-            class ExportKeyImages: DomainError {
+            class ExportKeyImages: public DomainError {
                 REGISTER_EXCEPTION(ExportKeyImages, -9003, "ExportKeyImages")
                 public:
                     inline explicit ExportKeyImages(): DomainError("Import outputs failed") {};
@@ -621,7 +614,7 @@ namespace ots {
              * @class InvalidCiphertext
              * @brief the provided ciphertext is not valid
              */
-            class InvalidCiphertext: DomainError {
+            class InvalidCiphertext: public DomainError {
                 REGISTER_EXCEPTION(InvalidCiphertext, -9004, "InvalidCiphertext")
                 public:
                     inline explicit InvalidCiphertext(): DomainError("Invalid ciphertext") {};
@@ -632,7 +625,7 @@ namespace ots {
              * @class CiphertextAuthenticationFailed
              * @brief the provided ciphertext is not valid
              */
-            class CiphertextAuthenticationFailed: DomainError {
+            class CiphertextAuthenticationFailed: public DomainError {
                 REGISTER_EXCEPTION(CiphertextAuthenticationFailed, -9005, "CiphertextAuthenticationFailed")
                 public:
                     inline explicit CiphertextAuthenticationFailed(): DomainError("Ciphertext authentication failed") {};
@@ -643,7 +636,7 @@ namespace ots {
              * @class InternalError
              * @brief an internal error occurred (monero specific)
              */
-            class InternalError: DomainError {
+            class InternalError: public DomainError {
                 REGISTER_EXCEPTION(InternalError, -9006, "InternalError")
                 public:
                     inline explicit InternalError(): DomainError("Internal error") {};
@@ -661,7 +654,7 @@ namespace ots {
              * @class GenerationFailed
              * @brief account generation failed
              */
-            class GenerationFailed: DomainError {
+            class GenerationFailed: public DomainError {
                 REGISTER_EXCEPTION(GenerationFailed, -10001, "GenerationFailed")
                 public:
                     inline explicit GenerationFailed(): DomainError("Account generation failed") {};
@@ -679,7 +672,7 @@ namespace ots {
              * @class Invalid
              * @brief the provided unsigned transaction is not valid
              */
-            class Invalid: InvalidArgument {
+            class Invalid: public InvalidArgument {
                 REGISTER_EXCEPTION(Invalid, -11001, "Invalid")
                 public:
                     inline explicit Invalid(): InvalidArgument("Transaction is invalid") {};
@@ -698,7 +691,7 @@ namespace ots {
              * @class Invalid
              * @brief The provided string is not a valid Monero address
              */
-            class Invalid: InvalidArgument {
+            class Invalid: public InvalidArgument {
                 REGISTER_EXCEPTION(Invalid, -12001, "Invalid")
                 public:
                     inline Invalid(): InvalidArgument("Not a valid Monero address") {};
@@ -708,7 +701,7 @@ namespace ots {
              * @class NotIntegrated
              * @brief The provided string is not an integrated address
              */
-            class NotIntegrated: InvalidArgument {
+            class NotIntegrated: public InvalidArgument {
                 REGISTER_EXCEPTION(NotIntegrated, -12002, "NotIntegrated")
                 public:
                     inline NotIntegrated(): InvalidArgument("Not an integrated address") {};
