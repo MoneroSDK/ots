@@ -12,6 +12,7 @@ extern "C" {
     const char* get_address_test_case_address(size_t index);
     const char* get_address_test_case_fingerprint(size_t index);
     const char* get_address_test_case_payment_id(size_t index);
+    const char* get_address_test_case_base_address(size_t index);
     int get_address_test_case_network(size_t index);
     int get_address_test_case_type(size_t index);
     bool get_address_test_case_valid(size_t index);

@@ -205,7 +205,7 @@ extern "C" {
     }
 
     void ots_free_string(char** str) {
-        if(!*str)
+        if(!str || !*str)
             return;
         memset(*str, 0, strlen(*str)); // Securely wipe memory always, cost is low, see no reason not to do it
         delete[] *str;

@@ -276,7 +276,7 @@ extern "C" {
         try {
             set_string(
                 result,
-                ots::Address::integratedAddress(address)
+                ots::Address::integratedAddress(address, ots::Address::network(address))
             );
         } catch(const ots::exception::Exception& e) {
             set_error(result, e);

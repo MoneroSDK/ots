@@ -1,6 +1,7 @@
 #include "data.h"
 #include "data-address.hpp"
 #include "data-seed-language.hpp"
+#include <cstring>
 
 /**
  * @file data.cpp
@@ -42,6 +43,12 @@ extern "C" {
         if(index >= address_test_cases.size())
             return nullptr;
         return address_test_cases[index].payment_id.c_str();
+    }
+
+    const char* get_address_test_case_base_address(size_t index) {
+        if(index >= address_test_cases.size())
+            return nullptr;
+        return address_test_cases[index].base_address.c_str();
     }
 
     int get_address_test_case_network(size_t index) {
