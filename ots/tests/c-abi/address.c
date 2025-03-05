@@ -243,12 +243,9 @@ START_TEST(test_address_string)
     ots_free_result(&result);
     ck_assert_ptr_null(result);
     // check address string base address from integrated address
-    printf("address: %s\n", get_address_test_case_address(4));
-    printf("base address: %s\n", get_address_test_case_base_address(4));
     result = ots_address_string_integrated(get_address_test_case_address(4));
     ck_assert(ots_is_result(result));
     ck_assert(ots_result_is_type(result, OTS_RESULT_STRING));
-    printf("result: %s\n", ots_result_string(result));
     ck_assert_str_eq(ots_result_string(result), get_address_test_case_base_address(4));
     ots_free_result(&result);
     ck_assert_ptr_null(result);
