@@ -1,6 +1,10 @@
 #include <vector>
 #include "ots.hpp"
-#include "data-wallet-092F1B.hpp" // generated from 092F1B.outputs
+
+/**
+ * @file data-wallet-outputs.hpp is auto generated from *.outputs files
+ */
+#include "data-wallet-outputs.hpp"
 
 struct WalletTestCase {
     const std::string name;
@@ -10,5 +14,5 @@ struct WalletTestCase {
 };
 
 const std::vector<WalletTestCase> wallet_test_cases = {
-    {"valid wallet with outputs", ots::SeedType::Monero, 5, WALLET_092F1B_OUTPUTS}
+    {"valid wallet with outputs", ots::SeedType::Monero, 5, std::string(WALLET_092F1B_OUTPUTS)}
 };

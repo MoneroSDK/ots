@@ -13,12 +13,12 @@ file(MAKE_DIRECTORY ${GENERATED_HEADERS_DIR})
 
 foreach(OUTPUTS_FILE ${OUTPUTS_FILES})
     get_filename_component(HASH_ID ${OUTPUTS_FILE} NAME_WE)
-    set(HEADER_FILE "${GENERATED_HEADERS_DIR}/data-wallet-${HASH_ID}.hpp")
+    set(HEADER_FILE "${GENERATED_HEADERS_DIR}/data-wallet-outputs.hpp")
     add_custom_command(
         OUTPUT ${HEADER_FILE}
 		COMMAND ${CMAKE_BINARY_DIR}/binheadermacro/bin2hppmacro ${HEADER_FILE} ${OUTPUTS_FILE}:WALLET_${HASH_ID}_OUTPUTS
 		DEPENDS binheadermacro/bin2hppmacro
-        COMMENT "Generating header for ${HASH_ID}.outputs"
+		COMMENT "Generating header macro WALLET_${HASH_ID}_OUTPUTS for ${HASH_ID}.outputs in ${HEADER_FILE}"
         VERBATIM
     )
     list(APPEND GENERATED_HEADERS ${HEADER_FILE})
