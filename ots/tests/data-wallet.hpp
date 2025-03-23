@@ -3,6 +3,11 @@
 
 /**
  * @file data-wallet-outputs.hpp is auto generated from *.outputs files
+ * @brief Contains the outputs for the wallet test cases
+ *
+ * WALLET_E00000_OUTPUTS contains random carbage
+ * WALLET_E00001_OUTPUTS contains a defective outputs of 092F1B
+ * WALLET_092F1B_OUTPUTS is the valid outputs for the wallet 092F1B
  */
 #include "data-wallet-outputs.hpp"
 
