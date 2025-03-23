@@ -6,23 +6,25 @@ set(GTEST_INCLUDE_DIRS ${GTEST_ROOT}/include)
 # Add GTest as a subdirectory
 add_subdirectory(${GTEST_ROOT} gtest)
 
-# Auto-generate header files from .outputs files
+# Auto-generate header file from .outputs files
 file(GLOB OUTPUTS_FILES "${CMAKE_CURRENT_SOURCE_DIR}/*.outputs")
 set(GENERATED_HEADERS_DIR "${CMAKE_BINARY_DIR}/generated_headers")
 file(MAKE_DIRECTORY ${GENERATED_HEADERS_DIR})
-
+set(HEADER_FILE "${GENERATED_HEADERS_DIR}/data-wallet-outputs.hpp")
+set(INPUT_MACROS "")
 foreach(OUTPUTS_FILE ${OUTPUTS_FILES})
     get_filename_component(HASH_ID ${OUTPUTS_FILE} NAME_WE)
-    set(HEADER_FILE "${GENERATED_HEADERS_DIR}/data-wallet-outputs.hpp")
-    add_custom_command(
-        OUTPUT ${HEADER_FILE}
-		COMMAND ${CMAKE_BINARY_DIR}/binheadermacro/bin2hppmacro ${HEADER_FILE} ${OUTPUTS_FILE}:WALLET_${HASH_ID}_OUTPUTS
-		DEPENDS binheadermacro/bin2hppmacro
-		COMMENT "Generating header macro WALLET_${HASH_ID}_OUTPUTS for ${HASH_ID}.outputs in ${HEADER_FILE}"
-        VERBATIM
-    )
-    list(APPEND GENERATED_HEADERS ${HEADER_FILE})
+    set(MACRO_NAME "WALLET_${HASH_ID}_OUTPUTS")
+    list(APPEND INPUT_MACROS "${OUTPUTS_FILE}:${MACRO_NAME}")
 endforeach()
+add_custom_command(
+    OUTPUT ${HEADER_FILE}
+    COMMAND ${CMAKE_BINARY_DIR}/binheadermacro/bin2hppmacro ${HEADER_FILE} ${INPUT_MACROS}
+    DEPENDS ${OUTPUTS_FILES} binheadermacro/bin2hppmacro
+    COMMENT "Generating header macros for ${HEADER_FILE}"
+    VERBATIM
+)
+list(APPEND GENERATED_HEADERS ${HEADER_FILE})
 
 add_custom_target(generate_wallet_headers ALL DEPENDS ${GENERATED_HEADERS})
 
