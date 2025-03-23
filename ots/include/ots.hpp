@@ -33,6 +33,7 @@
 #endif
 
 #define OUTPUT_EXPORT_FILE_MAGIC "Monero output export\004"
+#define KEY_IMAGE_EXPORT_FILE_MAGIC "Monero key image export\003"
 
 /**
  * @namespace ots
