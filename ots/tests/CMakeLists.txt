@@ -6,9 +6,35 @@ set(GTEST_INCLUDE_DIRS ${GTEST_ROOT}/include)
 # Add GTest as a subdirectory
 add_subdirectory(${GTEST_ROOT} gtest)
 
+# Auto-generate header files from .outputs files
+file(GLOB OUTPUTS_FILES "${CMAKE_CURRENT_SOURCE_DIR}/*.outputs")
+set(GENERATED_HEADERS_DIR "${CMAKE_BINARY_DIR}/generated_headers")
+file(MAKE_DIRECTORY ${GENERATED_HEADERS_DIR})
+
+foreach(OUTPUTS_FILE ${OUTPUTS_FILES})
+    get_filename_component(HASH_ID ${OUTPUTS_FILE} NAME_WE)
+    set(HEADER_FILE "${GENERATED_HEADERS_DIR}/data-wallet-${HASH_ID}.hpp")
+    add_custom_command(
+        OUTPUT ${HEADER_FILE}
+		COMMAND ${CMAKE_BINARY_DIR}/binheadermacro/bin2hppmacro ${HEADER_FILE} ${OUTPUTS_FILE}:WALLET_${HASH_ID}_OUTPUTS
+		DEPENDS binheadermacro/bin2hppmacro
+        COMMENT "Generating header for ${HASH_ID}.outputs"
+        VERBATIM
+    )
+    list(APPEND GENERATED_HEADERS ${HEADER_FILE})
+endforeach()
+
+add_custom_target(generate_wallet_headers ALL DEPENDS ${GENERATED_HEADERS})
+
+include_directories(${GENERATED_HEADERS_DIR})
+
 # C++ test executable, to check the OTS C++ library
 add_executable(gtest_ots.cpp
 	gtest_ots.cpp
+)
+
+add_dependencies(gtest_ots.cpp
+	generate_wallet_headers
 )
 
 target_link_libraries(gtest_ots.cpp
@@ -22,6 +48,7 @@ target_link_libraries(gtest_ots.cpp
 # Include Monero's GTest directories
 target_include_directories(gtest_ots.cpp PRIVATE 
 	${GTEST_ROOT}/include
+	${GENERATED_HEADERS_DIR}
 )
 
 # C++/C sync test executable, to check if the C++ and C libraries are in sync
@@ -99,10 +126,13 @@ add_executable(check_ots_c
 	${MODULE_TEST_SOURCES}
 )
 
+add_dependencies(check_ots_c generate_wallet_headers)
+
 target_include_directories(check_ots_c
 	PRIVATE
 	${CMAKE_BINARY_DIR}
 	${CHECK_INCLUDE_DIRS}
+	${GENERATED_HEADERS_DIR}
 )
 
 target_link_libraries(check_ots_c

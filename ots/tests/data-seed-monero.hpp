@@ -56,5 +56,16 @@ const std::vector<MoneroSeedTestCase> monero_seed_test_cases = {
         false,
         "c2b2b4cf4827b2693292ed5b710ac3d1500d59ba9fe697419717bb735902bb06", "893d94e3c28e35c0cc03ae33201da7a720374ee7f9af791d8541e0146eba198c",
         "1a33c2e55bb34b293eee308caf7b22e56713ee893df1904c0fbdf6f0c6a44a08", "f747686952bd69cf716e751f833d56bd4ac8660738ca9baea3712ead0363abc6"
+    },
+    {
+        "wallet test (mainnet)",
+        "large nuisance tiger drying runway january cavernous powder adopt boil vehicle tidy talent fetches future trendy usual basin hiker smuggled when pheasants cinema diplomat hiker",
+        3164653, 0, 3164653, 0,
+        ots::Network::MAIN,
+        "", false,
+        "42q2w6k8pcWiYViMdnqPRTQeyigWkJmBr1LsHh5KPYKrFWFZniZKgTTbx8ePnK4yHpFSbijdAHqkM9iGoVsFhtqTHsxHyBq", "092F1B",
+        true,
+        "c16b184475f827b26b76995675f459ec9d2d5207d479eb2c1834732d8286af0c", "1fd06af906b88ff85e961441d5f5f28d6c39e130eabe5d020c420fcf593eb156",
+        "ad1614fd12c53ec774ed8350832aefc003d8a5785efe41326149cd2207c2ec00", "b7398b7040772ad0f4a72dd52cbd675656d74cbc099c2234154dae66b29a8695"
     }
 };
