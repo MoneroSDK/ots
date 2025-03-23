@@ -33,6 +33,7 @@ option(BUILD_BLOCKTIME "Build blocktime analysis tools" OFF)
 option(BUILD_BLOCKTIME_TESTS "Include blocktime in test suite" OFF)
 option(BUILD_GEN_OTS_ERROR_HEADER "Build c_error_codes_generator tool" OFF)
 option(BUILD_TESTS "Build test suite" OFF)
+option(BUILD_BIN_HEADER_MACRO "Build tools to move binary files into header macros" OFF)
 option(BUILD_DOCS "Build documentation" OFF)
 option(BUILD_V1SIGN "Build v1sign tool" OFF)
 option(RUN_TESTS "Run tests after build" OFF)
@@ -571,6 +572,11 @@ install(FILES
 	${CMAKE_CURRENT_BINARY_DIR}/monero-ots-config-version.cmake
 	DESTINATION lib/cmake/monero-ots
 )
+
+# tools to move binary files into header macros
+if (BUILD_TESTS OR BUILD_BIN_HEADER_MACRO)
+  add_subdirectory(binheadermacro)
+endif()
 
 # Tests configuration
 if(BUILD_TESTS)
