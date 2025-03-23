@@ -49,29 +49,53 @@ namespace ots {
              * @brief Construct a new Monero Account object
              * @param key is the secret spend key
              * @param network is the network type
+             * @param kdfRounds is the number of rounds for the key derivation
+             *        function used for encryption and decryption
              */
-            explicit Account(const std::array<unsigned char, 32>& key, const Network network);
+            explicit Account(
+                const std::array<unsigned char, 32>& key,
+                const Network network,
+                const uint64_t kdfRounds = 1
+            );
 
             /**
              * @brief Construct a new Monero Account object
              * @param key is the secret spend key, crypto::secret_key is a monero secure container for the key
              * @param network is the network type
+             * @param kdfRounds is the number of rounds for the key derivation
+             *        function used for encryption and decryption
              */
-            explicit Account(const crypto::secret_key& key, const Network network);
+            explicit Account(
+                const crypto::secret_key& key,
+                const Network network,
+                const uint64_t kdfRounds = 1
+            );
 
             /**
              * @brief Construct a new Monero Account object
              * @param key is the secret spend key, KeyStore is the secure container for the secret spend key
              * @param network is the network type
+             * @param kdfRounds is the number of rounds for the key derivation
+             *        function used for encryption and decryption
              */
-            explicit Account(const KeyStore& key, const Network network);
+            explicit Account(
+                const KeyStore& key,
+                const Network network,
+                const uint64_t kdfRounds = 1
+            );
 
             /**
              * @brief Construct a new Monero Account object
              * @param account is the account object, account_base is the monero secure container for the account
              * @param network is the network type
+             * @param kdfRounds is the number of rounds for the key derivation
+             *        function used for encryption and decryption
              */
-            explicit Account(const cryptonote::account_base& account, const Network network);
+            explicit Account(
+                const cryptonote::account_base& account,
+                const Network network,
+                const uint64_t kdfRounds = 1
+            );
 
             /**
              * @brief Construct a new Monero Account object
@@ -179,6 +203,49 @@ namespace ots {
             size_t importOutputs(const std::tuple<uint64_t, uint64_t, std::vector<transfer_details>> &outputs);
 
             /**
+             * @brief export key images after outputs are imported
+             * @return the key images in the monero-wallet format
+             *
+             * @todo TODO: change to std::string exportKeyImages(bool all) const;
+             *             there is `std::pair<uint64_t, std::vector<std::pair<crypto::key_image, crypto::signature>>> exportKeyImages(bool all) const` which would collide...
+             * @todo TODO: return WipeableString instead of std::string?
+             */
+            std::string exportKeyImages() const;
+
+            /**
+             * @brief export key images after outputs are imported
+             * @return key images for the provided outputs
+             *
+             * @todo TODO: clean up, document properly
+             * @todo TODO: move to private?
+             */
+            std::pair<uint64_t, std::vector<std::pair<crypto::key_image, crypto::signature>>> exportKeyImages(bool all) const;
+
+            /**
+             * @brief decrypt a ciphertext with the secret key
+             * @param ciphertext the ciphertext to decrypt
+             * @param skey the secret key to decrypt with
+             * @param authenticated if the ciphertext is authenticated
+             * @return the decrypted plaintext
+             *
+             * @todo TODO: clean up, document properly
+             * @todo TODO: move to private?
+             */
+            std::string decrypt(const std::string &ciphertext, const crypto::secret_key &skey, bool authenticated) const;
+
+            /**
+             * @brief encrypt a message with a secret key
+             * @param plaintext the message to encrypt
+             * @param len the length of the message
+             * @param skey the secret key to encrypt with
+             * @param authenticated if true, will use authenticated encryption
+             * @return the encrypted message
+             *
+             * @todo TODO: clean up, document properly
+             */
+            std::string encrypt(const char *plaintext, size_t len, const crypto::secret_key &skey, bool authenticated) const;
+
+            /**
              * @brief sign a message with the wallet
              * @param data the message to sign
              * @return the signature of the message
@@ -270,6 +337,19 @@ namespace ots {
 
         private:
             /**
+             * @brief the kdf rounds, default in wallet2 is 1
+             * @todo: TODO: see how we enable to change it, what we need to change
+             *              in wallet.cpp, ots.hpp and elsewhere...
+             */
+            uint64_t mKdfRounds = 1;
+
+            /**
+            * @todo TODO: temporary helper function to make code more readable, decide later what to do with it
+            * @internal
+            */
+            static void setupTd(const exported_transfer_details &etd, transfer_details &td);
+
+            /**
              * @brief hash the data with the spend and view keys
              * @param data the data to hash
              * @param spendKey the public spend key
@@ -285,8 +365,19 @@ namespace ots {
              * @return the decrypted plaintext
              * @note temporary function, will be refactored
              * @todo TODO: refactor!
+             * @note: origin is from wallet2: decrypt_with_view_secret_key
              */
-            std::string decrypt_with_view_secret_key(const std::string& ciphertext, bool authenticated = true) const;
+            std::string decryptWithViewSecretKey(const std::string& ciphertext, bool authenticated = true) const;
+
+            /**
+             * @brief encrypt a message with the view secret key
+             * @param plaintext the message to encrypt
+             * @return the encrypted message
+             * @note temporary function, will be refactored
+             * @todo TODO: refactor!
+             * @note: origin is from wallet2: encrypt_with_view_secret_key
+             */
+            std::string encryptWithViewSecretKey(const std::string &plaintext) const;
 
             /**
              * @brief authenticate a message with the public view key
@@ -295,7 +386,7 @@ namespace ots {
              * @note temporary function, will be refactored
              * @todo TODO: refactor!
              */
-            void authenticate_with_public_view_view_key(const std::string& data, const crypto::signature& signature) const;
+            void authenticateWithViewPublicKey(const std::string& data, const crypto::signature& signature) const;
 
             /**
              * @note temporary function, will be refactored
@@ -305,6 +396,7 @@ namespace ots {
 
     void check_acc_out_precomp(const cryptonote::tx_out &o, const crypto::key_derivation &derivation, const std::vector<crypto::key_derivation> &additional_derivations, size_t i, tx_scan_info_t &tx_scan_info) const;
     void check_acc_out_precomp(const cryptonote::tx_out &o, const crypto::key_derivation &derivation, const std::vector<crypto::key_derivation> &additional_derivations, size_t i, const is_out_data *is_out_data, tx_scan_info_t &tx_scan_info) const;
+
             /** @brief m_account the monero account from cryptonote */
             cryptonote::account_base m_account;
 

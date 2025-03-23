@@ -92,11 +92,12 @@ namespace ots {
     };
 
     uint64_t Wallet::importOutputs(const std::string& outputs) {
-        NOT_IMPLEMENTED_YET();
+        return m_account->importOutputs(outputs);
     }
 
     WipeableString Wallet::exportKeyImages() const {
-        NOT_IMPLEMENTED_YET();
+        // TODO: check if not Account::exportKeyImages() should better directly return a wipeable string
+        return WipeableString(m_account->exportKeyImages());
     }
 
 

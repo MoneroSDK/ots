@@ -10,27 +10,46 @@
 
 namespace ots {
 
-    Account::Account(const std::array<unsigned char, 32>& key, const Network network): m_network(network) {
+    Account::Account(
+        const std::array<unsigned char, 32>& key,
+        const Network network,
+        const uint64_t kdfRounds
+    ): m_network(network), mKdfRounds(kdfRounds) {
         m_account = cryptonote::account_base();
         crypto::secret_key sk;
         std::copy_n(key.data(), key.size(), sk.data);
         crypto::secret_key secretSpendKey = m_account.generate(sk, true, false);
     }
 
-    Account::Account(const crypto::secret_key& key, const Network network): m_network(network) {
+    Account::Account(
+        const crypto::secret_key& key,
+        const Network network,
+        const uint64_t kdfRounds
+    ): m_network(network), mKdfRounds(kdfRounds) {
         m_account = cryptonote::account_base();
         crypto::secret_key secretSpendKey = m_account.generate(key, true, false);
     }
 
-    Account::Account(const KeyStore& key, const Network network): m_network(network) {
+    Account::Account(
+        const KeyStore& key,
+        const Network network,
+        const uint64_t kdfRounds
+    ): m_network(network), mKdfRounds(kdfRounds) {
         m_account = cryptonote::account_base();
         key.unlockInsecureOnce();
         crypto::secret_key secretSpendKey = m_account.generate(static_cast<const crypto::secret_key&>(key), true, false);
     }
 
-    Account::Account(const cryptonote::account_base& account, const Network network): m_account(account), m_network(network) {}
+    Account::Account(
+        const cryptonote::account_base& account,
+        const Network network,
+        const uint64_t kdfRounds
+    ): m_account(account), m_network(network), mKdfRounds(kdfRounds) {}
 
-    Account::Account(const Account& account): m_account(account.m_account), m_network(account.m_network) {}
+    Account::Account(const Account& account):
+        m_account(account.m_account),
+        m_network(account.m_network),
+        mKdfRounds(account.mKdfRounds) {}
 
     Address Account::address() const noexcept {
         return Address(m_account.get_public_address_str(cryptonoteNetwork(m_network)));
@@ -158,6 +177,23 @@ namespace ots {
         return WipeableString(epee::string_tools::pod_to_hex(m_account.get_keys().m_account_address.m_view_public_key));
     }
 
+    void Account::setupTd(const exported_transfer_details& etd, transfer_details& td) {
+        td.m_block_height = 0;
+        td.m_txid = crypto::null_hash;
+        td.m_global_output_index = etd.m_global_output_index;
+        td.m_spent = etd.m_flags.m_spent;
+        td.m_frozen = etd.m_flags.m_frozen;
+        td.m_spent_height = 0;
+        td.m_mask = rct::identity();
+        td.m_amount = etd.m_amount;
+        td.m_rct = etd.m_flags.m_rct;
+        td.m_key_image_known = etd.m_flags.m_key_image_known;
+        td.m_key_image_request = etd.m_flags.m_key_image_request;
+        td.m_key_image_partial = false;
+        td.m_subaddr_index.major = etd.m_subaddr_index_major;
+        td.m_subaddr_index.minor = etd.m_subaddr_index_minor;
+    }
+
     size_t Account::importOutputs(const std::tuple<uint64_t, uint64_t, std::vector<exported_transfer_details>> &outputs) {
         // we can now import piecemeal
         const size_t offset = std::get<0>(outputs);
@@ -176,32 +212,15 @@ namespace ots {
             exported_transfer_details etd = output_array[i];
             transfer_details &td = m_transfers[i + offset];
             // setup td with "cheap" loaded data
-            td.m_block_height = 0;
-            td.m_txid = crypto::null_hash;
-            td.m_global_output_index = etd.m_global_output_index;
-            td.m_spent = etd.m_flags.m_spent;
-            td.m_frozen = etd.m_flags.m_frozen;
-            td.m_spent_height = 0;
-            td.m_mask = rct::identity();
-            td.m_amount = etd.m_amount;
-            td.m_rct = etd.m_flags.m_rct;
-            td.m_key_image_known = etd.m_flags.m_key_image_known;
-            td.m_key_image_request = etd.m_flags.m_key_image_request;
-            td.m_key_image_partial = false;
-            td.m_subaddr_index.major = etd.m_subaddr_index_major;
-            td.m_subaddr_index.minor = etd.m_subaddr_index_minor;
+            setupTd(etd, td);
             // skip those we've already imported, or which have different data
-            if(i + offset < original_size) {
-                bool needs_processing = false;
-                if(!td.m_key_image_known)
-                    needs_processing = true;
-                else if(!(etd.m_internal_output_index == td.m_internal_output_index))
-                    needs_processing = true;
-                else if(!(etd.m_pubkey == td.get_public_key()))
-                    needs_processing = true;
-                if(!needs_processing)
-                    continue;
-            }
+            if(
+                i + offset < original_size &&
+                td.m_key_image_known &&
+                etd.m_internal_output_index == td.m_internal_output_index &&
+                etd.m_pubkey == td.get_public_key()
+            )
+                continue;
             // construct a synthetix tx prefix that has the info we'll need: the output with its pubkey, the tx pubkey in extra
             td.m_tx = {};
             if(etd.m_internal_output_index >= 65536)
@@ -224,7 +243,15 @@ namespace ots {
             const std::vector<crypto::public_key> &additional_tx_pub_keys = etd.m_additional_tx_keys;
             const crypto::public_key& out_key = etd.m_pubkey;
             cacheAddress(td.m_subaddr_index);
-            bool r = cryptonote::generate_key_image_helper(m_account.get_keys(), m_subaddresses, out_key, tx_pub_key, additional_tx_pub_keys, td.m_internal_output_index, in_ephemeral, td.m_key_image, m_account.get_device());
+            bool r = cryptonote::generate_key_image_helper(
+                    m_account.get_keys(),
+                    m_subaddresses, out_key,
+                    tx_pub_key, additional_tx_pub_keys,
+                    td.m_internal_output_index,
+                    in_ephemeral,
+                    td.m_key_image,
+                    m_account.get_device()
+            );
             if(!r)
                 throw ots::exception::wallet::InternalError("Failed to generate key image");
             td.m_key_image_known = true;
@@ -244,7 +271,7 @@ namespace ots {
         if(data.size() < magiclen || memcmp(data.data(), OUTPUT_EXPORT_FILE_MAGIC, magiclen))
             throw ots::exception::wallet::ImportOutputs("Bad magic in data");
         try {
-            data = decrypt_with_view_secret_key(std::string(data, magiclen));
+            data = decryptWithViewSecretKey(std::string(data, magiclen));
         } catch (const std::exception &e) {
             throw ots::exception::wallet::ImportOutputs(e.what());
         }
@@ -276,7 +303,7 @@ namespace ots {
                             loaded = true;
                 }
                 catch (...) {}
-                // THOR removed fallback to boost serialization (dependencies for nothing)
+                // Thor removed fallback to boost serialization (dependencies for nothing)
             if(!loaded) {
                 std::get<0>(outputs) = 0;
                 std::get<1>(outputs) = 0;
@@ -347,13 +374,105 @@ process:
         return m_transfers.size();
     }
 
+    std::string Account::exportKeyImages() const {
+        std::pair<uint64_t, std::vector<std::pair<crypto::key_image, crypto::signature>>> ski = exportKeyImages(true); // TODO: see if we want to trigger that automatically to false after transfers, or if we want to keep it true. I prefer personally always true, but the tradeoff is that e.g. the UR codes are bigger, so it takes longer to scan them. But how there is no state exchange other then outputs and keyimages, how to know if the user suddenly tries another view only wallet, and then the key images are not there? This is my reasoning for always true.
+        const cryptonote::account_public_address &keys = m_account.get_keys().m_account_address;
+        const uint32_t offset = ski.first;
+        std::string data;
+        data.reserve(4 + ski.second.size() * (sizeof(crypto::key_image) + sizeof(crypto::signature)) + 2 * sizeof(crypto::public_key));
+        data.resize(4);
+        data[0] = offset & 0xff;
+        data[1] = (offset >> 8) & 0xff;
+        data[2] = (offset >> 16) & 0xff;
+        data[3] = (offset >> 24) & 0xff;
+        data += std::string((const char *)&keys.m_spend_public_key, sizeof(crypto::public_key));
+        data += std::string((const char *)&keys.m_view_public_key, sizeof(crypto::public_key));
+        for (const auto &i: ski.second) {
+            data += std::string((const char *)&i.first, sizeof(crypto::key_image));
+            data += std::string((const char *)&i.second, sizeof(crypto::signature));
+        }
+        return std::string(KEY_IMAGE_EXPORT_FILE_MAGIC) + encryptWithViewSecretKey(data);
+    }
+
+    std::pair<uint64_t, std::vector<std::pair<crypto::key_image, crypto::signature>>> Account::exportKeyImages(bool all) const {
+        std::vector<std::pair<crypto::key_image, crypto::signature>> ski;
+        size_t offset = 0;
+        if(!all) // TODO: in case all usecases are all == true, we can remove this if statement
+            while (offset < m_transfers.size() && !m_transfers[offset].m_key_image_request)
+                ++offset;
+        ski.reserve(m_transfers.size() - offset);
+        for (size_t n = offset; n < m_transfers.size(); ++n) {
+            const transfer_details &td = m_transfers[n];
+            // get ephemeral public key
+            const crypto::public_key pkey = td.get_public_key();
+            // get tx pub key
+            std::vector<cryptonote::tx_extra_field> tx_extra_fields;
+            parse_tx_extra(td.m_tx.extra, tx_extra_fields); // comment from monero source: Extra may only be partially parsed, it's OK if tx_extra_fields contains public key THOR: removed empty if statement, if we don't care about the result, no need to check it. This comment is only for code review. TODO: remove this comment later, and check if parse_tx_extra is even still needed.
+            crypto::public_key tx_pub_key = get_tx_pub_key_from_received_outs(td);
+            const std::vector<crypto::public_key> additional_tx_pub_keys = get_additional_tx_pub_keys_from_extra(td.m_tx);
+            // generate ephemeral secret key
+            crypto::key_image ki;
+            cryptonote::keypair in_ephemeral;
+            if(!cryptonote::generate_key_image_helper(
+                    m_account.get_keys(),
+                    m_subaddresses, pkey,
+                    tx_pub_key,
+                    additional_tx_pub_keys,
+                    td.m_internal_output_index,
+                    in_ephemeral,
+                    ki,
+                    m_account.get_device()
+                ))
+                throw ots::exception::wallet::InternalError("Failed to generate key image");
+            if(td.m_key_image_known && !td.m_key_image_partial && ki != td.m_key_image)
+                throw ots::exception::wallet::InternalError("key_image generated not matched with cached key image");
+            if(in_ephemeral.pub != pkey)
+                throw ots::exception::wallet::InternalError("key_image generated ephemeral public key not matched with output_key");
+            // sign the key image with the output secret key
+            crypto::signature signature;
+            std::vector<const crypto::public_key*> key_ptrs;
+            key_ptrs.push_back(&pkey);
+            crypto::generate_ring_signature(
+                (const crypto::hash&)td.m_key_image,
+                td.m_key_image, key_ptrs,
+                in_ephemeral.sec,
+                0,
+                &signature
+            );
+            ski.push_back(std::make_pair(td.m_key_image, signature));
+        }
+        return std::make_pair(offset, ski);
+    }
+
+    std::string Account::encrypt(const char *plaintext, size_t len, const crypto::secret_key &skey, bool authenticated) const {
+        crypto::chacha_key key;
+        crypto::generate_chacha_key(&skey, sizeof(skey), key, mKdfRounds);
+        std::string ciphertext;
+        crypto::chacha_iv iv = crypto::rand<crypto::chacha_iv>();
+        ciphertext.resize(len + sizeof(iv) + (authenticated ? sizeof(crypto::signature) : 0));
+        crypto::chacha20(plaintext, len, key, iv, &ciphertext[sizeof(iv)]);
+        memcpy(&ciphertext[0], &iv, sizeof(iv));
+        if (authenticated) {
+            crypto::hash hash;
+            crypto::cn_fast_hash(ciphertext.data(), ciphertext.size() - sizeof(crypto::signature), hash);
+            crypto::public_key pkey;
+            crypto::secret_key_to_public_key(skey, pkey);
+            crypto::signature &signature = *(crypto::signature*)&ciphertext[ciphertext.size() - sizeof(crypto::signature)];
+            crypto::generate_signature(hash, pkey, skey, signature);
+        }
+        return ciphertext;
+    }
+
+    std::string Account::encryptWithViewSecretKey(const std::string &plaintext) const {
+        return encrypt(plaintext.c_str(), plaintext.size(), m_account.get_keys().m_view_secret_key, true);
+    }
+
     crypto::public_key Account::get_tx_pub_key_from_received_outs(const transfer_details &td) const {
         std::vector<cryptonote::tx_extra_field> tx_extra_fields;
-        if(!parse_tx_extra(td.m_tx.extra, tx_extra_fields)) // THOR WTF is that construct?????
+        if(!parse_tx_extra(td.m_tx.extra, tx_extra_fields)) // THOR: WTF is that construct?????
         {
             // Extra may only be partially parsed, it's OK if tx_extra_fields contains public key
         }
-
         // Due to a previous bug, there might be more than one tx pubkey in extra, one being
         // the result of a previously discarded signature.
         // For speed, since scanning for outputs is a slow process, we check whether extra
@@ -424,14 +543,12 @@ process:
         tx_scan_info.error = false;
     }
 
-    std::string Account::decrypt_with_view_secret_key(const std::string& ciphertext, bool authenticated) const {
-        uint64_t m_kdf_rounds = 1; // TODO: move somewhere else
-        const crypto::secret_key &skey = m_account.get_keys().m_view_secret_key;
+    std::string Account::decrypt(const std::string &ciphertext, const crypto::secret_key &skey, bool authenticated) const {
         const size_t prefix_size = sizeof(crypto::chacha_iv) + (authenticated ? sizeof(crypto::signature) : 0);
         if(ciphertext.size() < prefix_size)
             throw ots::exception::wallet::InvalidCiphertext("Ciphertext too short");
         crypto::chacha_key key;
-        crypto::generate_chacha_key(&skey, sizeof(skey), key, m_kdf_rounds);
+        crypto::generate_chacha_key(&skey, sizeof(skey), key, mKdfRounds);
         const crypto::chacha_iv &iv = *(const crypto::chacha_iv*)&ciphertext[0];
         if(authenticated) {
             crypto::hash hash;
@@ -448,7 +565,11 @@ process:
         return std::string(buffer.get(), ciphertext.size() - prefix_size);
     }
 
-    void Account::authenticate_with_public_view_view_key(const std::string& data, const crypto::signature& signature) const {
+    std::string Account::decryptWithViewSecretKey(const std::string& ciphertext, bool authenticated) const {
+        return decrypt(ciphertext, m_account.get_keys().m_view_secret_key, authenticated);
+    }
+
+    void Account::authenticateWithViewPublicKey(const std::string& data, const crypto::signature& signature) const {
         crypto::hash hash;
         crypto::cn_fast_hash(data.data(), data.size(), hash);
         if(!crypto::check_signature(hash, m_account.get_keys().m_account_address.m_view_public_key, signature))
