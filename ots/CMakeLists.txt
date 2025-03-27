@@ -31,13 +31,36 @@ if(DEBUG)
 endif()
 option(BUILD_BLOCKTIME "Build blocktime analysis tools" OFF)
 option(BUILD_BLOCKTIME_TESTS "Include blocktime in test suite" OFF)
-option(BUILD_GEN_OTS_ERROR_HEADER "Build c_error_codes_generator tool" OFF)
+option(BUILD_GEN_OTS_ERROR_HEADER "Build c_error_codes_generator tool" ON) # TODO: restructure, is always needed to build the C ABI library
 option(BUILD_TESTS "Build test suite" OFF)
 option(BUILD_BIN_HEADER_MACRO "Build tools to move binary files into header macros" OFF)
 option(BUILD_DOCS "Build documentation" OFF)
 option(BUILD_V1SIGN "Build v1sign tool" OFF)
 option(RUN_TESTS "Run tests after build" OFF)
 option(BUILD_SHARED_LIBS "Build shared library" OFF)  # Default to static
+
+# TODO: should restructure all this helper tools into a separate folder
+#       and make naming more consistent
+# gen-ots-error-header tool
+# TODO: should be restructured, is always needed to build the C ABI library
+if(BUILD_GEN_OTS_ERROR_HEADER)
+	add_executable(gen-ots-error-header
+		gen-ots-error-header/src/gen-ots-error-header.cpp
+	)
+	target_link_libraries(gen-ots-error-header
+		PRIVATE
+		${CMAKE_THREAD_LIBS_INIT}
+		-static
+	)
+	target_include_directories(gen-ots-error-header
+		PRIVATE
+		${CMAKE_CURRENT_SOURCE_DIR}/include
+	)
+	install(TARGETS gen-ots-error-header
+		RUNTIME DESTINATION bin
+	)
+endif()
+
 # Monero dependencies
 
 # TODO: need to be fixed
@@ -106,6 +129,17 @@ configure_file(
 	${CMAKE_CURRENT_SOURCE_DIR}/src/version.h.in # maybe that should also be changed to ots-version.h.in TODO: check later
 	${CMAKE_CURRENT_BINARY_DIR}/include/ots-version.h # changed version.h to ots-version.h to avoid conflicts with monero
 )
+
+# generate ${CMAKE_BINARY_DIR}/include/ots-errors.h
+set(C_ERROR_HEADER_FILE "${CMAKE_BINARY_DIR}/include/ots-errors.h")
+add_custom_command(
+	OUTPUT ${C_ERROR_HEADER_FILE}
+	COMMAND ${CMAKE_BINARY_DIR}/gen-ots-error-header -f ${C_ERROR_HEADER_FILE}
+	DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/include/ots-exceptions.hpp gen-ots-error-header
+	COMMENT "Generating header macros for ${C_ERROR_HEADER_FILE}"
+	VERBATIM
+)
+add_custom_target(generate_ots_error_header ALL DEPENDS ${C_ERROR_HEADER_FILE})
 
 # Create a stubs library for now, hate this cluster coitus, we sort this out later
 add_library(monero-stubs STATIC
@@ -628,27 +662,6 @@ if(BUILD_V1SIGN)
 		${MONERO_SOURCE_DIR}/external/boost/archive
 	)
 	install(TARGETS v1sign
-		RUNTIME DESTINATION bin
-	)
-endif()
-
-# TODO: should restructure all this helper tools into a separate folder
-#       and make naming more consistent
-# gen-ots-error-header tool
-if(BUILD_GEN_OTS_ERROR_HEADER)
-	add_executable(gen-ots-error-header
-		gen-ots-error-header/src/gen-ots-error-header.cpp
-	)
-	target_link_libraries(gen-ots-error-header
-		PRIVATE
-		${CMAKE_THREAD_LIBS_INIT}
-		-static
-	)
-	target_include_directories(gen-ots-error-header
-		PRIVATE
-		${CMAKE_CURRENT_SOURCE_DIR}/include
-	)
-	install(TARGETS gen-ots-error-header
 		RUNTIME DESTINATION bin
 	)
 endif()
