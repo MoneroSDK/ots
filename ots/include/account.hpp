@@ -33,8 +33,13 @@
  * We don't want to bother the user with monero stuff in the library.
  * So we use Account class to do all actual wallet operations.
  *
- * @todo TODO: continue with importOutputs, source is from wallet2, cleaned down a bit, but the dots
- *       are still NOT CONNECTED yet.
+ * @todo TODO: seems that importOutputs which is source is from wallet2,
+ *             cleaned down a bit, has still some unnecessary code.
+ * @todo TODO: exportKeyImages seems finished yet, but should be
+ *             double checked, cleaned and refactored.
+ * @todo TODO: describeTransaction
+ * @todo TODO: checkTransaction
+ * @todo TODO: signTransaction
  */
 namespace ots {
     class Account {
@@ -179,8 +184,9 @@ namespace ots {
              * @throws ots::exception::wallet::ImportOutputs if the magic is bad or the data is bad
              *
              * @note not finished yet, still need to hunt some things down and understand the complete
-             *       transplanted code from wallet2
-             * @todo TODO: continue here to make it work
+             *       transplanted code from wallet2, can we get rid of code because it doesn't matter
+             *       for us?
+             * @todo TODO: cleanup
              */
             size_t importOutputs(const std::string& outputs);
 
@@ -190,8 +196,15 @@ namespace ots {
              * @return the number of outputs imported
              *
              * @todo TODO: clarify the tuple format
+             * @note this one is called on import from the test wallet.
              */
-            size_t importOutputs(const std::tuple<uint64_t, uint64_t, std::vector<exported_transfer_details>> &outputs);
+            size_t importOutputs(
+                const std::tuple<
+                    uint64_t,
+                    uint64_t,
+                    std::vector<exported_transfer_details>
+                > &outputs
+            );
 
             /**
              * @brief import outputs from a tuple
@@ -199,8 +212,15 @@ namespace ots {
              * @return the number of outputs imported
              *
              * @todo TODO: clarify the tuple format
+             * @note this one was never called once until now. What is it about, should dig deeper.
              */
-            size_t importOutputs(const std::tuple<uint64_t, uint64_t, std::vector<transfer_details>> &outputs);
+            size_t importOutputs(
+                const std::tuple<
+                    uint64_t,
+                    uint64_t,
+                    std::vector<transfer_details>
+                > &outputs
+            );
 
             /**
              * @brief export key images after outputs are imported
@@ -653,7 +673,7 @@ namespace ots {
             transfer_container m_transfers;
             std::unordered_map<crypto::key_image, size_t> m_key_images;
             std::unordered_map<crypto::public_key, size_t> m_pub_keys;
-            std::unordered_map<crypto::public_key, cryptonote::subaddress_index> m_subaddresses;
+            mutable std::unordered_map<crypto::public_key, cryptonote::subaddress_index> m_subaddresses;
             std::vector<std::vector<std::string>> m_subaddress_labels;
             size_t m_subaddress_lookahead_major, m_subaddress_lookahead_minor;
     };

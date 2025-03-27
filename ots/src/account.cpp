@@ -59,7 +59,7 @@ namespace ots {
         if(!addressIndexInCache(account, index)) {
             cryptonote::subaddress_index subaddress_index = {account, index};
             cryptonote::account_public_address addr = m_account.get_device().get_subaddress(m_account.get_keys(), subaddress_index);
-            Address address = Address(cryptonote::get_account_address_as_str(cryptonoteNetwork(m_network), false, addr));
+            Address address = Address(cryptonote::get_account_address_as_str(cryptonoteNetwork(m_network), account != 0 || index != 0, addr));
             cacheAddress(address, account, index);
             return address;
         }
@@ -69,7 +69,7 @@ namespace ots {
     Address Account::address(const cryptonote::subaddress_index index) const noexcept {
         if(!addressIndexInCache(index.major, index.minor)) {
             cryptonote::account_public_address addr = m_account.get_device().get_subaddress(m_account.get_keys(), index);
-            Address address = Address(cryptonote::get_account_address_as_str(cryptonoteNetwork(m_network), false, addr));
+            Address address = Address(cryptonote::get_account_address_as_str(cryptonoteNetwork(m_network), index.major != 0 || index.minor != 0, addr));
             cacheAddress(address, index.major, index.minor);
             return address;
         }
@@ -93,6 +93,10 @@ namespace ots {
         m_addressIndexCache.insert(pair);
         m_addressCache[address] = pair;
         m_indexToAddressCache[pair] = address;
+        // Add to subaddresses for importOutputs
+        cryptonote::subaddress_index subaddress_index = {account, index};
+        crypto::public_key pub = m_account.get_device().get_subaddress_spend_public_key(m_account.get_keys(), subaddress_index);
+        m_subaddresses[pub] = subaddress_index;
     }
 
     bool Account::addressInCache(const Address& address) const noexcept {
@@ -245,8 +249,10 @@ namespace ots {
             cacheAddress(td.m_subaddr_index);
             bool r = cryptonote::generate_key_image_helper(
                     m_account.get_keys(),
-                    m_subaddresses, out_key,
-                    tx_pub_key, additional_tx_pub_keys,
+                    m_subaddresses,
+                    out_key,
+                    tx_pub_key,
+                    additional_tx_pub_keys,
                     td.m_internal_output_index,
                     in_ephemeral,
                     td.m_key_image,
@@ -331,6 +337,7 @@ namespace ots {
         else if(num_outputs < m_transfers.size())
             m_transfers.resize(num_outputs);
         for(size_t i = 0; i < output_array.size(); ++i) {
+            std::cout << "Account::importOutputs(transferdetails): Importing output " << i << std::endl;
             transfer_details td = output_array[i];
             if(i + offset < original_size) { // skip those we've already imported, or which have different data
                 // compare the data used to create the key image below
@@ -398,10 +405,10 @@ process:
         std::vector<std::pair<crypto::key_image, crypto::signature>> ski;
         size_t offset = 0;
         if(!all) // TODO: in case all usecases are all == true, we can remove this if statement
-            while (offset < m_transfers.size() && !m_transfers[offset].m_key_image_request)
+            while(offset < m_transfers.size() && !m_transfers[offset].m_key_image_request)
                 ++offset;
         ski.reserve(m_transfers.size() - offset);
-        for (size_t n = offset; n < m_transfers.size(); ++n) {
+        for(size_t n = offset; n < m_transfers.size(); ++n) {
             const transfer_details &td = m_transfers[n];
             // get ephemeral public key
             const crypto::public_key pkey = td.get_public_key();
@@ -415,7 +422,8 @@ process:
             cryptonote::keypair in_ephemeral;
             if(!cryptonote::generate_key_image_helper(
                     m_account.get_keys(),
-                    m_subaddresses, pkey,
+                    m_subaddresses,
+                    pkey,
                     tx_pub_key,
                     additional_tx_pub_keys,
                     td.m_internal_output_index,
@@ -434,7 +442,8 @@ process:
             key_ptrs.push_back(&pkey);
             crypto::generate_ring_signature(
                 (const crypto::hash&)td.m_key_image,
-                td.m_key_image, key_ptrs,
+                td.m_key_image,
+                key_ptrs,
                 in_ephemeral.sec,
                 0,
                 &signature
