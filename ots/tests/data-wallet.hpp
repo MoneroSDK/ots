@@ -16,8 +16,13 @@ struct WalletTestCase {
     const ots::SeedType seed_type = ots::SeedType::Monero;
     const size_t seed_test_case = 0;
     const std::string outputs = "";
+    const uint64_t outputs_count = 0;
+    const bool valid = true;
 };
 
 const std::vector<WalletTestCase> wallet_test_cases = {
-    {"valid wallet with outputs", ots::SeedType::Monero, 5, std::string(WALLET_092F1B_OUTPUTS)}
+    {"valid wallet with invalid outputs", ots::SeedType::Monero, 5, std::string(WALLET_E00000_OUTPUTS), 0, false},
+    {"valid wallet with defective outputs", ots::SeedType::Monero, 5, std::string(WALLET_E00001_OUTPUTS), 0, false},
+    {"valid wallet with valid outputs", ots::SeedType::Monero, 5, std::string(WALLET_092F1B_OUTPUTS), 13},
+    {"valid wallet with outputs for other wallet", ots::SeedType::Monero, 3, std::string(WALLET_092F1B_OUTPUTS), 13, false}
 };

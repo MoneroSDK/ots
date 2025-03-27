@@ -18,9 +18,12 @@
 #include "data-seed-legacy.hpp"
 #include "data-seed-monero.hpp"
 #include "data-wallet-sign.hpp"
+#include "data-wallet.hpp"
 #include "data-blocktime.hpp"
 #include <utf8proc.h>
 #include <cstdlib>
+
+#include <fstream> // TODO: for key images to file, do we want to test like that?
 
 // 3600 * 24 * 15, 15 days
 #define OTS_HEIGHT_FROM_TIMESTAMP_MAX_DIFF 1296000
@@ -894,5 +897,50 @@ TEST_F(OTSTest, WalletSignDataWithMoneroSeed) {
             EXPECT_FALSE(wallet->verifyData(message, std::make_pair(acc, sub), wrong_signature))
                 << "Signature from subaddress " << address << " (" << acc << ", " << sub <<") should not verify with a wrong signature";
         }
+    }
+}
+
+TEST_F(OTSTest, WalletImportOutputs) {
+    for(const auto& tc : wallet_test_cases) {
+        auto seed_tc = monero_seed_test_cases[tc.seed_test_case]; // "valid seed mainnet"
+        auto seed = ots::MoneroSeed::decode(
+            seed_tc.phrase,
+            seed_tc.height,
+            seed_tc.time,
+            seed_tc.network,
+            seed_tc.password
+        );
+        auto wallet = seed.wallet();
+        if(!tc.valid) {
+            EXPECT_THROW(wallet->importOutputs(tc.outputs), ots::exception::wallet::ImportOutputs);
+            continue;
+        }
+        EXPECT_NO_THROW({
+            auto outputs = wallet->importOutputs(tc.outputs);
+            EXPECT_EQ(outputs, tc.outputs_count);
+        });
+    }
+}
+
+TEST_F(OTSTest, WalletExportKeyImages) {
+    for(const auto& tc : wallet_test_cases) {
+        auto seed_tc = monero_seed_test_cases[tc.seed_test_case]; // "valid seed mainnet"
+        auto seed = ots::MoneroSeed::decode(
+            seed_tc.phrase,
+            seed_tc.height,
+            seed_tc.time,
+            seed_tc.network,
+            seed_tc.password
+        );
+        auto wallet = seed.wallet();
+        if(!tc.valid)
+            continue;
+        EXPECT_NO_THROW({
+            auto outputs = wallet->importOutputs(tc.outputs);
+            auto keyImages = wallet->exportKeyImages();
+            std::ofstream keyImagesFile(seed.fingerprint() + ".keyimages");
+            keyImagesFile << keyImages;
+            keyImagesFile.close();
+        });
     }
 }
