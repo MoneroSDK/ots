@@ -8,7 +8,7 @@ add_subdirectory(${GTEST_ROOT} gtest)
 
 # Auto-generate header file from .outputs files
 file(GLOB OUTPUTS_FILES "${CMAKE_CURRENT_SOURCE_DIR}/*.outputs")
-set(GENERATED_HEADERS_DIR "${CMAKE_BINARY_DIR}/generated_headers")
+set(GENERATED_HEADERS_DIR "${CMAKE_BINARY_DIR}/generated_headers") # TODO: should be in tests/include instead
 file(MAKE_DIRECTORY ${GENERATED_HEADERS_DIR})
 set(HEADER_FILE "${GENERATED_HEADERS_DIR}/data-wallet-outputs.hpp")
 set(INPUT_MACROS "")
