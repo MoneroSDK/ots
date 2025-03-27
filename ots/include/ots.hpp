@@ -32,8 +32,15 @@
 #define DEFAULT_MAX_INDEX_DEPTH 100
 #endif
 
+// Monero file magics
 #define OUTPUT_EXPORT_FILE_MAGIC "Monero output export\004"
 #define KEY_IMAGE_EXPORT_FILE_MAGIC "Monero key image export\003"
+#define UNSIGNED_TX_PREFIX "Monero unsigned tx set\005"
+#define SIGNED_TX_PREFIX "Monero signed tx set\005"
+
+// not used yet, but planned to support multisig later on
+#define MULTISIG_UNSIGNED_TX_PREFIX "Monero multisig unsigned tx set\001"
+#define MULTISIG_EXPORT_FILE_MAGIC "Monero multisig export\001"
 
 /**
  * @namespace ots

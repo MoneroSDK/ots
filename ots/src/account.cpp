@@ -453,6 +453,42 @@ process:
         return std::make_pair(offset, ski);
     }
 
+    unsigned_tx_set Account::parseUnsignedTransaction(const std::string &unsigned_tx) const
+    {
+        unsigned_tx_set exported_txs;
+        std::string s = unsigned_tx;
+        const size_t magiclen = strlen(UNSIGNED_TX_PREFIX) - 1;
+        if(strncmp(s.c_str(), UNSIGNED_TX_PREFIX, magiclen))
+            throw ots::exception::wallet::UnsignedTransaction("Bad magic in data");
+        s = s.substr(magiclen);
+        const char version = s[0];
+        s = s.substr(1);
+        // THOR: version bytes '\003' and '\004' are deprecated, we will not support them
+        // deleted code how it will be handled below. But maybe we should tell
+        // the user that the file is deprecated and he should use the new format
+        // instead serving him a generic exception below.
+        if(version != '\005')
+            throw ots::exception::wallet::UnsignedTransaction("Unsupported version in unsigned tx");
+        try {
+            s = decryptWithViewSecretKey(s);
+        } catch(const std::exception &e) {
+            throw ots::exception::wallet::UnsignedTransaction(e.what());
+        }
+        try
+        {
+            binary_archive<false> ar{epee::strspan<std::uint8_t>(s)};
+            if(!::serialization::serialize(ar, exported_txs))
+                throw ots::exception::wallet::UnsignedTransaction("Failed to parse data from unsigned tx");
+        }
+        catch (...)
+        {
+            throw ots::exception::wallet::UnsignedTransaction("Failed to parse data from unsigned tx");
+        }
+        std::cout << "Loaded tx unsigned data from binary: " << exported_txs.txes.size() << " transactions"; // TODO: remove this debug output
+
+        return exported_txs;
+    }
+
     std::string Account::encrypt(const char *plaintext, size_t len, const crypto::secret_key &skey, bool authenticated) const {
         crypto::chacha_key key;
         crypto::generate_chacha_key(&skey, sizeof(skey), key, mKdfRounds);

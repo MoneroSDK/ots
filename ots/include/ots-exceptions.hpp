@@ -610,12 +610,19 @@ namespace ots {
                     inline explicit ExportKeyImages(const std::string& msg): DomainError(msg) {};
             };
 
+            class UnsignedTransaction: public DomainError {
+                REGISTER_EXCEPTION(UnsignedTransaction, -9004, "UnsignedTransaction")
+                public:
+                    inline explicit UnsignedTransaction(): DomainError("Unsigned transaction parsing failed") {};
+                    inline explicit UnsignedTransaction(const std::string& msg): DomainError(msg) {};
+            };
+
             /**
              * @class InvalidCiphertext
              * @brief the provided ciphertext is not valid
              */
             class InvalidCiphertext: public DomainError {
-                REGISTER_EXCEPTION(InvalidCiphertext, -9004, "InvalidCiphertext")
+                REGISTER_EXCEPTION(InvalidCiphertext, -9005, "InvalidCiphertext")
                 public:
                     inline explicit InvalidCiphertext(): DomainError("Invalid ciphertext") {};
                     inline explicit InvalidCiphertext(const std::string& msg): DomainError(msg) {};
@@ -626,7 +633,7 @@ namespace ots {
              * @brief the provided ciphertext is not valid
              */
             class CiphertextAuthenticationFailed: public DomainError {
-                REGISTER_EXCEPTION(CiphertextAuthenticationFailed, -9005, "CiphertextAuthenticationFailed")
+                REGISTER_EXCEPTION(CiphertextAuthenticationFailed, -9006, "CiphertextAuthenticationFailed")
                 public:
                     inline explicit CiphertextAuthenticationFailed(): DomainError("Ciphertext authentication failed") {};
                     inline explicit CiphertextAuthenticationFailed(const std::string& msg): DomainError(msg) {};
@@ -637,7 +644,7 @@ namespace ots {
              * @brief an internal error occurred (monero specific)
              */
             class InternalError: public DomainError {
-                REGISTER_EXCEPTION(InternalError, -9006, "InternalError")
+                REGISTER_EXCEPTION(InternalError, -9007, "InternalError")
                 public:
                     inline explicit InternalError(): DomainError("Internal error") {};
                     inline explicit InternalError(const std::string& msg): DomainError(msg) {};
