@@ -308,8 +308,8 @@ namespace ots {
                         if(::serialization::check_stream_state(ar))
                             loaded = true;
                 }
-                catch (...) {}
-                // Thor removed fallback to boost serialization (dependencies for nothing)
+            catch (...) {}
+            // Thor removed fallback to boost serialization (dependencies for nothing)
             if(!loaded) {
                 std::get<0>(outputs) = 0;
                 std::get<1>(outputs) = 0;
@@ -340,7 +340,7 @@ namespace ots {
             std::cout << "Account::importOutputs(transferdetails): Importing output " << i << std::endl;
             transfer_details td = output_array[i];
             if(i + offset < original_size) { // skip those we've already imported, or which have different data
-                // compare the data used to create the key image below
+                                             // compare the data used to create the key image below
                 const transfer_details &org_td = m_transfers[i + offset];
                 if(!org_td.m_key_image_known)
                     goto process;
@@ -421,16 +421,16 @@ process:
             crypto::key_image ki;
             cryptonote::keypair in_ephemeral;
             if(!cryptonote::generate_key_image_helper(
-                    m_account.get_keys(),
-                    m_subaddresses,
-                    pkey,
-                    tx_pub_key,
-                    additional_tx_pub_keys,
-                    td.m_internal_output_index,
-                    in_ephemeral,
-                    ki,
-                    m_account.get_device()
-                ))
+                        m_account.get_keys(),
+                        m_subaddresses,
+                        pkey,
+                        tx_pub_key,
+                        additional_tx_pub_keys,
+                        td.m_internal_output_index,
+                        in_ephemeral,
+                        ki,
+                        m_account.get_device()
+                        ))
                 throw ots::exception::wallet::InternalError("Failed to generate key image");
             if(td.m_key_image_known && !td.m_key_image_partial && ki != td.m_key_image)
                 throw ots::exception::wallet::InternalError("key_image generated not matched with cached key image");
@@ -441,20 +441,19 @@ process:
             std::vector<const crypto::public_key*> key_ptrs;
             key_ptrs.push_back(&pkey);
             crypto::generate_ring_signature(
-                (const crypto::hash&)td.m_key_image,
-                td.m_key_image,
-                key_ptrs,
-                in_ephemeral.sec,
-                0,
-                &signature
-            );
+                    (const crypto::hash&)td.m_key_image,
+                    td.m_key_image,
+                    key_ptrs,
+                    in_ephemeral.sec,
+                    0,
+                    &signature
+                    );
             ski.push_back(std::make_pair(td.m_key_image, signature));
         }
         return std::make_pair(offset, ski);
     }
 
-    unsigned_tx_set Account::parseUnsignedTransaction(const std::string &unsigned_tx) const
-    {
+    unsigned_tx_set Account::parseUnsignedTransaction(const std::string &unsigned_tx) const {
         unsigned_tx_set exported_txs;
         std::string s = unsigned_tx;
         const size_t magiclen = strlen(UNSIGNED_TX_PREFIX) - 1;
@@ -474,19 +473,121 @@ process:
         } catch(const std::exception &e) {
             throw ots::exception::wallet::UnsignedTransaction(e.what());
         }
-        try
-        {
+        try {
             binary_archive<false> ar{epee::strspan<std::uint8_t>(s)};
             if(!::serialization::serialize(ar, exported_txs))
                 throw ots::exception::wallet::UnsignedTransaction("Failed to parse data from unsigned tx");
         }
-        catch (...)
-        {
+        catch (...) {
             throw ots::exception::wallet::UnsignedTransaction("Failed to parse data from unsigned tx");
         }
         std::cout << "Loaded tx unsigned data from binary: " << exported_txs.txes.size() << " transactions"; // TODO: remove this debug output
-
         return exported_txs;
+    }
+
+    TxDescription Account::describeTransaction(const std::string& unsignedTransaction) const {
+        TxDescription description;
+        COMMAND_RPC_DESCRIBE_TRANSFER::response res; // TODO: remove, temporary variable in transition to detangle the code, and build the TxDescription class along the way
+        unsigned_tx_set exported_txs = parseUnsignedTransaction(unsignedTransaction);
+        std::vector <tx_construction_data> tx_constructions = exported_txs.txes;
+        try {
+            // gather info to ask the user
+            std::unordered_map<cryptonote::account_public_address, std::pair<std::string, uint64_t>> tx_dests;
+            std::unordered_map<cryptonote::account_public_address, std::pair<std::string, uint64_t>> all_dests;
+            int first_known_non_zero_change_index = -1;
+            res.summary.amount_in = 0;
+            res.summary.amount_out = 0;
+            res.summary.change_amount = 0;
+            res.summary.fee = 0;
+            for(size_t n = 0; n < tx_constructions.size(); ++n) {
+                const tx_construction_data &cd = tx_constructions[n];
+                res.desc.push_back({0, 0, std::numeric_limits<uint32_t>::max(), 0, {}, "", 0, "", 0, 0, ""});
+                COMMAND_RPC_DESCRIBE_TRANSFER::transfer_description &desc = res.desc.back();
+                tx_dests.clear(); // Clear the recipients collection ready for this loop iteration
+                std::vector<cryptonote::tx_extra_field> tx_extra_fields;
+                crypto::hash8 payment_id = crypto::null_hash8;
+                cryptonote::tx_extra_nonce extra_nonce;
+                if(
+                    cryptonote::parse_tx_extra(cd.extra, tx_extra_fields) // have tx extras
+                    && find_tx_extra_field_by_type(tx_extra_fields, extra_nonce) // have nonce
+                    && cryptonote::get_encrypted_payment_id_from_tx_extra_nonce(
+                        extra_nonce.nonce, payment_id) // have payment id
+                    && payment_id != crypto::null_hash8 // actually have a payment id
+                  )
+                    desc.payment_id = epee::string_tools::pod_to_hex(payment_id);
+                for(size_t s = 0; s < cd.sources.size(); ++s) {
+                    desc.amount_in += cd.sources[s].amount;
+                    size_t ring_size = cd.sources[s].outputs.size();
+                    if(ring_size < desc.ring_size)
+                        desc.ring_size = ring_size;
+                }
+                for(size_t d = 0; d < cd.splitted_dsts.size(); ++d) {
+                    const cryptonote::tx_destination_entry &entry = cd.splitted_dsts[d];
+                    std::string address = cryptonote::get_account_address_as_str(cryptonoteNetwork(m_network), entry.is_subaddress, entry.addr);
+                    if(!desc.payment_id.empty() && !entry.is_subaddress && address != entry.original)
+                        address = cryptonote::get_account_integrated_address_as_str(cryptonoteNetwork(m_network), entry.addr, payment_id);
+                    auto i = tx_dests.find(entry.addr);
+                    if(i == tx_dests.end())
+                        tx_dests.insert(std::make_pair(entry.addr, std::make_pair(address, entry.amount)));
+                    else
+                        i->second.second += entry.amount;
+                    desc.amount_out += entry.amount;
+                }
+                if(cd.change_dts.amount > 0) {
+                    auto it = tx_dests.find(cd.change_dts.addr);
+                    if(it == tx_dests.end())
+                        throw ots::exception::tx::Change("Claimed change does not go to a paid address");
+                    if(it->second.second < cd.change_dts.amount)
+                        throw ots::exception::tx::Change("Claimed change is larger than payment to the change address");
+                    if(first_known_non_zero_change_index == -1)
+                        first_known_non_zero_change_index = n;
+                    const tx_construction_data &cdn = tx_constructions[first_known_non_zero_change_index];
+                    if(memcmp(&cd.change_dts.addr, &cdn.change_dts.addr, sizeof(cd.change_dts.addr)))
+                        throw ots::exception::tx::Change("Change goes to more than one address");
+                    desc.change_amount += cd.change_dts.amount;
+                    it->second.second -= cd.change_dts.amount;
+                    if(it->second.second == 0)
+                        tx_dests.erase(cd.change_dts.addr);
+                }
+                for(auto i = tx_dests.begin(); i != tx_dests.end(); ++i) {
+                    if(i->second.second > 0) {
+                        desc.recipients.push_back({i->second.first, i->second.second});
+                        auto it_in_all = all_dests.find(i->first);
+                        if(it_in_all == all_dests.end())
+                            all_dests.insert(std::make_pair(i->first, i->second));
+                        else
+                            it_in_all->second.second += i->second.second;
+                    } else {
+                        ++desc.dummy_outputs;
+                    }
+                }
+                if(desc.change_amount > 0) {
+                    const tx_construction_data &cd0 = tx_constructions[0];
+                    desc.change_address = get_account_address_as_str(
+                        cryptonoteNetwork(m_network),
+                        cd0.subaddr_account > 0,
+                        cd0.change_dts.addr
+                    );
+                    res.summary.change_address = desc.change_address;
+                }
+                desc.fee = desc.amount_in - desc.amount_out;
+                desc.unlock_time = cd.unlock_time;
+                desc.extra = epee::to_hex::string({cd.extra.data(), cd.extra.size()});
+                // Update summary items
+                res.summary.amount_in += desc.amount_in;
+                res.summary.amount_out += desc.amount_out;
+                res.summary.change_amount += desc.change_amount;
+                res.summary.fee += desc.fee;
+            }
+            // Populate the summary recipients list
+            for(auto i = all_dests.begin(); i != all_dests.end(); ++i) {
+                res.summary.recipients.push_back({i->second.first, i->second.second});
+            }
+        }
+        catch (const std::exception &e) {
+            throw ots::exception::tx::Parse("failed to parse unsigned transfers" + std::string(e.what()));
+        }
+        return description;
     }
 
     std::string Account::encrypt(const char *plaintext, size_t len, const crypto::secret_key &skey, bool authenticated) const {
