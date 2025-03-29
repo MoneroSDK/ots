@@ -865,15 +865,6 @@ namespace ots {
 			explicit Address(const std::string& address);
 
             /**
-             * @brief create and check and monero address
-             * @param address the base58 encoded address
-             * @param paymentID the payment ID of the address
-             * @throws ots::exception::address::Invalid if not a valid monero address
-             * @throws ots::exception::address::NotStandardAddress if the address is not a standard address
-             */
-            explicit Address(const std::string& address, const std::string& paymentID);
-
-            /**
              * @brief Get the network of the address
              * @return the network type of the address
              */
@@ -911,23 +902,6 @@ namespace ots {
              * @throws ots::exception::address::NotIntegrated if the address is not integrated
              */
             Address integratedAddress() const;
-
-            /**
-             * @brief Get and integrated address for a standard address with a payment ID
-             * @param paymentID consisting of 16 hex characters
-             * @return Address integrated address
-             * @throws ots::exception::address::NotStandardAddress if the address is not a standard address
-             * @throws ots::exception::address::InvalidPaymentID if the payment ID is not valid
-             */
-            Address integratePaymentID(const std::string& paymentID) const;
-
-            /**
-             * @brief Get and integrated address for a standard address with a payment ID
-             * @param paymentID consisting of an hash of 8 bytes
-             * @return Address integrated address
-             * @throws ots::exception::address::NotStandardAddress if the address is not a standard address
-             */
-            Address integratePaymentID(const std::array<uint8_t, 8>& paymentID) const;
 
             /**
              * @brief character length of the base58 address

@@ -30,13 +30,6 @@ namespace ots {
         m_type = Address::type(address); // throw ots::exception::address::Invalid(); if not valid, what should never happen, how we validate it before
 	}
 
-    Address::Address(const std::string& address, const std::string& paymentID) {
-        Address addr = Address(address).integratePaymentID(paymentID);
-        m_network = addr.m_network;
-        m_type = addr.m_type;
-        m_address = addr.m_address;
-    }
-
 	const Network Address::network() const noexcept {
         return m_network;
     }
@@ -109,18 +102,18 @@ namespace ots {
 
     std::string Address::paymentID(const std::string& address, Network network) {
         cryptonote::address_parse_info info;
-        if (!cryptonote::get_account_address_from_str(info, cryptonoteNetwork(network), address))
+        if(!cryptonote::get_account_address_from_str(info, cryptonoteNetwork(network), address))
             throw ots::exception::address::Invalid();
-        if (!info.has_payment_id)
+        if(!info.has_payment_id)
             return "";
         return epee::string_tools::pod_to_hex(info.payment_id);
     }
 
     std::string Address::integratedAddress(const std::string& address, Network network) {
         cryptonote::address_parse_info info;
-        if (!cryptonote::get_account_address_from_str(info, cryptonoteNetwork(network), address))
+        if(!cryptonote::get_account_address_from_str(info, cryptonoteNetwork(network), address))
             throw ots::exception::address::Invalid();
-        if (!info.has_payment_id)
+        if(!info.has_payment_id)
             throw ots::exception::address::NotIntegrated();
         return cryptonote::get_account_address_as_str(cryptonoteNetwork(network),false, info.address);
     }
@@ -179,30 +172,5 @@ namespace ots {
 
     Address Address::integratedAddress() const {
         return Address(integratedAddress(m_address, m_network)); // throws ots::exception::address::Invalid if not valid (but should never happen), and ots::exception::address::NotIntegrated if not integrated
-    }
-
-    Address Address::integratePaymentID(const std::string& paymentID) const {
-        if(paymentID.empty() || paymentID.size() != 16)
-            throw ots::exception::address::InvalidPaymentID();
-        try {
-            std::stoul(paymentID, nullptr, 16); // throws std::invalid_argument if not hex
-        } catch (const std::invalid_argument&) {
-            throw ots::exception::address::InvalidPaymentID();
-        }
-        if(m_type != AddressType::Standard)
-            throw ots::exception::address::NotStandardAddress();
-        crypto::hash8 paymentIDHash = crypto::null_hash8;
-        if(!epee::string_tools::hex_to_pod(paymentID, paymentIDHash))
-            throw ots::exception::address::InvalidPaymentID();
-        return integratePaymentID(*reinterpret_cast<const std::array<uint8_t, 8>*>(&paymentIDHash));
-    }
-
-    Address Address::integratePaymentID(const std::array<uint8_t, 8>& paymentID) const {
-        if(m_type != AddressType::Standard)
-            throw ots::exception::address::NotStandardAddress();
-        cryptonote::address_parse_info info;
-        if (!cryptonote::get_account_address_from_str(info, cryptonoteNetwork(m_network), m_address))
-            throw ots::exception::address::Invalid(); // should never happen, how address is validated before
-        return Address(cryptonote::get_account_integrated_address_as_str(cryptonoteNetwork(m_network), info.address, *reinterpret_cast<const crypto::hash8*>(paymentID.data())));
     }
 }
