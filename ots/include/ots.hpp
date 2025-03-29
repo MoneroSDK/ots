@@ -7,6 +7,7 @@
 #include <array>
 #include <map>
 #include <utility>
+#include <optional>
 
 /**
  * @file ots.hpp
@@ -53,10 +54,10 @@
  * - [x] Polyseed (16 words) handling
  * - [x] Address management
  * - [x] Address verification
- * - [ ] Import of outputs
- * - [ ] Export of key images
+ * - [x] Import of outputs
+ * - [x] Export of key images
  * - [ ] inspect unsigned transaction
- * - [x] sign a unsigned transaction
+ * - [ ] sign a unsigned transaction
  */
 namespace ots {
 
@@ -859,9 +860,18 @@ namespace ots {
             /**
              * @brief create and check and monero address
              * @param address the base58 encoded address
-             * @throws ots::addressInvalid if not a valid monero address
+             * @throws ots::exception::address::Invalid if not a valid monero address
              */
 			explicit Address(const std::string& address);
+
+            /**
+             * @brief create and check and monero address
+             * @param address the base58 encoded address
+             * @param paymentID the payment ID of the address
+             * @throws ots::exception::address::Invalid if not a valid monero address
+             * @throws ots::exception::address::NotStandardAddress if the address is not a standard address
+             */
+            explicit Address(const std::string& address, const std::string& paymentID);
 
             /**
              * @brief Get the network of the address
@@ -901,6 +911,23 @@ namespace ots {
              * @throws ots::exception::address::NotIntegrated if the address is not integrated
              */
             Address integratedAddress() const;
+
+            /**
+             * @brief Get and integrated address for a standard address with a payment ID
+             * @param paymentID consisting of 16 hex characters
+             * @return Address integrated address
+             * @throws ots::exception::address::NotStandardAddress if the address is not a standard address
+             * @throws ots::exception::address::InvalidPaymentID if the payment ID is not valid
+             */
+            Address integratePaymentID(const std::string& paymentID) const;
+
+            /**
+             * @brief Get and integrated address for a standard address with a payment ID
+             * @param paymentID consisting of an hash of 8 bytes
+             * @return Address integrated address
+             * @throws ots::exception::address::NotStandardAddress if the address is not a standard address
+             */
+            Address integratePaymentID(const std::array<uint8_t, 8>& paymentID) const;
 
             /**
              * @brief character length of the base58 address
@@ -1439,19 +1466,49 @@ namespace ots {
             uint64_t m_height = 0;
 	};
 
+    struct FlowVector {
+        Address address;
+        uint64_t amount;
+    };
+
+    struct TransferDescription {
+        uint64_t amountIn;
+        uint64_t amountOut;
+        uint32_t ringSize;
+        uint64_t unlockTime;
+        std::vector<FlowVector> flows;
+        std::optional<FlowVector> change;
+        std::string paymentId;
+        uint32_t dummyOutputs;
+        std::string extra;
+    };
+
     /**
      * @class TxDescription
      * @brief detailed information about a transaction, used to check transaction before signing
-     * @todo Figure out how to best structure - must be done during actual implementation
      */
-	class TxDescription {};
+    class TxDescription {
+        public:
+            explicit inline TxDescription(const std::string& unsignedTxSet): mUnsignedTxSet(unsignedTxSet) {};
+            uint64_t amountIn = 0;
+            uint64_t amountOut = 0;
+            std::vector<FlowVector> flows;
+            std::optional<FlowVector> change;
+            uint64_t fee = 0;
+            std::vector<TransferDescription> transfers;
+        protected:
+            const inline std::string& unsignedTxSet() const noexcept { return mUnsignedTxSet; };
+        private:
+            std::string mUnsignedTxSet;
+        friend class Wallet;
+    };
 
     /**
      * @class TxWarning
      * @brief Warnings directed to the actual user related to a transaction to be signed,
      *        to make it easier to the application developer to help the user make informed
      *        decissions.
-     * @todo Figure out how to best offer this kind of warnings (i18n?)
+     * @todo TODO: Figure out how to best offer this kind of warnings (i18n?)
      */
 	class TxWarning {};
 
