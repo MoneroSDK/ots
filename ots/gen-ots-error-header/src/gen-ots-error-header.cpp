@@ -108,7 +108,7 @@ void generateHeader(const std::string& outputPath) {
     file << "#ifdef __cplusplus\n"
          << "}\n"
          << "#endif\n\n"
-         << "#endif // OTS_ERRORS_H\n";
+         << "#endif // OTS_ERRORS_H";
     file.close();
 }
 
