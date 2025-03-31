@@ -7,6 +7,8 @@
 #include <crypto/chacha.h> // For crypto::generate_chacha_key
 #include <wipeable_string.h>
 #include <tuple>
+#include <optional>
+#include <functional> // for std::reference_wrapper
 
 namespace ots {
 
@@ -87,9 +89,9 @@ namespace ots {
     }
 
     void Account::cacheAddress(const Address& address, uint32_t account, uint32_t index) const noexcept {
-        std::pair<uint32_t, uint32_t> pair = std::make_pair(account, index);
-        if(addressInCache(address) || addressIndexInCache(pair))
+        if(addressInCache(address))
             return;
+        std::pair<uint32_t, uint32_t> pair = {account, index};
         m_addressIndexCache.insert(pair);
         m_addressCache[address] = pair;
         m_indexToAddressCache[pair] = address;
@@ -108,11 +110,11 @@ namespace ots {
     }
 
     bool Account::addressIndexInCache(const uint32_t account, const uint32_t index) const noexcept {
-        return addressIndexInCache(std::make_pair(account, index));
+        return addressIndexInCache(std::pair(account, index));
     }
 
     bool Account::addressIndexInCache(const cryptonote::subaddress_index& index) const noexcept {
-        return addressIndexInCache(index.major, index.minor);
+        return addressIndexInCache(std::pair(index.major, index.minor));
     }
 
     bool Account::hasAddress(const Address& address, uint32_t maxAccountDepth, uint32_t maxIndexDepth) const noexcept {
@@ -140,7 +142,7 @@ namespace ots {
     Address Account::cachedAddress(const uint32_t account, const uint32_t index) const {
         if(!addressIndexInCache(account, index))
             throw ots::exception::wallet::AddressNotFound();
-        return Address(m_indexToAddressCache[std::make_pair(account, index)]);
+        return Address(m_indexToAddressCache[std::pair(account, index)]);
     }
 
     Address Account::cachedAddress(const cryptonote::subaddress_index index) const {
@@ -149,7 +151,7 @@ namespace ots {
 
     std::pair<uint32_t, uint32_t> Account::addressIndex(const Address& address, uint32_t maxAccountDepth, uint32_t maxIndexDepth) const {
         if(address == this->address())
-            return std::make_pair(0, 0);
+            return {0, 0};
         if(addressInCache(address))
             return cachedAddressIndex(address);
         for(uint32_t acc = 0; acc < maxAccountDepth; acc++) {
@@ -159,7 +161,7 @@ namespace ots {
                 Address addr = this->address(acc, idx);
                 cacheAddress(addr, acc, idx);
                 if(addr == address)
-                    return std::make_pair(acc, idx);
+                    return std::pair(acc, idx);
             }
         }
         throw ots::exception::wallet::AddressNotFound();
@@ -181,25 +183,69 @@ namespace ots {
         return WipeableString(epee::string_tools::pod_to_hex(m_account.get_keys().m_account_address.m_view_public_key));
     }
 
-    void Account::setupTd(const exported_transfer_details& etd, transfer_details& td) {
-        td.m_block_height = 0;
-        td.m_txid = crypto::null_hash;
-        td.m_global_output_index = etd.m_global_output_index;
-        td.m_spent = etd.m_flags.m_spent;
-        td.m_frozen = etd.m_flags.m_frozen;
-        td.m_spent_height = 0;
-        td.m_mask = rct::identity();
-        td.m_amount = etd.m_amount;
-        td.m_rct = etd.m_flags.m_rct;
-        td.m_key_image_known = etd.m_flags.m_key_image_known;
-        td.m_key_image_request = etd.m_flags.m_key_image_request;
-        td.m_key_image_partial = false;
-        td.m_subaddr_index.major = etd.m_subaddr_index_major;
-        td.m_subaddr_index.minor = etd.m_subaddr_index_minor;
+    size_t Account::importOutputs(const std::string& outputs, bool checkMagic) {
+        //std::string data = outputs;
+        // const size_t magiclen = strlen(OUTPUT_EXPORT_FILE_MAGIC);
+        // if(data.size() < magiclen || memcmp(data.data(), OUTPUT_EXPORT_FILE_MAGIC, magiclen))
+        if(checkMagic && isBadMagic(outputs, OUTPUT_EXPORT_FILE_MAGIC))
+            throw ots::exception::wallet::ImportOutputs("Bad magic in data");
+        std::string data;
+        try {
+            //data = decryptWithViewSecretKey(std::string(data, magiclen));
+            data = decryptWithViewSecretKey(checkMagic?std::string(outputs, strlen(OUTPUT_EXPORT_FILE_MAGIC)):outputs);
+        } catch (const std::exception &e) {
+            throw ots::exception::wallet::ImportOutputs(e.what());
+        }
+        const size_t headerlen = 2 * sizeof(crypto::public_key);
+        if(data.size() < headerlen)
+            throw ots::exception::wallet::ImportOutputs("Bad data size for outputs");
+        const crypto::public_key &public_spend_key = *(const crypto::public_key*)&data[0];
+        const crypto::public_key &public_view_key = *(const crypto::public_key*)&data[sizeof(crypto::public_key)];
+        const cryptonote::account_public_address &keys = m_account.get_keys().m_account_address;
+        if(public_spend_key != keys.m_spend_public_key || public_view_key != keys.m_view_public_key)
+            throw ots::exception::wallet::ImportOutputs("Outputs from are for a different account");
+        size_t imported_outputs = 0;
+        // bool loaded = false;
+        try {
+            std::string body(data, headerlen);
+            std::tuple<uint64_t, uint64_t, std::vector<exported_transfer_details>> new_outputs;
+            try {
+                binary_archive<false> ar{epee::strspan<std::uint8_t>(body)};
+                // loaded = ::serialization::serialize(ar, new_outputs) && ::serialization::check_stream_state(ar);
+                if(::serialization::serialize(ar, new_outputs) && ::serialization::check_stream_state(ar) && !std::get<2>(new_outputs).empty())
+                    return importOutputs(new_outputs);
+            } catch (...) {}
+            //if(!loaded)
+            //    std::get<2>(new_outputs).clear();
+            std::tuple<uint64_t, uint64_t, std::vector<transfer_details>> outputs;
+            //if(!loaded)
+                try {
+                    binary_archive<false> ar{epee::strspan<std::uint8_t>(body)};
+                    //if(::serialization::serialize(ar, outputs))
+                        //if(::serialization::check_stream_state(ar))
+                            //loaded = true;
+                    if(::serialization::serialize(ar, outputs) && ::serialization::check_stream_state(ar) && !std::get<2>(outputs).empty())
+                        return importOutputs(outputs);
+                } catch (...) {}
+            // Thor removed fallback to boost serialization (dependencies for nothing)
+            /*
+            if(!loaded) {
+                std::get<0>(outputs) = 0;
+                std::get<1>(outputs) = 0;
+                std::get<2>(outputs) = {};
+            }
+            imported_outputs = !std::get<2>(new_outputs).empty() ? importOutputs(new_outputs) : !std::get<2>(outputs).empty() ? importOutputs(outputs) : 0; // import new_outputs if available, otherwise outputs, if both unavailable, return 0
+            */
+            return 0;
+        } catch (const std::exception &e) {
+            throw ots::exception::wallet::ImportOutputs(e.what());
+        }
+        // return imported_outputs;
     }
 
     size_t Account::importOutputs(const std::tuple<uint64_t, uint64_t, std::vector<exported_transfer_details>> &outputs) {
         // we can now import piecemeal
+        // TODO: dislike the silent uint64_t to size_t conversion
         const size_t offset = std::get<0>(outputs);
         const size_t num_outputs = std::get<1>(outputs);
         const std::vector<exported_transfer_details> &output_array = std::get<2>(outputs);
@@ -271,59 +317,9 @@ namespace ots {
         return m_transfers.size();
     }
 
-    size_t Account::importOutputs(const std::string& outputs) {
-        std::string data = outputs;
-        const size_t magiclen = strlen(OUTPUT_EXPORT_FILE_MAGIC);
-        if(data.size() < magiclen || memcmp(data.data(), OUTPUT_EXPORT_FILE_MAGIC, magiclen))
-            throw ots::exception::wallet::ImportOutputs("Bad magic in data");
-        try {
-            data = decryptWithViewSecretKey(std::string(data, magiclen));
-        } catch (const std::exception &e) {
-            throw ots::exception::wallet::ImportOutputs(e.what());
-        }
-        const size_t headerlen = 2 * sizeof(crypto::public_key);
-        if(data.size() < headerlen)
-            throw ots::exception::wallet::ImportOutputs("Bad data size for outputs");
-        const crypto::public_key &public_spend_key = *(const crypto::public_key*)&data[0];
-        const crypto::public_key &public_view_key = *(const crypto::public_key*)&data[sizeof(crypto::public_key)];
-        const cryptonote::account_public_address &keys = m_account.get_keys().m_account_address;
-        if(public_spend_key != keys.m_spend_public_key || public_view_key != keys.m_view_public_key)
-            throw ots::exception::wallet::ImportOutputs("Outputs from are for a different account");
-        size_t imported_outputs = 0;
-        bool loaded = false;
-        try {
-            std::string body(data, headerlen);
-            std::tuple<uint64_t, uint64_t, std::vector<exported_transfer_details>> new_outputs;
-            try {
-                binary_archive<false> ar{epee::strspan<std::uint8_t>(body)};
-                loaded = ::serialization::serialize(ar, new_outputs) && ::serialization::check_stream_state(ar);
-            } catch (...) {}
-            if(!loaded)
-                std::get<2>(new_outputs).clear();
-            std::tuple<uint64_t, uint64_t, std::vector<transfer_details>> outputs;
-            if(!loaded)
-                try {
-                    binary_archive<false> ar{epee::strspan<std::uint8_t>(body)};
-                    if(::serialization::serialize(ar, outputs))
-                        if(::serialization::check_stream_state(ar))
-                            loaded = true;
-                }
-            catch (...) {}
-            // Thor removed fallback to boost serialization (dependencies for nothing)
-            if(!loaded) {
-                std::get<0>(outputs) = 0;
-                std::get<1>(outputs) = 0;
-                std::get<2>(outputs) = {};
-            }
-            imported_outputs = !std::get<2>(new_outputs).empty() ? importOutputs(new_outputs) : !std::get<2>(outputs).empty() ? importOutputs(outputs) : 0;
-        } catch (const std::exception &e) {
-            throw ots::exception::wallet::ImportOutputs(e.what());
-        }
-        return imported_outputs;
-    }
-
     size_t Account::importOutputs(const std::tuple<uint64_t, uint64_t, std::vector<transfer_details>> &outputs) {
         // we can now import piecemeal
+        // TODO: dislike the silent uint64_t to size_t conversion
         const size_t offset = std::get<0>(outputs);
         const size_t num_outputs = std::get<1>(outputs);
         const std::vector<transfer_details> &output_array = std::get<2>(outputs);
@@ -337,7 +333,7 @@ namespace ots {
         else if(num_outputs < m_transfers.size())
             m_transfers.resize(num_outputs);
         for(size_t i = 0; i < output_array.size(); ++i) {
-            std::cout << "Account::importOutputs(transferdetails): Importing output " << i << std::endl;
+            std::cout << "Account::importOutputs(transferdetails): Importing output " << i << std::endl; // TODO: debug only, remove
             transfer_details td = output_array[i];
             if(i + offset < original_size) { // skip those we've already imported, or which have different data
                                              // compare the data used to create the key image below
@@ -408,8 +404,7 @@ process:
             while(offset < m_transfers.size() && !m_transfers[offset].m_key_image_request)
                 ++offset;
         ski.reserve(m_transfers.size() - offset);
-        for(size_t n = offset; n < m_transfers.size(); ++n) {
-            const transfer_details &td = m_transfers[n];
+        for(const transfer_details &td: m_transfers) {
             // get ephemeral public key
             const crypto::public_key pkey = td.get_public_key();
             // get tx pub key
@@ -439,7 +434,7 @@ process:
             // sign the key image with the output secret key
             crypto::signature signature;
             std::vector<const crypto::public_key*> key_ptrs;
-            key_ptrs.push_back(&pkey);
+            key_ptrs.emplace_back(&pkey);
             crypto::generate_ring_signature(
                     (const crypto::hash&)td.m_key_image,
                     td.m_key_image,
@@ -448,18 +443,20 @@ process:
                     0,
                     &signature
                     );
-            ski.push_back(std::make_pair(td.m_key_image, signature));
+            ski.emplace_back(td.m_key_image, signature);
         }
-        return std::make_pair(offset, ski);
+        return std::pair(offset, ski);
     }
 
-    unsigned_tx_set Account::parseUnsignedTransaction(const std::string &unsigned_tx) const {
+    unsigned_tx_set Account::parseUnsignedTransaction(const std::string &unsigned_tx, bool checkMagic) const {
         unsigned_tx_set exported_txs;
-        std::string s = unsigned_tx;
-        const size_t magiclen = strlen(UNSIGNED_TX_PREFIX) - 1;
-        if(strncmp(s.c_str(), UNSIGNED_TX_PREFIX, magiclen))
+        //std::string s = unsigned_tx;
+        //const size_t magiclen = strlen(UNSIGNED_TX_PREFIX) - 1;
+        //if(strncmp(s.c_str(), UNSIGNED_TX_PREFIX, magiclen))
+        if(checkMagic && isBadMagic(unsigned_tx, UNSIGNED_TX_PREFIX))
             throw ots::exception::wallet::UnsignedTransaction("Bad magic in data");
-        s = s.substr(magiclen);
+        //s = s.substr(magiclen);
+        std::string s = checkMagic?unsigned_tx.substr(strlen(UNSIGNED_TX_PREFIX) -1):unsigned_tx;
         const char version = s[0];
         s = s.substr(1);
         // THOR: version bytes '\003' and '\004' are deprecated, we will not support them
@@ -485,25 +482,115 @@ process:
         return exported_txs;
     }
 
-    TxDescription Account::describeTransaction(const std::string& unsignedTransaction) const {
-        TxDescription description;
-        COMMAND_RPC_DESCRIBE_TRANSFER::response res; // TODO: remove, temporary variable in transition to detangle the code, and build the TxDescription class along the way
-        unsigned_tx_set exported_txs = parseUnsignedTransaction(unsignedTransaction);
-        std::vector <tx_construction_data> tx_constructions = exported_txs.txes;
+    TxDescription Account::describeTransaction(const std::string& unsignedTransaction, bool checkMagic) const {
+        TxDescription txDescription{unsignedTransaction};
+        std::vector <tx_construction_data> tx_constructions = parseUnsignedTransaction(unsignedTransaction, checkMagic).txes;
+        std::unordered_map<cryptonote::account_public_address, FlowVector> allAddressFlows;
         try {
-            // gather info to ask the user
-            std::unordered_map<cryptonote::account_public_address, std::pair<std::string, uint64_t>> tx_dests;
+            std::optional<std::reference_wrapper<const tx_construction_data>> firstKnownNonZeroChange;
+            for(const tx_construction_data &cd: tx_constructions) {
+                TransferDescription transferDescription;
+                std::unordered_map<cryptonote::account_public_address, FlowVector> addressFlows;
+                std::vector<cryptonote::tx_extra_field> tx_extra_fields;
+                crypto::hash8 payment_id = crypto::null_hash8;
+                cryptonote::tx_extra_nonce extra_nonce;
+                if(
+                    cryptonote::parse_tx_extra(cd.extra, tx_extra_fields) // have tx extras
+                    && find_tx_extra_field_by_type(tx_extra_fields, extra_nonce) // have nonce
+                    && cryptonote::get_encrypted_payment_id_from_tx_extra_nonce(
+                        extra_nonce.nonce, payment_id) // have payment id
+                    && payment_id != crypto::null_hash8 // actually have a payment id
+                  )
+                    transferDescription.paymentId = epee::string_tools::pod_to_hex(payment_id);
+                for(auto &src: cd.sources) {
+                    transferDescription.amountIn += src.amount;
+                    if(src.outputs.size() < transferDescription.ringSize)
+                        transferDescription.ringSize = src.outputs.size();
+                }
+                for(const auto &entry: cd.splitted_dsts) {
+                    std::string address = cryptonote::get_account_address_as_str(
+                        cryptonoteNetwork(m_network), entry.is_subaddress, entry.addr
+                    );
+                    if(!transferDescription.paymentId.empty() && !entry.is_subaddress && address != entry.original)
+                        address = cryptonote::get_account_integrated_address_as_str(
+                                cryptonoteNetwork(m_network), entry.addr, payment_id);
+                    auto tx_dest = addressFlows.find(entry.addr);
+                    if(tx_dest == addressFlows.end()) // tx dest not existing yet, let's create it
+                        addressFlows.emplace(entry.addr, FlowVector{Address(address), entry.amount});
+                    else // tx dest already exists, let's add the amount to it
+                        tx_dest->second.amount += entry.amount;
+                    transferDescription.amountOut += entry.amount;
+                }
+                if(cd.change_dts.amount > 0) {
+                    auto it = addressFlows.find(cd.change_dts.addr);
+                    if(it == addressFlows.end())
+                        throw ots::exception::tx::Change("Claimed change does not go to a paid address");
+                    if(it->second.amount < cd.change_dts.amount)
+                        throw ots::exception::tx::Change("Claimed change is larger than payment to the change address");
+                    if(!firstKnownNonZeroChange.has_value()) // on first time, set to currenct construction data
+                        firstKnownNonZeroChange = std::cref(cd);
+                    if(
+                        memcmp( // if the change address is different from the first one, we have a multi change addresses
+                            &cd.change_dts.addr,
+                            &firstKnownNonZeroChange.value().get().change_dts.addr,
+                            sizeof(cd.change_dts.addr)
+                        )
+                    )
+                        throw ots::exception::tx::Change("Change goes to more than one address");
+                    if(!transferDescription.change.has_value())
+                        transferDescription.change = FlowVector{
+                            Address(
+                                get_account_address_as_str(
+                                    cryptonoteNetwork(m_network),
+                                    tx_constructions.front().subaddr_account > 0,
+                                    tx_constructions.front().change_dts.addr
+                                ) // address of change of the first `cd`
+                            ),
+                            0 // amount will be added below
+                        };
+                    if(!txDescription.change.has_value())
+                        txDescription.change = transferDescription.change;
+                    transferDescription.change.value().amount += cd.change_dts.amount;
+                    txDescription.change.value().amount += cd.change_dts.amount;
+                    it->second.amount -= cd.change_dts.amount;
+                    if(it->second.amount == 0)
+                        addressFlows.erase(cd.change_dts.addr);
+                }
+                for(const auto &addressFlow: addressFlows) {
+                    if(addressFlow.second.amount == 0) { // no amount sent to this address, so it's a dummy output
+                        transferDescription.dummyOutputs++;
+                        continue;
+                    }
+                    transferDescription.flows.emplace_back(addressFlow.second);
+                    auto it_in_all = allAddressFlows.find(addressFlow.first);
+                    if(it_in_all == allAddressFlows.end()) // addressFlow not existing yet, let's copy it
+                        allAddressFlows.emplace(addressFlow.first, addressFlow.second);
+                    else // addressFlow already exists, let's add the amount to it
+                        it_in_all->second.amount += addressFlow.second.amount;
+                }
+                transferDescription.fee = transferDescription.amountIn - transferDescription.amountOut;
+                transferDescription.unlockTime = cd.unlock_time;
+                transferDescription.extra = epee::to_hex::string({cd.extra.data(), cd.extra.size()});
+                txDescription.amountIn += transferDescription.amountIn;
+                txDescription.amountOut += transferDescription.amountOut;
+                txDescription.fee += transferDescription.fee;
+                txDescription.transfers.emplace_back(transferDescription);
+            }
+        } catch (const std::exception &e) {
+            throw ots::exception::tx::Parse("failed to parse unsigned transfers" + std::string(e.what()));
+        }
+        return txDescription;
+    }
+
+    tx_description Account::describeTransactionLegacy(const std::string& unsignedTransaction) const {
+        tx_description res;
+        std::vector <tx_construction_data> tx_constructions = parseUnsignedTransaction(unsignedTransaction).txes;
+        try {
             std::unordered_map<cryptonote::account_public_address, std::pair<std::string, uint64_t>> all_dests;
-            int first_known_non_zero_change_index = -1;
-            res.summary.amount_in = 0;
-            res.summary.amount_out = 0;
-            res.summary.change_amount = 0;
-            res.summary.fee = 0;
-            for(size_t n = 0; n < tx_constructions.size(); ++n) {
-                const tx_construction_data &cd = tx_constructions[n];
-                res.desc.push_back({0, 0, std::numeric_limits<uint32_t>::max(), 0, {}, "", 0, "", 0, 0, ""});
-                COMMAND_RPC_DESCRIBE_TRANSFER::transfer_description &desc = res.desc.back();
-                tx_dests.clear(); // Clear the recipients collection ready for this loop iteration
+            std::optional<std::reference_wrapper<const tx_construction_data>> first_known_non_zero_change;
+            for(const tx_construction_data &cd : tx_constructions) {
+                transfer_description desc;
+                std::unordered_map<cryptonote::account_public_address, std::pair<std::string, uint64_t>> tx_dests;
                 std::vector<cryptonote::tx_extra_field> tx_extra_fields;
                 crypto::hash8 payment_id = crypto::null_hash8;
                 cryptonote::tx_extra_nonce extra_nonce;
@@ -515,22 +602,23 @@ process:
                     && payment_id != crypto::null_hash8 // actually have a payment id
                   )
                     desc.payment_id = epee::string_tools::pod_to_hex(payment_id);
-                for(size_t s = 0; s < cd.sources.size(); ++s) {
-                    desc.amount_in += cd.sources[s].amount;
-                    size_t ring_size = cd.sources[s].outputs.size();
-                    if(ring_size < desc.ring_size)
-                        desc.ring_size = ring_size;
+                for(auto &src: cd.sources) {
+                    desc.amount_in += src.amount;
+                    if(src.outputs.size() < desc.ring_size)
+                        desc.ring_size = src.outputs.size();
                 }
-                for(size_t d = 0; d < cd.splitted_dsts.size(); ++d) {
-                    const cryptonote::tx_destination_entry &entry = cd.splitted_dsts[d];
-                    std::string address = cryptonote::get_account_address_as_str(cryptonoteNetwork(m_network), entry.is_subaddress, entry.addr);
+                for(const auto &entry : cd.splitted_dsts) {
+                    std::string address = cryptonote::get_account_address_as_str(
+                        cryptonoteNetwork(m_network), entry.is_subaddress, entry.addr
+                    );
                     if(!desc.payment_id.empty() && !entry.is_subaddress && address != entry.original)
-                        address = cryptonote::get_account_integrated_address_as_str(cryptonoteNetwork(m_network), entry.addr, payment_id);
-                    auto i = tx_dests.find(entry.addr);
-                    if(i == tx_dests.end())
-                        tx_dests.insert(std::make_pair(entry.addr, std::make_pair(address, entry.amount)));
-                    else
-                        i->second.second += entry.amount;
+                        address = cryptonote::get_account_integrated_address_as_str(
+                                cryptonoteNetwork(m_network), entry.addr, payment_id);
+                    auto tx_dest = tx_dests.find(entry.addr);
+                    if(tx_dest == tx_dests.end()) // tx dest not existing yet, let's create it
+                        tx_dests.emplace(entry.addr, std::pair(address, entry.amount));
+                    else // tx dest already exists, let's add the amount to it
+                        tx_dest->second.second += entry.amount;
                     desc.amount_out += entry.amount;
                 }
                 if(cd.change_dts.amount > 0) {
@@ -539,34 +627,38 @@ process:
                         throw ots::exception::tx::Change("Claimed change does not go to a paid address");
                     if(it->second.second < cd.change_dts.amount)
                         throw ots::exception::tx::Change("Claimed change is larger than payment to the change address");
-                    if(first_known_non_zero_change_index == -1)
-                        first_known_non_zero_change_index = n;
-                    const tx_construction_data &cdn = tx_constructions[first_known_non_zero_change_index];
-                    if(memcmp(&cd.change_dts.addr, &cdn.change_dts.addr, sizeof(cd.change_dts.addr)))
+                    if(!first_known_non_zero_change.has_value()) // on first time, set to currenct construction data
+                        first_known_non_zero_change = std::cref(cd);
+                    if(
+                        memcmp( // if the change address is different from the first one, we have a multi change addresses
+                            &cd.change_dts.addr,
+                            &first_known_non_zero_change.value().get().change_dts.addr,
+                            sizeof(cd.change_dts.addr)
+                        )
+                    )
                         throw ots::exception::tx::Change("Change goes to more than one address");
                     desc.change_amount += cd.change_dts.amount;
                     it->second.second -= cd.change_dts.amount;
                     if(it->second.second == 0)
                         tx_dests.erase(cd.change_dts.addr);
                 }
-                for(auto i = tx_dests.begin(); i != tx_dests.end(); ++i) {
-                    if(i->second.second > 0) {
-                        desc.recipients.push_back({i->second.first, i->second.second});
-                        auto it_in_all = all_dests.find(i->first);
-                        if(it_in_all == all_dests.end())
-                            all_dests.insert(std::make_pair(i->first, i->second));
-                        else
-                            it_in_all->second.second += i->second.second;
-                    } else {
+                for(const auto &tx_dest: tx_dests) {
+                    if(tx_dest.second.second == 0) { // no amount sent to this address, so it's a dummy output
                         ++desc.dummy_outputs;
+                        continue;
                     }
+                    desc.recipients.emplace_back(tx_dest.second.first, tx_dest.second.second);
+                    auto it_in_all = all_dests.find(tx_dest.first);
+                    if(it_in_all == all_dests.end()) // tx dest not existing yet, let's create it
+                        all_dests.emplace(tx_dest.first, tx_dest.second);
+                    else // tx dest already exists, let's add the amount to it
+                        it_in_all->second.second += tx_dest.second.second;
                 }
                 if(desc.change_amount > 0) {
-                    const tx_construction_data &cd0 = tx_constructions[0];
-                    desc.change_address = get_account_address_as_str(
+                    desc.change_address = get_account_address_as_str( // address of the first change
                         cryptonoteNetwork(m_network),
-                        cd0.subaddr_account > 0,
-                        cd0.change_dts.addr
+                        tx_constructions.front().subaddr_account > 0,
+                        tx_constructions.front().change_dts.addr
                     );
                     res.summary.change_address = desc.change_address;
                 }
@@ -578,16 +670,16 @@ process:
                 res.summary.amount_out += desc.amount_out;
                 res.summary.change_amount += desc.change_amount;
                 res.summary.fee += desc.fee;
+                res.desc.emplace_back(desc);
             }
             // Populate the summary recipients list
             for(auto i = all_dests.begin(); i != all_dests.end(); ++i) {
-                res.summary.recipients.push_back({i->second.first, i->second.second});
+                res.summary.recipients.emplace_back(i->second.first, i->second.second);
             }
-        }
-        catch (const std::exception &e) {
+        } catch (const std::exception &e) {
             throw ots::exception::tx::Parse("failed to parse unsigned transfers" + std::string(e.what()));
         }
-        return description;
+        return res;
     }
 
     std::string Account::encrypt(const char *plaintext, size_t len, const crypto::secret_key &skey, bool authenticated) const {
@@ -830,6 +922,27 @@ process:
 
     bool Account::verifyDataLegacy(const std::string& data, const std::string& address, const std::string& signature) {
         return verifyDataLegacy(data, Address(address), signature); // throws ots::exception::address::Invalid if address is not valid
+    }
+
+    bool Account::isBadMagic(const std::string& data, const std::string& magic) {
+        return data.size() < magic.size() || data.substr(0, magic.size()) != magic;
+    }
+
+    void Account::setupTd(const exported_transfer_details& etd, transfer_details& td) {
+        td.m_block_height = 0;
+        td.m_txid = crypto::null_hash;
+        td.m_global_output_index = etd.m_global_output_index;
+        td.m_spent = etd.m_flags.m_spent;
+        td.m_frozen = etd.m_flags.m_frozen;
+        td.m_spent_height = 0;
+        td.m_mask = rct::identity();
+        td.m_amount = etd.m_amount;
+        td.m_rct = etd.m_flags.m_rct;
+        td.m_key_image_known = etd.m_flags.m_key_image_known;
+        td.m_key_image_request = etd.m_flags.m_key_image_request;
+        td.m_key_image_partial = false;
+        td.m_subaddr_index.major = etd.m_subaddr_index_major;
+        td.m_subaddr_index.minor = etd.m_subaddr_index_minor;
     }
 
     void Account::clearAddressCache() const noexcept {
