@@ -6,28 +6,49 @@ set(GTEST_INCLUDE_DIRS ${GTEST_ROOT}/include)
 # Add GTest as a subdirectory
 add_subdirectory(${GTEST_ROOT} gtest)
 
-# Auto-generate header file from .outputs files
-file(GLOB OUTPUTS_FILES "${CMAKE_CURRENT_SOURCE_DIR}/*.outputs")
+# Auto-generate header file from *.{outputs,unsigned_tx} files
 set(GENERATED_HEADERS_DIR "${CMAKE_BINARY_DIR}/tests/include")
 file(MAKE_DIRECTORY ${GENERATED_HEADERS_DIR})
-set(HEADER_FILE "${GENERATED_HEADERS_DIR}/data-wallet-outputs.hpp")
-set(INPUT_MACROS "")
+# outputs
+file(GLOB OUTPUTS_FILES "${CMAKE_CURRENT_SOURCE_DIR}/*.outputs")
+set(OUTPUTS_HEADER_FILE "${GENERATED_HEADERS_DIR}/data-wallet-outputs.hpp")
+set(OUTPUTS_MACROS "")
 foreach(OUTPUTS_FILE ${OUTPUTS_FILES})
     get_filename_component(HASH_ID ${OUTPUTS_FILE} NAME_WE)
     set(MACRO_NAME "WALLET_${HASH_ID}_OUTPUTS")
-    list(APPEND INPUT_MACROS "${OUTPUTS_FILE}:${MACRO_NAME}")
+    list(APPEND OUTPUTS_MACROS "${OUTPUTS_FILE}:${MACRO_NAME}")
 endforeach()
-add_custom_command(
-    OUTPUT ${HEADER_FILE}
-    COMMAND ${CMAKE_BINARY_DIR}/binheadermacro/bin2hppmacro ${HEADER_FILE} ${INPUT_MACROS}
-    DEPENDS ${OUTPUTS_FILES} binheadermacro/bin2hppmacro
-    COMMENT "Generating header macros for ${HEADER_FILE}"
-    VERBATIM
-)
-list(APPEND GENERATED_HEADERS ${HEADER_FILE})
-
+if(OUTPUTS_MACROS)
+	add_custom_command(
+	    OUTPUT ${OUTPUTS_HEADER_FILE}
+	    COMMAND ${CMAKE_BINARY_DIR}/binheadermacro/bin2hppmacro ${OUTPUTS_HEADER_FILE} ${OUTPUTS_MACROS}
+	    DEPENDS ${OUTPUTS_FILES} binheadermacro/bin2hppmacro
+	    COMMENT "Generating header macros for ${OUTPUTS_HEADER_FILE}"
+	    VERBATIM
+	)
+	list(APPEND GENERATED_HEADERS ${OUTPUTS_HEADER_FILE})
+endif()
+# unsigned_tx
+file(GLOB UNSIGNED_TX_FILES "${CMAKE_CURRENT_SOURCE_DIR}/*.unsigned_tx")
+set(UNSIGNED_TX_HEADER_FILE "${GENERATED_HEADERS_DIR}/data-wallet-unsigned-tx.hpp")
+set(UNSIGNED_TX_MACROS "")
+foreach(UNSIGNED_TX_FILE ${UNSIGNED_TX_FILES})
+    get_filename_component(HASH_ID ${UNSIGNED_TX_FILE} NAME_WE)
+    set(MACRO_NAME "WALLET_${HASH_ID}_UNSIGNED_TX")
+    list(APPEND UNSIGNED_TX_MACROS "${UNSIGNED_TX_FILE}:${MACRO_NAME}")
+endforeach()
+if(UNSIGNED_TX_MACROS)
+	add_custom_command(
+	    OUTPUT ${UNSIGNED_TX_HEADER_FILE}
+	    COMMAND ${CMAKE_BINARY_DIR}/binheadermacro/bin2hppmacro ${UNSIGNED_TX_HEADER_FILE} ${UNSIGNED_TX_MACROS}
+	    DEPENDS ${UNSIGNED_TX_FILES} binheadermacro/bin2hppmacro
+	    COMMENT "Generating header macros for ${UNSIGNED_TX_HEADER_FILE}"
+	    VERBATIM
+	)
+	list(APPEND GENERATED_HEADERS ${UNSIGNED_TX_HEADER_FILE})
+endif()
+# common
 add_custom_target(generate_wallet_headers ALL DEPENDS ${GENERATED_HEADERS})
-
 include_directories(${GENERATED_HEADERS_DIR})
 
 # C++ test executable, to check the OTS C++ library
