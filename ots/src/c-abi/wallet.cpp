@@ -421,7 +421,7 @@ extern "C" {
                 throw ots::exception::InvalidArgument("Invalid handle type");
             set_string(
                 result,
-                static_cast<ots::Wallet*>(wallet->ptr)->signData(data, std::make_pair(account, index))
+                static_cast<ots::Wallet*>(wallet->ptr)->signData(data, std::pair(account, index))
             );
         } catch(const ots::exception::Exception& e) {
             set_error(result, e);
@@ -501,7 +501,7 @@ extern "C" {
                 throw ots::exception::InvalidArgument("Invalid handle type");
             set_boolean(
                 result,
-                static_cast<ots::Wallet*>(wallet->ptr)->verifyData(data, std::make_pair(account, index), signature, legacy_fallback)
+                static_cast<ots::Wallet*>(wallet->ptr)->verifyData(data, std::pair(account, index), signature, legacy_fallback)
             );
         } catch(const ots::exception::Exception& e) {
             set_error(result, e);
