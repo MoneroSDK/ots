@@ -22,6 +22,8 @@
 #include "data-blocktime.hpp"
 #include <utf8proc.h>
 #include <cstdlib>
+#include "json-tx-description.hpp"
+#include "test-tx-description.hpp"
 
 #include <fstream> // TODO: for key images to file, do we want to test like that?
 
@@ -884,17 +886,17 @@ TEST_F(OTSTest, WalletSignDataWithMoneroSeed) {
         for(size_t sub = 0; sub < 10; sub++) {
             if(acc == 0 && sub == 0)
                 continue;
-            std::string signature = wallet->signData(message, std::make_pair(acc, sub));
+            std::string signature = wallet->signData(message, std::pair(acc, sub));
             auto address = wallet->address(acc, sub);
             EXPECT_TRUE(ots::Wallet::verifyData(message, address, signature))
                 << "Signature from subaddress " << address << " should be valid!";
             EXPECT_TRUE(ots::Wallet::verifyData(message, (const std::string&)address, signature))
                 << "Signature from subaddress (as string) " << address << " should be valid!";
-            EXPECT_TRUE(wallet->verifyData(message, std::make_pair(acc, sub), signature))
+            EXPECT_TRUE(wallet->verifyData(message, std::pair(acc, sub), signature))
                 << "Signature from subaddress " << address << " (" << acc << ", " << sub <<") should verify with its own address";
-            EXPECT_FALSE(wallet->verifyData(modified_message, std::make_pair(acc, sub), signature))
+            EXPECT_FALSE(wallet->verifyData(modified_message, std::pair(acc, sub), signature))
                 << "Signature from subaddress " << address << " (" << acc << ", " << sub <<") should not verify with a modified message";
-            EXPECT_FALSE(wallet->verifyData(message, std::make_pair(acc, sub), wrong_signature))
+            EXPECT_FALSE(wallet->verifyData(message, std::pair(acc, sub), wrong_signature))
                 << "Signature from subaddress " << address << " (" << acc << ", " << sub <<") should not verify with a wrong signature";
         }
     }
@@ -912,12 +914,16 @@ TEST_F(OTSTest, WalletImportOutputs) {
         );
         auto wallet = seed.wallet();
         if(!tc.valid) {
-            EXPECT_THROW(wallet->importOutputs(tc.outputs), ots::exception::wallet::ImportOutputs);
+            for(const auto& [outputs, outputs_count]: tc.outputs) {
+                EXPECT_THROW(wallet->importOutputs(outputs), ots::exception::wallet::ImportOutputs);
+            }
             continue;
         }
         EXPECT_NO_THROW({
-            auto outputs = wallet->importOutputs(tc.outputs);
-            EXPECT_EQ(outputs, tc.outputs_count);
+            for(const auto& [outputs, outputs_count]: tc.outputs) {
+                auto count = wallet->importOutputs(outputs);
+                EXPECT_EQ(count, outputs_count);
+            }
         });
     }
 }
@@ -936,11 +942,50 @@ TEST_F(OTSTest, WalletExportKeyImages) {
         if(!tc.valid)
             continue;
         EXPECT_NO_THROW({
-            auto outputs = wallet->importOutputs(tc.outputs);
-            auto keyImages = wallet->exportKeyImages();
-            std::ofstream keyImagesFile(seed.fingerprint() + ".keyimages");
-            keyImagesFile << keyImages;
-            keyImagesFile.close();
+            int i = 0;
+            for(const auto& [outputs, outputs_count]: tc.outputs) {
+                auto count = wallet->importOutputs(outputs);
+                auto keyImages = wallet->exportKeyImages();
+                std::ostringstream filename;
+                if(i == 0)
+                    filename << seed.fingerprint() << ".keyimages";
+                else
+                    filename << seed.fingerprint() << "_" << std::setw(2) << std::setfill('0') << std::setw(2) << i << ".keyimages";
+                i++;
+                std::ofstream keyImagesFile(filename.str());
+                keyImagesFile << keyImages;
+                    keyImagesFile.close();
+            }
+        });
+    }
+}
+
+TEST_F(OTSTest, WalletDescribeTransaction) {
+    for(const auto& tc : wallet_test_cases) {
+        auto seed_tc = monero_seed_test_cases[tc.seed_test_case]; // "valid seed mainnet"
+        auto seed = ots::MoneroSeed::decode(
+            seed_tc.phrase,
+            seed_tc.height,
+            seed_tc.time,
+            seed_tc.network,
+            seed_tc.password
+        );
+        auto wallet = seed.wallet();
+        if(!tc.valid || tc.outputs.empty() || tc.unsigned_transactions.empty())
+            continue;
+        EXPECT_NO_THROW({
+            for(const auto&[unsignedTx, unsignedTxJson, fromOutputs, amount]: tc.unsigned_transactions) {
+                // auto count = wallet->importOutputs(tc.outputs[fromOutputs].outputs); // TODO: is it needed?
+                auto tx = wallet->describeTransaction(unsignedTx);
+                EXPECT_EQ(tx.amountIn, tx.amountOut + tx.fee) << "Tx amountIn != amountOut + fee";
+                EXPECT_TRUE(tx.change.has_value()) << "Tx change should not be empty";
+                EXPECT_EQ(tx.amountIn - tx.fee, tx.amountOut) << "Tx amountIn - fee != amountOut";
+                EXPECT_EQ(tx.amountOut, tx.change.value().amount + amount) << "Tx has some wrong amount";
+                for(const auto& transfer: tx.transfers) {
+                    EXPECT_EQ(transfer.unlockTime, 0) << "Transfer unlockTime should be 0";
+                }
+                EXPECT_TRUE(equalTxDescriptions(tx, txDescriptionFromJson(unsignedTxJson, unsignedTx))) << "TxDescription should be the same as TxDescription from JSON";
+            }
         });
     }
 }

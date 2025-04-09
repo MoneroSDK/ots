@@ -67,5 +67,16 @@ const std::vector<MoneroSeedTestCase> monero_seed_test_cases = {
         true,
         "c16b184475f827b26b76995675f459ec9d2d5207d479eb2c1834732d8286af0c", "1fd06af906b88ff85e961441d5f5f28d6c39e130eabe5d020c420fcf593eb156",
         "ad1614fd12c53ec774ed8350832aefc003d8a5785efe41326149cd2207c2ec00", "b7398b7040772ad0f4a72dd52cbd675656d74cbc099c2234154dae66b29a8695"
-    }
+    },
+    {
+        "empty wallet test (mainnet)",
+        "light wiggle different evolved tiers tamper austere vortex beer oncoming twice macro quick hamburger foiled bugs object thumbs haystack january turnip uphill gown inflamed oncoming",
+        3360383, 0, 3360383, 0,
+        ots::Network::MAIN,
+        "", false,
+        "42CxKHFP8X5D5RQxTZXH9aNrNdRDg6aLhe9jXLd3qoJaiFadSrPXCzJ49vwDximrozeHgmZQGrZ3YftBqsse8P888yg6uPq", "08D795",
+        true,
+        "19fbe8397f4049fb54fb4526a660baa1863de6f082e87841663b6b72bc245b0f", "0f6620cb2a561c4832f2d76901726182a3df7913600cd2de1bd76c57abec53f6",
+        "ff75ebdb8add78dcffb4be9809a7ce80d611f90b53d1f97e17f15c8066f0b900", "a03881823e787712db37b3ec759d59deedb1e451626d0be876a691ab83d6dd46"
+    },
 };

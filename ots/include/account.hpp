@@ -168,7 +168,7 @@ namespace ots {
             /**
              * @brief import outputs from a string
              * @param outputs the outputs to import
-             * @param checkMagic if true, will check the magic of the outputs
+             * @param withMagic if true, expects and will check the magic of the outputs
              * @return the number of outputs imported
              * @throws ots::exception::wallet::ImportOutputs if the magic is bad or the data is bad
              *
@@ -176,11 +176,9 @@ namespace ots {
              *       transplanted code from wallet2, can we get rid of code because it doesn't matter
              *       for us?
              * @todo TODO: cleanup
-             * @todo TODO: should add a `bool checkMagic = false` parameter to check the magic or not
-             *             and add a method to check the magic separately like:
-             *             `bool checkMagic(const std::string& data, const std::string& magic) const;`
+             * @todo TODO: should change for future versions withMagic = false
              */
-            size_t importOutputs(const std::string& outputs, bool checkMagic = true);
+            size_t importOutputs(const std::string& outputs, bool withMagic = true);
 
             /**
              * @brief import outputs from a tuple
@@ -226,12 +224,13 @@ namespace ots {
              * @todo TODO: change to std::string exportKeyImages(bool all) const;
              *             there is `std::pair<uint64_t, std::vector<std::pair<crypto::key_image, crypto::signature>>> exportKeyImages(bool all) const` which would collide...
              * @todo TODO: return WipeableString instead of std::string?
-             * @todo TODO: should add a `bool addMagic = false` parameter to add the magic in front of data or not
+             * @todo TODO: should add a `bool addMagic = false` parameter to add the magic in front of data or not, and would conflict with `std::pair<uint64_t, std::vector<std::pair<crypto::key_image, crypto::signature>>> exportKeyImages(bool all) const`
              */
             std::string exportKeyImages() const;
 
             /**
              * @brief export key images after outputs are imported
+             * @param all if true, will export all key images, otherwise only the new ones
              * @return key images for the provided outputs
              *
              * @todo TODO: clean up, document properly
@@ -243,16 +242,16 @@ namespace ots {
             /**
              * @brief describe a transaction
              * @param unsignedTransaction the unsigned transaction to describe
-             * @param checkMagic if true, will check the magic of the unsigned transaction
+             * @param withMagic if true, expect magic and will check the magic of the unsigned transaction
              * @return the description of the transaction
              * @throws ots::exception::wallet::UnsignedTransaction if the magic is bad or the data is bad
              *
              * @note: origin is from wallet_rpc_server: `bool on_describe_transfer(const wallet_rpc::COMMAND_RPC_DESCRIBE_TRANSFER::request& req, wallet_rpc::COMMAND_RPC_DESCRIBE_TRANSFER::response& res, epee::json_rpc::error& er, const connection_context *ctx)`
              *
              * @todo TODO: sort things out, adapt to our needs and clean up
-             * @todo TODO: should add a `bool addMagic = false` parameter to add the magic in front of data or not
+             * @todo TODO: should probably change for future versions withMagic = false
              */
-            TxDescription describeTransaction(const std::string& unsignedTransaction, bool checkMagic = true) const;
+            TxDescription describeTransaction(const std::string& unsignedTransaction, bool withMagic = true) const;
 
 
             /**
@@ -271,14 +270,21 @@ namespace ots {
             /**
              * @brief parse an unsigned transaction from a string
              * @param unsigned_tx the unsigned transaction to parse
-             * @param checkMagic if true, will check the magic of the unsigned transaction
+             * @param withMagic if true, expects a magic and will check the magic of the unsigned transaction
              * @return the parsed unsigned transaction
              * @throws ots::exception::wallet::UnsignedTransaction if the magic is bad or the data is bad
              *
              * @note: origin is from wallet2: `bool parse_unsigned_tx_from_str(const std::string &unsigned_tx_st, unsigned_tx_set &exported_txs) const;`
              * @todo TODO: cleanup
              */
-            unsigned_tx_set parseUnsignedTransaction(const std::string &unsigned_tx, bool checkMagic = true) const;
+            unsigned_tx_set parseUnsignedTransaction(const std::string &unsigned_tx, bool withMagic = true) const;
+
+            /**
+             * @brief check a transaction for warnings
+             * @param description the transaction description to check
+             * @return a list of warnings
+             */
+            std::vector<TxWarning> checkTransaction(const TxDescription& description) const noexcept;
 
             /**
              * @brief decrypt a ciphertext with the secret key

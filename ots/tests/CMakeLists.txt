@@ -47,13 +47,41 @@ if(UNSIGNED_TX_MACROS)
 	)
 	list(APPEND GENERATED_HEADERS ${UNSIGNED_TX_HEADER_FILE})
 endif()
+# unsigned_tx_json
+file(GLOB UNSIGNED_TX_JSON_FILES "${CMAKE_CURRENT_SOURCE_DIR}/*.unsigned_tx_json")
+set(UNSIGNED_TX_JSON_HEADER_FILE "${GENERATED_HEADERS_DIR}/data-wallet-unsigned-tx-json.hpp")
+set(UNSIGNED_TX_JSON_MACROS "")
+foreach(UNSIGNED_TX_JSON_FILE ${UNSIGNED_TX_JSON_FILES})
+    get_filename_component(HASH_ID ${UNSIGNED_TX_JSON_FILE} NAME_WE)
+    set(MACRO_NAME "WALLET_${HASH_ID}_UNSIGNED_TX_JSON")
+    list(APPEND UNSIGNED_TX_JSON_MACROS "${UNSIGNED_TX_JSON_FILE}:${MACRO_NAME}")
+endforeach()
+if(UNSIGNED_TX_JSON_MACROS)
+	add_custom_command(
+	    OUTPUT ${UNSIGNED_TX_JSON_HEADER_FILE}
+	    COMMAND ${CMAKE_BINARY_DIR}/binheadermacro/bin2hppmacro ${UNSIGNED_TX_JSON_HEADER_FILE} ${UNSIGNED_TX_JSON_MACROS}
+	    DEPENDS ${UNSIGNED_TX_JSON_FILES} binheadermacro/bin2hppmacro
+	    COMMENT "Generating header macros for ${UNSIGNED_TX_JSON_HEADER_FILE}"
+	    VERBATIM
+	)
+	list(APPEND GENERATED_HEADERS ${UNSIGNED_TX_JSON_HEADER_FILE})
+endif()
 # common
 add_custom_target(generate_wallet_headers ALL DEPENDS ${GENERATED_HEADERS})
 include_directories(${GENERATED_HEADERS_DIR})
 
+add_library(rapidjson INTERFACE)
+
+target_include_directories(rapidjson
+    INTERFACE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../external/rapidjson/include
+)
+
 # C++ test executable, to check the OTS C++ library
 add_executable(gtest_ots.cpp
 	gtest_ots.cpp
+	json-tx-description.cpp
+	test-tx-description.cpp
 )
 
 add_dependencies(gtest_ots.cpp
@@ -64,6 +92,7 @@ target_link_libraries(gtest_ots.cpp
 	PRIVATE
 	utf8proc
 	monero-ots
+	rapidjson
 	gtest
 	gtest_main
 )
@@ -72,6 +101,7 @@ target_link_libraries(gtest_ots.cpp
 target_include_directories(gtest_ots.cpp PRIVATE 
 	${GTEST_ROOT}/include
 	${GENERATED_HEADERS_DIR}
+	${CMAKE_CURRENT_SOURCE_DIR}/../../external/rapidjson/include
 )
 
 # C++/C sync test executable, to check if the C++ and C libraries are in sync

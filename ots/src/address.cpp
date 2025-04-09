@@ -134,8 +134,16 @@ namespace ots {
         return m_address == other.m_address;
     }
 
+    bool Address::operator!=(const Address& other) const noexcept {
+        return m_address != other.m_address;
+    }
+
     bool Address::operator==(const std::string& other) const noexcept {
         return m_address == other;
+    }
+
+    bool Address::operator!=(const std::string& other) const noexcept {
+        return m_address != other;
     }
 
     const size_t Address::length() const noexcept {

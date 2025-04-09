@@ -12,6 +12,7 @@
 #define NOT_IMPLEMENTED_YET() throw ots::exception::NotImplementedYet(__func__)
 #endif
 
+// cppcheck-suppress-macro [duplInheritedMember, unusedStructMember]
 #define REGISTER_EXCEPTION(CLASS, CODE, NAME) \
     protected: \
     static constexpr int32_t error_code = CODE; \
@@ -41,7 +42,9 @@ namespace ots {
         class Exception : public std::runtime_error {
             public:
                 struct RegisteredException {
+                    // cppcheck-suppress unusedStructMember
                     int32_t error_code;
+                    // cppcheck-suppress unusedStructMember
                     const char* error_class;
                     const std::type_info& type;
                 };
@@ -685,6 +688,20 @@ namespace ots {
                     inline explicit Invalid(): InvalidArgument("Transaction is invalid") {};
                     inline explicit Invalid(const std::string& msg): InvalidArgument(msg) {};
             };
+
+            class Change: public DomainError {
+                REGISTER_EXCEPTION(Change, -11002, "Change")
+                public:
+                    inline explicit Change(): DomainError("Change error") {};
+                    inline explicit Change(const std::string& msg): DomainError(msg) {};
+            };
+
+            class Parse: public DomainError {
+                REGISTER_EXCEPTION(Parse, -11003, "Parse")
+                public:
+                    inline explicit Parse(): DomainError("Parse error") {};
+                    inline explicit Parse(const std::string& msg): DomainError(msg) {};
+            };
         }
 
         /**
@@ -712,6 +729,18 @@ namespace ots {
                 REGISTER_EXCEPTION(NotIntegrated, -12002, "NotIntegrated")
                 public:
                     inline NotIntegrated(): InvalidArgument("Not an integrated address") {};
+            };
+
+            class NotStandardAddress: public InvalidArgument {
+                REGISTER_EXCEPTION(NotStandardAddress, -12003, "NotStandardAddress")
+                public:
+                    inline NotStandardAddress(): InvalidArgument("Not a standard address") {};
+            };
+
+            class InvalidPaymentID: public InvalidArgument {
+                REGISTER_EXCEPTION(InvalidPaymentID, -12004, "InvalidPaymentID")
+                public:
+                    inline InvalidPaymentID(): InvalidArgument("Invalid payment ID") {};
             };
         }
     }

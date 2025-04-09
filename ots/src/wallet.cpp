@@ -103,21 +103,21 @@ namespace ots {
 
     // Transaction-related methods
     TxDescription Wallet::describeTransaction(const std::string& unsignedTransaction) const {
-        NOT_IMPLEMENTED_YET();
+        return m_account->describeTransaction(unsignedTransaction);
     }
 
 
     std::vector<TxWarning> Wallet::checkTransaction(const std::string& unsignedTransaction) const {
-        NOT_IMPLEMENTED_YET();
+        return checkTransaction(describeTransaction(unsignedTransaction));
     }
 
     std::vector<TxWarning> Wallet::checkTransaction(const TxDescription& description) const noexcept {
-        NOT_IMPLEMENTED_YET();
+        return m_account->checkTransaction(description);
     }
 
 
     std::string Wallet::signTransaction(const std::string& unsignedTransaction) const {
-        NOT_IMPLEMENTED_YET();
+        return m_account->signTransaction(unsignedTransaction);
     }
 
 

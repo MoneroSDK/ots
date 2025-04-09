@@ -8,6 +8,7 @@
 #include <map>
 #include <utility>
 #include <optional>
+#include <limits>
 
 /**
  * @file ots.hpp
@@ -56,7 +57,7 @@
  * - [x] Address verification
  * - [x] Import of outputs
  * - [x] Export of key images
- * - [ ] inspect unsigned transaction
+ * - [x] inspect unsigned transaction
  * - [ ] sign a unsigned transaction
  */
 namespace ots {
@@ -934,10 +935,22 @@ namespace ots {
             bool operator==(const Address& other) const noexcept;
 
             /**
+             * @brief Compare Address with another Address
+             * @return bool True if the addresses are the same, false otherwise
+             */
+            bool operator!=(const Address& other) const noexcept;
+
+            /**
              * @brief Compare Address with a std::string address
              * @return bool True if the addresses are the same, false otherwise
              */
             bool operator==(const std::string& other) const noexcept;
+
+            /**
+             * @brief Compare Address with a std::string address
+             * @return bool True if the addresses are the same, false otherwise
+             */
+            bool operator!=(const std::string& other) const noexcept;
 
             /**
              * @brief check if a given string is a valid monero address
@@ -1446,15 +1459,16 @@ namespace ots {
     };
 
     struct TransferDescription {
-        uint64_t amountIn;
-        uint64_t amountOut;
-        uint32_t ringSize;
-        uint64_t unlockTime;
+        uint64_t amountIn = 0;
+        uint64_t amountOut = 0;
+        uint32_t ringSize = std::numeric_limits<uint32_t>::max();
+        uint64_t unlockTime = 0;
         std::vector<FlowVector> flows;
         std::optional<FlowVector> change;
-        std::string paymentId;
-        uint32_t dummyOutputs;
-        std::string extra;
+        uint64_t fee = 0;
+        std::string paymentId = "";
+        uint32_t dummyOutputs = 0;
+        std::string extra = "";
     };
 
     /**
@@ -1470,6 +1484,12 @@ namespace ots {
             std::optional<FlowVector> change;
             uint64_t fee = 0;
             std::vector<TransferDescription> transfers;
+            inline bool operator==(const TxDescription& other) const noexcept {
+                return mUnsignedTxSet == other.mUnsignedTxSet;
+            };
+            inline bool operator!=(const TxDescription& other) const noexcept {
+                return mUnsignedTxSet != other.mUnsignedTxSet;
+            };
         protected:
             const inline std::string& unsignedTxSet() const noexcept { return mUnsignedTxSet; };
         private:
@@ -1483,6 +1503,7 @@ namespace ots {
      *        to make it easier to the application developer to help the user make informed
      *        decissions.
      * @todo TODO: Figure out how to best offer this kind of warnings (i18n?)
+     *             > Think this should be external or a optional addon
      */
 	class TxWarning {};
 

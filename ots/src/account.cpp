@@ -183,16 +183,16 @@ namespace ots {
         return WipeableString(epee::string_tools::pod_to_hex(m_account.get_keys().m_account_address.m_view_public_key));
     }
 
-    size_t Account::importOutputs(const std::string& outputs, bool checkMagic) {
+    size_t Account::importOutputs(const std::string& outputs, bool withMagic) {
         //std::string data = outputs;
         // const size_t magiclen = strlen(OUTPUT_EXPORT_FILE_MAGIC);
         // if(data.size() < magiclen || memcmp(data.data(), OUTPUT_EXPORT_FILE_MAGIC, magiclen))
-        if(checkMagic && isBadMagic(outputs, OUTPUT_EXPORT_FILE_MAGIC))
+        if(withMagic && isBadMagic(outputs, OUTPUT_EXPORT_FILE_MAGIC))
             throw ots::exception::wallet::ImportOutputs("Bad magic in data");
         std::string data;
         try {
             //data = decryptWithViewSecretKey(std::string(data, magiclen));
-            data = decryptWithViewSecretKey(checkMagic?std::string(outputs, strlen(OUTPUT_EXPORT_FILE_MAGIC)):outputs);
+            data = decryptWithViewSecretKey(withMagic?std::string(outputs, strlen(OUTPUT_EXPORT_FILE_MAGIC)):outputs);
         } catch (const std::exception &e) {
             throw ots::exception::wallet::ImportOutputs(e.what());
         }
@@ -204,47 +204,24 @@ namespace ots {
         const cryptonote::account_public_address &keys = m_account.get_keys().m_account_address;
         if(public_spend_key != keys.m_spend_public_key || public_view_key != keys.m_view_public_key)
             throw ots::exception::wallet::ImportOutputs("Outputs from are for a different account");
-        size_t imported_outputs = 0;
-        // bool loaded = false;
-        try {
-            std::string body(data, headerlen);
+        std::string body(data, headerlen);
+        try { // assume this is the current format
             std::tuple<uint64_t, uint64_t, std::vector<exported_transfer_details>> new_outputs;
-            try {
-                binary_archive<false> ar{epee::strspan<std::uint8_t>(body)};
-                // loaded = ::serialization::serialize(ar, new_outputs) && ::serialization::check_stream_state(ar);
-                if(::serialization::serialize(ar, new_outputs) && ::serialization::check_stream_state(ar) && !std::get<2>(new_outputs).empty())
-                    return importOutputs(new_outputs);
-            } catch (...) {}
-            //if(!loaded)
-            //    std::get<2>(new_outputs).clear();
+            binary_archive<false> ar{epee::strspan<std::uint8_t>(body)};
+            if(::serialization::serialize(ar, new_outputs) && ::serialization::check_stream_state(ar))
+                return importOutputs(new_outputs);
+        } catch (...) {}
+        try { // assume this is a deprecated format, TODO: remove as soon we are sure it's not needed anymore
             std::tuple<uint64_t, uint64_t, std::vector<transfer_details>> outputs;
-            //if(!loaded)
-                try {
-                    binary_archive<false> ar{epee::strspan<std::uint8_t>(body)};
-                    //if(::serialization::serialize(ar, outputs))
-                        //if(::serialization::check_stream_state(ar))
-                            //loaded = true;
-                    if(::serialization::serialize(ar, outputs) && ::serialization::check_stream_state(ar) && !std::get<2>(outputs).empty())
-                        return importOutputs(outputs);
-                } catch (...) {}
-            // Thor removed fallback to boost serialization (dependencies for nothing)
-            /*
-            if(!loaded) {
-                std::get<0>(outputs) = 0;
-                std::get<1>(outputs) = 0;
-                std::get<2>(outputs) = {};
-            }
-            imported_outputs = !std::get<2>(new_outputs).empty() ? importOutputs(new_outputs) : !std::get<2>(outputs).empty() ? importOutputs(outputs) : 0; // import new_outputs if available, otherwise outputs, if both unavailable, return 0
-            */
-            return 0;
-        } catch (const std::exception &e) {
-            throw ots::exception::wallet::ImportOutputs(e.what());
-        }
-        // return imported_outputs;
+            binary_archive<false> ar{epee::strspan<std::uint8_t>(body)};
+            if(::serialization::serialize(ar, outputs) && ::serialization::check_stream_state(ar))
+                return importOutputs(outputs);
+        } catch (...) {}
+        // Thor removed fallback to boost serialization (dependencies for nothing) from the original (monero) source
+        throw ots::exception::wallet::ImportOutputs("Failed to import outputs");
     }
 
     size_t Account::importOutputs(const std::tuple<uint64_t, uint64_t, std::vector<exported_transfer_details>> &outputs) {
-        // we can now import piecemeal
         // TODO: dislike the silent uint64_t to size_t conversion
         const size_t offset = std::get<0>(outputs);
         const size_t num_outputs = std::get<1>(outputs);
@@ -318,7 +295,7 @@ namespace ots {
     }
 
     size_t Account::importOutputs(const std::tuple<uint64_t, uint64_t, std::vector<transfer_details>> &outputs) {
-        // we can now import piecemeal
+        // TODO: seems to be a deprecated format, remove as soon as we are sure it's not needed anymore
         // TODO: dislike the silent uint64_t to size_t conversion
         const size_t offset = std::get<0>(outputs);
         const size_t num_outputs = std::get<1>(outputs);
@@ -388,11 +365,11 @@ process:
         data[1] = (offset >> 8) & 0xff;
         data[2] = (offset >> 16) & 0xff;
         data[3] = (offset >> 24) & 0xff;
-        data += std::string((const char *)&keys.m_spend_public_key, sizeof(crypto::public_key));
-        data += std::string((const char *)&keys.m_view_public_key, sizeof(crypto::public_key));
+        data += std::string(reinterpret_cast<const char *>(&keys.m_spend_public_key), sizeof(crypto::public_key));
+        data += std::string(reinterpret_cast<const char *>(&keys.m_view_public_key), sizeof(crypto::public_key));
         for (const auto &i: ski.second) {
-            data += std::string((const char *)&i.first, sizeof(crypto::key_image));
-            data += std::string((const char *)&i.second, sizeof(crypto::signature));
+            data += std::string(reinterpret_cast<const char *>(&i.first), sizeof(crypto::key_image));
+            data += std::string(reinterpret_cast<const char *>(&i.second), sizeof(crypto::signature));
         }
         return std::string(KEY_IMAGE_EXPORT_FILE_MAGIC) + encryptWithViewSecretKey(data);
     }
@@ -409,7 +386,7 @@ process:
             const crypto::public_key pkey = td.get_public_key();
             // get tx pub key
             std::vector<cryptonote::tx_extra_field> tx_extra_fields;
-            parse_tx_extra(td.m_tx.extra, tx_extra_fields); // comment from monero source: Extra may only be partially parsed, it's OK if tx_extra_fields contains public key THOR: removed empty if statement, if we don't care about the result, no need to check it. This comment is only for code review. TODO: remove this comment later, and check if parse_tx_extra is even still needed.
+            parse_tx_extra(td.m_tx.extra, tx_extra_fields); // comment from monero source: Extra may only be partially parsed, it's OK if tx_extra_fields contains public key. THOR: removed empty if statement, if we don't care about the result, no need to check it. This comment is only for code review. TODO: remove this comment later, and check if parse_tx_extra is even still needed.
             crypto::public_key tx_pub_key = get_tx_pub_key_from_received_outs(td);
             const std::vector<crypto::public_key> additional_tx_pub_keys = get_additional_tx_pub_keys_from_extra(td.m_tx);
             // generate ephemeral secret key
@@ -448,15 +425,15 @@ process:
         return std::pair(offset, ski);
     }
 
-    unsigned_tx_set Account::parseUnsignedTransaction(const std::string &unsigned_tx, bool checkMagic) const {
+    unsigned_tx_set Account::parseUnsignedTransaction(const std::string &unsigned_tx, bool withMagic) const {
         unsigned_tx_set exported_txs;
         //std::string s = unsigned_tx;
         //const size_t magiclen = strlen(UNSIGNED_TX_PREFIX) - 1;
         //if(strncmp(s.c_str(), UNSIGNED_TX_PREFIX, magiclen))
-        if(checkMagic && isBadMagic(unsigned_tx, UNSIGNED_TX_PREFIX))
+        if(withMagic && isBadMagic(unsigned_tx, UNSIGNED_TX_PREFIX))
             throw ots::exception::wallet::UnsignedTransaction("Bad magic in data");
         //s = s.substr(magiclen);
-        std::string s = checkMagic?unsigned_tx.substr(strlen(UNSIGNED_TX_PREFIX) -1):unsigned_tx;
+        std::string s = withMagic?unsigned_tx.substr(strlen(UNSIGNED_TX_PREFIX) -1):unsigned_tx;
         const char version = s[0];
         s = s.substr(1);
         // THOR: version bytes '\003' and '\004' are deprecated, we will not support them
@@ -478,13 +455,13 @@ process:
         catch (...) {
             throw ots::exception::wallet::UnsignedTransaction("Failed to parse data from unsigned tx");
         }
-        std::cout << "Loaded tx unsigned data from binary: " << exported_txs.txes.size() << " transactions"; // TODO: remove this debug output
+        std::cout << "Loaded tx unsigned data from binary: " << exported_txs.txes.size() << " transactions. (debug message, remove later)" << std::endl; // TODO: remove this debug output
         return exported_txs;
     }
 
-    TxDescription Account::describeTransaction(const std::string& unsignedTransaction, bool checkMagic) const {
+    TxDescription Account::describeTransaction(const std::string& unsignedTransaction, bool withMagic) const {
         TxDescription txDescription{unsignedTransaction};
-        std::vector <tx_construction_data> tx_constructions = parseUnsignedTransaction(unsignedTransaction, checkMagic).txes;
+        std::vector <tx_construction_data> tx_constructions = parseUnsignedTransaction(unsignedTransaction, withMagic).txes;
         std::unordered_map<cryptonote::account_public_address, FlowVector> allAddressFlows;
         try {
             std::optional<std::reference_wrapper<const tx_construction_data>> firstKnownNonZeroChange;
@@ -575,6 +552,10 @@ process:
                 txDescription.amountOut += transferDescription.amountOut;
                 txDescription.fee += transferDescription.fee;
                 txDescription.transfers.emplace_back(transferDescription);
+            }
+            // Populate the summary recipients list
+            for(auto i = allAddressFlows.begin(); i != allAddressFlows.end(); ++i) {
+                txDescription.flows.emplace_back(i->second);
             }
         } catch (const std::exception &e) {
             throw ots::exception::tx::Parse("failed to parse unsigned transfers" + std::string(e.what()));
@@ -680,6 +661,18 @@ process:
             throw ots::exception::tx::Parse("failed to parse unsigned transfers" + std::string(e.what()));
         }
         return res;
+    }
+
+    std::vector<TxWarning> Account::checkTransaction(const TxDescription &txDescription) const noexcept {
+        std::vector<TxWarning> warnings;
+        for(const auto &transfer: txDescription.transfers) {
+            if(transfer.unlockTime > 0) {
+                // TODO: implement actual TxWarning's
+                // warnings.emplace_back();
+                break;
+            }
+        }
+        return warnings;
     }
 
     std::string Account::encrypt(const char *plaintext, size_t len, const crypto::secret_key &skey, bool authenticated) const {
