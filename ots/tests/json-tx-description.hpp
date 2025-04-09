@@ -7,6 +7,7 @@
  * Construct TxDescription from a JSON string.
  *
  * @param jsonString JSON string containing transaction description.
+ * @param unsignedTxSet Optional string for unsigned transaction set.
  * @return A constructed TxDescription object or an empty optional if construction fails.
  */
 ots::TxDescription txDescriptionFromJson(
@@ -18,6 +19,7 @@ ots::TxDescription txDescriptionFromJson(
  * Construct TxDescription from a JSON file.
  *
  * @param filename Path to the JSON file containing transaction description.
+ * @param unsignedTxSet Optional string for unsigned transaction set.
  * @return A constructed TxDescription object or an empty optional if construction fails.
  */
 ots::TxDescription txDescriptionFromJsonFile(
@@ -29,6 +31,7 @@ ots::TxDescription txDescriptionFromJsonFile(
  * Construct TxDescription from a JSON document.
  *
  * @param document A rapidjson::Document object containing the transaction description.
+ * @param unsignedTxSet Optional string for unsigned transaction set.
  * @return A constructed TxDescription object or an empty optional if construction fails.
  */
 ots::TxDescription txDescriptionFromJsonDocument(
