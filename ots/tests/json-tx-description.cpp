@@ -63,6 +63,7 @@ ots::TxDescription txDescriptionFromJsonDocument(
     if(
             summary.HasMember("change_address")
             && summary["change_address"].IsString()
+            && !std::string(summary["change_address"].GetString()).empty()
             && summary.HasMember("change_amount")
             && summary["change_amount"].IsUint64()
       ) {
@@ -93,6 +94,7 @@ ots::TxDescription txDescriptionFromJsonDocument(
         if(
                 desc.HasMember("change_address")
                 && desc["change_address"].IsString()
+                && !std::string(desc["change_address"].GetString()).empty()
                 && desc.HasMember("change_amount")
                 && desc["change_amount"].IsUint64()
           ) {

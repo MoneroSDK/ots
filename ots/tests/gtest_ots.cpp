@@ -974,17 +974,59 @@ TEST_F(OTSTest, WalletDescribeTransaction) {
         if(!tc.valid || tc.outputs.empty() || tc.unsigned_transactions.empty())
             continue;
         EXPECT_NO_THROW({
-            for(const auto&[unsignedTx, unsignedTxJson, fromOutputs, amount]: tc.unsigned_transactions) {
+            for(const auto&[unsignedTx, unsignedTxJson, fromOutputs, amount, hasChange]: tc.unsigned_transactions) {
                 // auto count = wallet->importOutputs(tc.outputs[fromOutputs].outputs); // TODO: is it needed?
                 auto tx = wallet->describeTransaction(unsignedTx);
                 EXPECT_EQ(tx.amountIn, tx.amountOut + tx.fee) << "Tx amountIn != amountOut + fee";
-                EXPECT_TRUE(tx.change.has_value()) << "Tx change should not be empty";
-                EXPECT_EQ(tx.amountIn - tx.fee, tx.amountOut) << "Tx amountIn - fee != amountOut";
-                EXPECT_EQ(tx.amountOut, tx.change.value().amount + amount) << "Tx has some wrong amount";
+                if(hasChange) {
+                    EXPECT_TRUE(tx.change.has_value()) << "Tx change should not be empty";
+                    EXPECT_EQ(tx.amountIn - tx.fee, tx.amountOut) << "Tx amountIn - fee != amountOut";
+                    EXPECT_EQ(tx.amountOut, tx.change.value().amount + amount) << "Tx has some wrong amount";
+                } else {
+                    EXPECT_FALSE(tx.change.has_value()) << "Tx change should be empty";
+                    EXPECT_EQ(tx.amountIn - tx.fee, tx.amountOut) << "Tx amountIn - fee != amountOut";
+                }
                 for(const auto& transfer: tx.transfers) {
                     EXPECT_EQ(transfer.unlockTime, 0) << "Transfer unlockTime should be 0";
                 }
                 EXPECT_TRUE(equalTxDescriptions(tx, txDescriptionFromJson(unsignedTxJson, unsignedTx))) << "TxDescription should be the same as TxDescription from JSON";
+            }
+        });
+    }
+}
+
+TEST_F(OTSTest, WalletSignTransaction) {
+    for(const auto& tc : wallet_test_cases) {
+        auto seed_tc = monero_seed_test_cases[tc.seed_test_case]; // "valid seed mainnet"
+        auto seed = ots::MoneroSeed::decode(
+            seed_tc.phrase,
+            seed_tc.height,
+            seed_tc.time,
+            seed_tc.network,
+            seed_tc.password
+        );
+        auto wallet = seed.wallet();
+        if(!tc.valid || tc.outputs.empty() || tc.unsigned_transactions.empty())
+            continue;
+        EXPECT_NO_THROW({
+            int i = 0;
+            for(const auto&[unsignedTx, unsignedTxJson, fromOutputs, amount, hasChange]: tc.unsigned_transactions) {
+                auto count = wallet->importOutputs(tc.outputs[fromOutputs].outputs);
+                auto signedTransaction = wallet->signTransaction(unsignedTx);
+                std::ostringstream filename;
+                if(i == 0)
+                    filename << seed.fingerprint() << ".signed_tx";
+                else
+                    filename << seed.fingerprint() << "_" << std::setw(2) << std::setfill('0') << std::setw(2) << i << ".signed_tx";
+                std::ofstream signedTxFile(filename.str());
+                signedTxFile << signedTransaction;
+                    signedTxFile.close();
+                auto keyImages = wallet->exportKeyImages();
+                filename << "_keyImages";
+                std::ofstream keyImagesFile(filename.str());
+                keyImagesFile << keyImages;
+                    keyImagesFile.close();
+                i++;
             }
         });
     }

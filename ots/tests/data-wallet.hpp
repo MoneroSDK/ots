@@ -23,6 +23,7 @@ struct WalletUnsignedTransaction {
     const std::string json;
     const size_t forOutputs = 0;
     const uint64_t amount = 0;
+    const bool hasChange = true;
 };
 
 struct WalletTestCase {
@@ -56,7 +57,9 @@ const std::vector<WalletTestCase> wallet_test_cases = {
         ots::SeedType::Monero, 5,
         {
             {std::string(WALLET_092F1B_OUTPUTS), 13},
-            {std::string(WALLET_092F1B_01_OUTPUTS), 14}
+            {std::string(WALLET_092F1B_01_OUTPUTS), 14},
+            {std::string(WALLET_092F1B_02_OUTPUTS), 15},
+            {std::string(WALLET_092F1B_03_OUTPUTS), 16}
         },
         true,
         {
@@ -64,6 +67,22 @@ const std::vector<WalletTestCase> wallet_test_cases = {
                 std::string(WALLET_092F1B_UNSIGNED_TX),
                 std::string(WALLET_092F1B_UNSIGNED_TX_JSON),
                 1, 100000000000
+            },
+            {
+                std::string(WALLET_092F1B_01_UNSIGNED_TX),
+                std::string(WALLET_092F1B_01_UNSIGNED_TX_JSON),
+                1, 150000000000
+            },
+            {
+                std::string(WALLET_092F1B_02_UNSIGNED_TX),
+                std::string(WALLET_092F1B_02_UNSIGNED_TX_JSON),
+                1, 20000000000
+            },
+            {
+                std::string(WALLET_092F1B_03_UNSIGNED_TX),
+                std::string(WALLET_092F1B_03_UNSIGNED_TX_JSON),
+                1, 19799670000,
+                false
             }
         }
     },
