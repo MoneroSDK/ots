@@ -1289,7 +1289,7 @@ namespace ots {
              * @throws ots::exception::wallet::ExportKeyImages if there are no key images, probably because no outputs are imported
              * @note the key images are needed by the view only wallet to create an unsigned transaction
              */
-			WipeableString exportKeyImages() const;
+            std::string exportKeyImages() const;
 
             /**
              * @brief Gives a whole picture of the unsigned transaction

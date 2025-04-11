@@ -95,9 +95,8 @@ namespace ots {
         return m_account->importOutputs(outputs);
     }
 
-    WipeableString Wallet::exportKeyImages() const {
-        // TODO: check if not Account::exportKeyImages() should better directly return a wipeable string
-        return WipeableString(m_account->exportKeyImages());
+    std::string Wallet::exportKeyImages() const {
+        return m_account->exportKeyImages();
     }
 
 
