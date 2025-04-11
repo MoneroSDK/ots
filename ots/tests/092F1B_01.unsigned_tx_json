@@ -1,0 +1,33 @@
+{
+  "id": "0",
+  "jsonrpc": "2.0",
+  "result": {
+    "desc": [{
+      "amount_in": 179752860000,
+      "amount_out": 179708380000,
+      "change_address": "42q2w6k8pcWiYViMdnqPRTQeyigWkJmBr1LsHh5KPYKrFWFZniZKgTTbx8ePnK4yHpFSbijdAHqkM9iGoVsFhtqTHsxHyBq",
+      "change_amount": 29708380000,
+      "dummy_outputs": 0,
+      "extra": "01752892c1322a8f8c1eb4448f4b52290f832ebe3dbeab1b7a6ddaaca912aaf04a0209010000000000000000",
+      "fee": 44480000,
+      "payment_id": "",
+      "recipients": [{
+        "address": "84q3Lt4J2oRMhBnp53S1LYAjEpRDDWQS1WvmWsHiDByuK8vUWRzqJuJLJ9qTmz9HxDgbgZJAwjwsSXGbPp82FrmhBbbwLnq",
+        "amount": 150000000000
+      }],
+      "ring_size": 16,
+      "unlock_time": 0
+    }],
+    "summary": {
+      "amount_in": 179752860000,
+      "amount_out": 179708380000,
+      "change_address": "42q2w6k8pcWiYViMdnqPRTQeyigWkJmBr1LsHh5KPYKrFWFZniZKgTTbx8ePnK4yHpFSbijdAHqkM9iGoVsFhtqTHsxHyBq",
+      "change_amount": 29708380000,
+      "fee": 44480000,
+      "recipients": [{
+        "address": "84q3Lt4J2oRMhBnp53S1LYAjEpRDDWQS1WvmWsHiDByuK8vUWRzqJuJLJ9qTmz9HxDgbgZJAwjwsSXGbPp82FrmhBbbwLnq",
+        "amount": 150000000000
+      }]
+    }
+  }
+}

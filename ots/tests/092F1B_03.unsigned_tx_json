@@ -1,0 +1,33 @@
+{
+  "id": "0",
+  "jsonrpc": "2.0",
+  "result": {
+    "desc": [{
+      "amount_in": 19830410000,
+      "amount_out": 19799670000,
+      "change_address": "",
+      "change_amount": 0,
+      "dummy_outputs": 1,
+      "extra": "0110904065bc39714aedd15abe8be3b9ebe41e0deb81e63e92502d63b76fd8ce150209010000000000000000",
+      "fee": 30740000,
+      "payment_id": "",
+      "recipients": [{
+        "address": "88LSctAX8CSR2cBpCQQnmiGW7jte1oFBH3BrxJCaLwCKhFnCX1DSsix3YWkFJ5y6CL385jxKfS7CKaTphojk7wM8BBr8teh",
+        "amount": 19799670000
+      }],
+      "ring_size": 16,
+      "unlock_time": 0
+    }],
+    "summary": {
+      "amount_in": 19830410000,
+      "amount_out": 19799670000,
+      "change_address": "",
+      "change_amount": 0,
+      "fee": 30740000,
+      "recipients": [{
+        "address": "88LSctAX8CSR2cBpCQQnmiGW7jte1oFBH3BrxJCaLwCKhFnCX1DSsix3YWkFJ5y6CL385jxKfS7CKaTphojk7wM8BBr8teh",
+        "amount": 19799670000
+      }]
+    }
+  }
+}
