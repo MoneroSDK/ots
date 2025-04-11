@@ -58,7 +58,7 @@
  * - [x] Import of outputs
  * - [x] Export of key images
  * - [x] inspect unsigned transaction
- * - [ ] sign a unsigned transaction
+ * - [x] sign a unsigned transaction
  */
 namespace ots {
 

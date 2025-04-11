@@ -4,6 +4,7 @@
 #include "ots-exceptions.hpp"
 #include "key-store.hpp"
 #include "account-dependencies.hpp"
+#include "account-dependencies-serialization.hpp"
 #include "account-dependencies-rpc.hpp" // TODO: remove this file after dependencies are resolved
 #include <wipeable_string.h>
 #include <utility>
@@ -268,16 +269,67 @@ namespace ots {
             tx_description describeTransactionLegacy(const std::string& unsignedTransaction) const;
 
             /**
-             * @brief parse an unsigned transaction from a string
-             * @param unsigned_tx the unsigned transaction to parse
-             * @param withMagic if true, expects a magic and will check the magic of the unsigned transaction
-             * @return the parsed unsigned transaction
+             * @brief sign a transaction
+             * @param unsignedTransaction the unsigned transaction to sign
+             * @param withMagic if true, expects and will check the magic of the unsigned transaction
+             * @return the signed transaction
+             * @throws ots::exception::wallet::UnsignedTransaction if the magic is bad or the data is bad
+             */
+            std::string signTransaction(const std::string& unsignedTransaction, bool withMagic = true);
+
+            /**
+             * @brief sign a transaction
+             * @param unsignedTransaction the unsigned transaction to sign
+             * @return the signed transaction
              * @throws ots::exception::wallet::UnsignedTransaction if the magic is bad or the data is bad
              *
-             * @note: origin is from wallet2: `bool parse_unsigned_tx_from_str(const std::string &unsigned_tx_st, unsigned_tx_set &exported_txs) const;`
-             * @todo TODO: cleanup
+             * @note: origin is from wallet2.cpp::sign_tx(unsigned_tx_set, std::vector<pending_tx>, signed_tx_set)
+             * @todo: TODO: remove temporary method or refactor later
              */
-            unsigned_tx_set parseUnsignedTransaction(const std::string &unsigned_tx, bool withMagic = true) const;
+            std::pair<signed_tx_set, std::vector<pending_tx>> signTransaction(unsigned_tx_set &exported_txs);
+
+            bool construct_tx_and_get_tx_key(
+                const cryptonote::account_keys& sender_account_keys,
+                const std::unordered_map<crypto::public_key, cryptonote::subaddress_index>& subaddresses,
+                std::vector<cryptonote::tx_source_entry>& sources,
+                std::vector<cryptonote::tx_destination_entry>& destinations,
+                const boost::optional<cryptonote::account_public_address>& change_addr,
+                const std::vector<uint8_t> &extra,
+                cryptonote::transaction& tx,
+                crypto::secret_key &tx_key,
+                std::vector<crypto::secret_key> &additional_tx_keys,
+                bool rct,
+                const rct::RCTConfig &rct_config,
+                bool use_view_tags
+            );
+
+            bool construct_tx_with_tx_key(
+                    const cryptonote::account_keys& sender_account_keys,
+                    const std::unordered_map<crypto::public_key, cryptonote::subaddress_index>& subaddresses,
+                    std::vector<cryptonote::tx_source_entry>& sources,
+                    std::vector<cryptonote::tx_destination_entry>& destinations,
+                    const boost::optional<cryptonote::account_public_address>& change_addr,
+                    const std::vector<uint8_t> &extra,
+                    cryptonote::transaction& tx,
+                    const crypto::secret_key &tx_key,
+                    const std::vector<crypto::secret_key> &additional_tx_keys,
+                    bool rct,
+                    const rct::RCTConfig &rct_config,
+                    bool shuffle_outs,
+                    bool use_view_tags);
+
+            void classify_addresses(
+                const std::vector<cryptonote::tx_destination_entry> &destinations,
+                const boost::optional<cryptonote::account_public_address>& change_addr,
+                size_t &num_stdaddresses,
+                size_t &num_subaddresses,
+                cryptonote::account_public_address &single_dest_subaddress
+            );
+
+            crypto::public_key get_destination_view_key_pub(
+                const std::vector<cryptonote::tx_destination_entry> &destinations,
+                const boost::optional<cryptonote::account_public_address>& change_addr
+            );
 
             /**
              * @brief check a transaction for warnings
@@ -413,6 +465,18 @@ namespace ots {
             * @internal
             */
             static void setupTd(const exported_transfer_details &etd, transfer_details &td);
+
+            /**
+             * @brief parse an unsigned transaction from a string
+             * @param unsigned_tx the unsigned transaction to parse
+             * @param withMagic if true, expects a magic and will check the magic of the unsigned transaction
+             * @return the parsed unsigned transaction
+             * @throws ots::exception::wallet::UnsignedTransaction if the magic is bad or the data is bad
+             *
+             * @note: origin is from wallet2: `bool parse_unsigned_tx_from_str(const std::string &unsigned_tx_st, unsigned_tx_set &exported_txs) const;`
+             * @todo TODO: cleanup
+             */
+            unsigned_tx_set parseUnsignedTransaction(const std::string &unsigned_tx, bool withMagic = true) const;
 
             /**
              * @brief hash the data with the spend and view keys
