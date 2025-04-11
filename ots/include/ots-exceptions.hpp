@@ -702,6 +702,34 @@ namespace ots {
                     inline explicit Parse(): DomainError("Parse error") {};
                     inline explicit Parse(const std::string& msg): DomainError(msg) {};
             };
+
+            class Sign: public DomainError {
+                REGISTER_EXCEPTION(Sign, -11004, "Sign")
+                public:
+                    inline explicit Sign(): DomainError("Sign error") {};
+                    inline explicit Sign(const std::string& msg): DomainError(msg) {};
+            };
+
+            class UnlockTime: public DomainError {
+                REGISTER_EXCEPTION(UnlockTime, -11005, "UnlockTime")
+                public:
+                    inline explicit UnlockTime(): DomainError("Unlock time error") {};
+                    inline explicit UnlockTime(const std::string& msg): DomainError(msg) {};
+            };
+
+            class Construct: public DomainError {
+                REGISTER_EXCEPTION(Construct, -11006, "Construct")
+                public:
+                    inline explicit Construct(): DomainError("Transaction construction error") {};
+                    inline explicit Construct(const std::string& msg): DomainError(msg) {};
+            };
+
+            class UnexpectedInputType: public DomainError {
+                REGISTER_EXCEPTION(UnexpectedInputType, -11007, "UnexpectedInputType")
+                public:
+                    inline explicit UnexpectedInputType(): DomainError("Unexpected input type") {};
+                    inline explicit UnexpectedInputType(const std::string& msg): DomainError(msg) {};
+            };
         }
 
         /**
