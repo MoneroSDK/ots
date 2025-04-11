@@ -96,6 +96,7 @@ if(NOT MONERO_SOURCE_DIR)
 		get_filename_component(MONERO_RINGCT_SOURCE_DIR "${MONERO_SOURCE_DIR}/src/ringct" ABSOLUTE)
 		get_filename_component(EPEE_SOURCE_DIR "${MONERO_SOURCE_DIR}/contrib/epee/src" ABSOLUTE)
 		get_filename_component(EPEE_INCLUDE_DIR_BASE "${MONERO_SOURCE_DIR}/contrib/epee/include" ABSOLUTE)
+		get_filename_component(BOOST_DIR "${MONERO_SOURCE_DIR}/external" ABSOLUTE)
 		get_filename_component(RANDOMX_DIR "${MONERO_SOURCE_DIR}/external/randomx" ABSOLUTE)
 		get_filename_component(RANDOMX_SOURCE_DIR "${MONERO_SOURCE_DIR}/external/randomx/src" ABSOLUTE)
 		get_filename_component(RANDOMX_INCLUDE_DIR_BASE "${MONERO_SOURCE_DIR}/external/randomx/src" ABSOLUTE)
@@ -336,6 +337,9 @@ set(MONERO_SOURCES
 	${MONERO_MNEMONICS_SOURCE_DIR}/electrum-words.cpp
 	${MONERO_COMMON_SOURCE_DIR}/util.cpp
 	${MONERO_COMMON_SOURCE_DIR}/base58.cpp
+	${MONERO_COMMON_SOURCE_DIR}/threadpool.cpp
+	${MONERO_COMMON_SOURCE_DIR}/perf_timer.cpp
+	${MONERO_COMMON_SOURCE_DIR}/aligned.c
 	${MONERO_CRYPTONOTE_CORE_SOURCE_DIR}/cryptonote_core.cpp
 	${MONERO_CRYPTONOTE_BASIC_SOURCE_DIR}/account.cpp
 	${MONERO_CRYPTONOTE_BASIC_SOURCE_DIR}/cryptonote_basic_impl.cpp
@@ -346,6 +350,7 @@ set(MONERO_SOURCES
 	${MONERO_RINGCT_SOURCE_DIR}/rctCryptoOps.c
 	${MONERO_RINGCT_SOURCE_DIR}/rctSigs.cpp
 	${MONERO_RINGCT_SOURCE_DIR}/bulletproofs.cc
+	${MONERO_RINGCT_SOURCE_DIR}/bulletproofs_plus.cc
 	${MONERO_RINGCT_SOURCE_DIR}/multiexp.cc
 	${MONERO_SOURCE_DIR}/src/device/device.cpp
 	${MONERO_SOURCE_DIR}/src/device/device_default.cpp
@@ -370,6 +375,7 @@ target_include_directories(monero-minimal
 	${MONERO_SOURCE_DIR}/src
 	${EPEE_INCLUDE_DIR_BASE}
 	${EASYLOGGING_INCLUDE_DIR_BASE}
+	${BOOST_DIR}
 	PRIVATE
 	${MONERO_STUBS_INCLUDE_DIR}
 )
