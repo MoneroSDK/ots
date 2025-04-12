@@ -496,6 +496,7 @@ add_library(monero-ots
 	src/entropy.cpp
 	src/polyseed-key-store.cpp
 	src/account.cpp
+	src/cryptonote-tx-utils.cpp
 	src/c-abi/internal.cpp
 	src/c-abi/common.cpp
 	src/c-abi/ots.cpp

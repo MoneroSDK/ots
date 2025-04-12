@@ -288,49 +288,6 @@ namespace ots {
              */
             std::pair<signed_tx_set, std::vector<pending_tx>> signTransaction(unsigned_tx_set &exported_txs);
 
-            bool construct_tx_and_get_tx_key(
-                const cryptonote::account_keys& sender_account_keys,
-                const std::unordered_map<crypto::public_key, cryptonote::subaddress_index>& subaddresses,
-                std::vector<cryptonote::tx_source_entry>& sources,
-                std::vector<cryptonote::tx_destination_entry>& destinations,
-                const boost::optional<cryptonote::account_public_address>& change_addr,
-                const std::vector<uint8_t> &extra,
-                cryptonote::transaction& tx,
-                crypto::secret_key &tx_key,
-                std::vector<crypto::secret_key> &additional_tx_keys,
-                bool rct,
-                const rct::RCTConfig &rct_config,
-                bool use_view_tags
-            );
-
-            bool construct_tx_with_tx_key(
-                    const cryptonote::account_keys& sender_account_keys,
-                    const std::unordered_map<crypto::public_key, cryptonote::subaddress_index>& subaddresses,
-                    std::vector<cryptonote::tx_source_entry>& sources,
-                    std::vector<cryptonote::tx_destination_entry>& destinations,
-                    const boost::optional<cryptonote::account_public_address>& change_addr,
-                    const std::vector<uint8_t> &extra,
-                    cryptonote::transaction& tx,
-                    const crypto::secret_key &tx_key,
-                    const std::vector<crypto::secret_key> &additional_tx_keys,
-                    bool rct,
-                    const rct::RCTConfig &rct_config,
-                    bool shuffle_outs,
-                    bool use_view_tags);
-
-            void classify_addresses(
-                const std::vector<cryptonote::tx_destination_entry> &destinations,
-                const boost::optional<cryptonote::account_public_address>& change_addr,
-                size_t &num_stdaddresses,
-                size_t &num_subaddresses,
-                cryptonote::account_public_address &single_dest_subaddress
-            );
-
-            crypto::public_key get_destination_view_key_pub(
-                const std::vector<cryptonote::tx_destination_entry> &destinations,
-                const boost::optional<cryptonote::account_public_address>& change_addr
-            );
-
             /**
              * @brief check a transaction for warnings
              * @param description the transaction description to check
