@@ -1,60 +1,67 @@
 #include "cryptonote-tx-utils.hpp"
-
-#include "ringct/rctSigs.h"
-#include "string_tools.h"
-#include "common/apply_permutation.h"
+#include <ringct/rctSigs.h>
+#include <string_tools.h>
+#include <common/apply_permutation.h>
+#include "ots-exceptions.hpp"
 
 namespace ots {
-    // from cryptonote_tx_utils.cpp
-    bool constructTxAndGetTxKey(
-        const cryptonote::account_keys& sender_account_keys,
+    // from cryptonote_tx_utils.cpp: cryptonote::construct_tx_and_get_tx_key
+    std::pair<crypto::secret_key, std::vector<crypto::secret_key>> constructTxAndGetTxKey(
+        const cryptonote::account_keys& senderAccountKeys,
         const std::unordered_map<crypto::public_key, cryptonote::subaddress_index>& subaddresses,
         std::vector<cryptonote::tx_source_entry>& sources,
         std::vector<cryptonote::tx_destination_entry>& destinations,
-        const boost::optional<cryptonote::account_public_address>& change_addr,
+        const boost::optional<cryptonote::account_public_address>& changeAddress,
         const std::vector<uint8_t> &extra,
         cryptonote::transaction& tx,
-        crypto::secret_key &tx_key,
-        std::vector<crypto::secret_key> &additional_tx_keys,
         bool rct,
         const rct::RCTConfig &rct_config,
         bool use_view_tags
     ) {
-        hw::device &hwdev = sender_account_keys.get_device();
-        hwdev.open_tx(tx_key);
-        try {
-            // figure out if we need to make additional tx pubkeys
-            size_t num_stdaddresses = 0;
-            size_t num_subaddresses = 0;
-            cryptonote::account_public_address single_dest_subaddress;
-            classifyAddresses(destinations, change_addr, num_stdaddresses, num_subaddresses, single_dest_subaddress);
-            bool need_additional_txkeys = num_subaddresses > 0 && (num_stdaddresses > 0 || num_subaddresses > 1);
-            if (need_additional_txkeys)
-            {
-                additional_tx_keys.clear();
-                for (size_t i = 0; i < destinations.size(); ++i)
-                {
-                    additional_tx_keys.push_back(cryptonote::keypair::generate(sender_account_keys.get_device()).sec);
-                }
-            }
-
-            bool shuffle_outs = true;
-            bool r = constructTxWithTxKey(sender_account_keys, subaddresses, sources, destinations, change_addr, extra, tx, tx_key, additional_tx_keys, rct, rct_config, shuffle_outs, use_view_tags);
-            hwdev.close_tx();
-            return r;
-        } catch(...) {
-            hwdev.close_tx();
-            throw;
+        crypto::secret_key tx_key;
+        std::vector<crypto::secret_key> additional_tx_keys;
+        auto hwDeviceCloseGuard = std::unique_ptr<hw::device, std::function<void(hw::device*)>>(
+            &senderAccountKeys.get_device(),
+            [](hw::device* p) { p->close_tx(); }
+        );
+        hwDeviceCloseGuard->open_tx(tx_key);
+        // figure out if we need to make additional tx pubkeys
+        auto [stdAddressesCount, subAddressesCount, singleDestSubAddress] = classifyAddresses(destinations, changeAddress);
+        if( // additonal tx keys are needed
+            subAddressesCount > 0
+            && (stdAddressesCount > 0 || subAddressesCount > 1)
+        ) {
+            additional_tx_keys.clear();
+            for(size_t i = 0; i < destinations.size(); ++i)
+                additional_tx_keys.emplace_back(
+                    cryptonote::keypair::generate(senderAccountKeys.get_device()).sec
+                );
         }
+        constructTxWithTxKey(
+            senderAccountKeys,
+            subaddresses,
+            sources,
+            destinations,
+            changeAddress,
+            extra,
+            tx,
+            tx_key,
+            additional_tx_keys,
+            rct,
+            rct_config,
+            true, // shuffle outs
+            use_view_tags
+        );
+        return std::pair(tx_key, additional_tx_keys);
     }
 
-    // from cryptonote_tx_utils.cpp
-    bool constructTxWithTxKey(
-        const cryptonote::account_keys& sender_account_keys,
+    // from cryptonote_tx_utils.cpp: cryptonote::construct_tx_with_tx_key
+    void constructTxWithTxKey(
+        const cryptonote::account_keys& senderAccountKeys,
         const std::unordered_map<crypto::public_key, cryptonote::subaddress_index>& subaddresses,
         std::vector<cryptonote::tx_source_entry>& sources,
         std::vector<cryptonote::tx_destination_entry>& destinations,
-        const boost::optional<cryptonote::account_public_address>& change_addr,
+        const boost::optional<cryptonote::account_public_address>& changeAddress,
         const std::vector<uint8_t> &extra,
         cryptonote::transaction& tx,
         const crypto::secret_key &tx_key,
@@ -64,11 +71,9 @@ namespace ots {
         bool shuffle_outs,
         bool use_view_tags
     ) {
-        hw::device &hwdev = sender_account_keys.get_device();
-        if(sources.empty()) {
-            std::cout << "Empty sources" << std::endl; // TODO: debug only, remove or throw
-            return false;
-        }
+        hw::device &hwdev = senderAccountKeys.get_device();
+        if(sources.empty())
+            throw ots::exception::tx::Construct("Empty sources");
         std::vector<rct::key> amount_keys;
         tx.set_null();
         amount_keys.clear();
@@ -84,23 +89,24 @@ namespace ots {
             if(find_tx_extra_field_by_type(tx_extra_fields, extra_nonce)) {
                 crypto::hash payment_id = crypto::null_hash;
                 crypto::hash8 payment_id8 = crypto::null_hash8;
-                if(cryptonote::get_encrypted_payment_id_from_tx_extra_nonce(extra_nonce.nonce, payment_id8)) {
-                    crypto::public_key view_key_pub = getDestinationViewKeyPub(destinations, change_addr);
-                    if(view_key_pub == crypto::null_pkey) {
-                        std::cout << "Destinations have to have exactly one output to support encrypted payment ids" << std::endl; // TODO: debug only, remove or throw
-                        return false;
-                    }
-                    if(!hwdev.encrypt_payment_id(payment_id8, view_key_pub, tx_key)) {
-                        std::cout << "Failed to encrypt payment id" << std::endl; // TODO: debug only, remove or throw
-                        return false;
-                    }
+                if(cryptonote::get_encrypted_payment_id_from_tx_extra_nonce(
+                        extra_nonce.nonce,
+                        payment_id8
+                    )
+                ) {
+                    crypto::public_key view_key_pub = getDestinationViewKeyPub(
+                        destinations,
+                        changeAddress
+                    );
+                    if(view_key_pub == crypto::null_pkey)
+                        throw ots::exception::tx::Construct("Destinations have to have exactly one output to support encrypted payment ids");
+                    if(!hwdev.encrypt_payment_id(payment_id8, view_key_pub, tx_key))
+                        throw ots::exception::tx::Construct("Failed to encrypt payment id");
                     std::string extra_nonce;
                     cryptonote::set_encrypted_payment_id_to_tx_extra_nonce(extra_nonce, payment_id8);
                     cryptonote::remove_field_from_tx_extra(tx.extra, typeid(cryptonote::tx_extra_nonce));
-                    if(!cryptonote::add_extra_nonce_to_tx_extra(tx.extra, extra_nonce)) {
-                        std::cout << "Failed to add encrypted payment id to tx extra" << std::endl; // TODO: debug only, remove or throw
-                        return false;
-                    }
+                    if(!cryptonote::add_extra_nonce_to_tx_extra(tx.extra, extra_nonce))
+                        throw ots::exception::tx::Construct("Failed to add encrypted payment id to tx extra");
                     add_dummy_payment_id = false;
                 } else if(cryptonote::get_payment_id_from_tx_extra_nonce(extra_nonce.nonce, payment_id)) {
                     add_dummy_payment_id = false;
@@ -114,7 +120,7 @@ namespace ots {
                 // this should end up being the vast majority of txes as time goes on
                 std::string extra_nonce;
                 crypto::hash8 payment_id8 = crypto::null_hash8;
-                crypto::public_key view_key_pub = getDestinationViewKeyPub(destinations, change_addr);
+                crypto::public_key view_key_pub = getDestinationViewKeyPub(destinations, changeAddress);
                 if(view_key_pub == crypto::null_pkey) {
                     std::cout << "Failed to get key to encrypt dummy payment id with" << std::endl; // TODO: debug only, remove or throw
                 } else {
@@ -137,10 +143,8 @@ namespace ots {
         int idx = -1;
         for(const cryptonote::tx_source_entry& src_entr:  sources) {
             ++idx;
-            if(src_entr.real_output >= src_entr.outputs.size()) {
-                std::cerr << "real_output index (" << src_entr.real_output << ")bigger than output_keys.size()=" << src_entr.outputs.size() << std::endl; // TODO: debug only, remove or throw
-                return false;
-            }
+            if(src_entr.real_output >= src_entr.outputs.size())
+                throw ots::exception::tx::Construct("real_output index (" + std::to_string(src_entr.real_output) + ") bigger than output_keys.size()=" + std::to_string(src_entr.outputs.size()));
             summary_inputs_money += src_entr.amount;
             //key_derivation recv_derivation;
             in_contexts.push_back(input_generation_context_data());
@@ -148,7 +152,7 @@ namespace ots {
             crypto::key_image img;
             const auto& out_key = reinterpret_cast<const crypto::public_key&>(src_entr.outputs[src_entr.real_output].second.dest);
             if(!generate_key_image_helper(
-                    sender_account_keys,
+                    senderAccountKeys,
                     subaddresses,
                     out_key,
                     src_entr.real_out_tx_key,
@@ -158,23 +162,22 @@ namespace ots {
                     img,
                     hwdev
                 )
-            ) {
-                std::cerr << "Key image generation failed!" << std::endl; // TODO: debug only, remove or throw
-                return false;
-            }
+            )
+                throw ots::exception::tx::Construct("Key image generation failed");
             //check that derivated key is equal with real output key
             if(!(src_entr.outputs[src_entr.real_output].second.dest == in_ephemeral.pub)) {
-                // TODO: debug only, remove or throw
-                std::cerr << "derived public key mismatch with output public key at index "
+                std::ostringstream oss;
+                oss << "derived public key mismatch with output public key at index "
                     << idx << ", real out " << src_entr.real_output << "! "<< std::endl
                     << "derived_key:"
-                        << epee::string_tools::pod_to_hex(in_ephemeral.pub) << std::endl << "real output_public_key:"
+                        << epee::string_tools::pod_to_hex(in_ephemeral.pub) << std::endl
+                    << "real output_public_key:"
                         << epee::string_tools::pod_to_hex(src_entr.outputs[src_entr.real_output].second.dest)
                         << std::endl
                     << "amount " << src_entr.amount << ", rct " << src_entr.rct << std::endl
                     << "tx pubkey " << src_entr.real_out_tx_key
                         << ", real_output_in_tx_index " << src_entr.real_output_in_tx_index << std::endl;
-                return false;
+                throw ots::exception::tx::Construct(oss.str());
             }
             //put key image into tx input
             cryptonote::txin_to_key input_to_key;
@@ -203,14 +206,12 @@ namespace ots {
             std::swap(sources[i0], sources[i1]);
         });
         // figure out if we need to make additional tx pubkeys
-        size_t num_stdaddresses = 0;
-        size_t num_subaddresses = 0;
-        cryptonote::account_public_address single_dest_subaddress;
-        classifyAddresses(destinations, change_addr, num_stdaddresses, num_subaddresses, single_dest_subaddress);
-        // if this is a single-destination transfer to a subaddress, we set the tx pubkey to R=s*D
-        txkey_pub = (num_stdaddresses == 0 && num_subaddresses == 1) ? rct::rct2pk(
+        auto [stdAddressesCount, subAddressesCount, singleDestSubAddress] = classifyAddresses(destinations, changeAddress);
+        // if this is a single-destination transfer to a subaddress,
+        // we set the tx pubkey to R=s*D
+        txkey_pub = (stdAddressesCount == 0 && subAddressesCount == 1) ? rct::rct2pk(
             hwdev.scalarmultKey(
-                rct::pk2rct(single_dest_subaddress.m_spend_public_key),
+                rct::pk2rct(singleDestSubAddress.m_spend_public_key),
                 rct::sk2rct(tx_key)
             )
         ): rct::rct2pk(
@@ -222,104 +223,88 @@ namespace ots {
         // we don't need to include additional tx keys if:
         //   - all the destinations are standard addresses
         //   - there's only one destination which is a subaddress
-        bool need_additional_txkeys = num_subaddresses > 0 && (num_stdaddresses > 0 || num_subaddresses > 1);
-        if(need_additional_txkeys)
-            CHECK_AND_ASSERT_MES(destinations.size() == additional_tx_keys.size(), false, "Wrong amount of additional tx keys");
+        bool need_additional_txkeys = subAddressesCount > 0 && (stdAddressesCount > 0 || subAddressesCount > 1);
+        if(need_additional_txkeys && destinations.size() != additional_tx_keys.size())
+            throw ots::exception::tx::Construct("Wrong amount of additional tx keys");
         uint64_t summary_outs_money = 0;
         //fill outputs
         size_t output_index = 0;
-        for(const cryptonote::tx_destination_entry& dst_entr: destinations) {
-            CHECK_AND_ASSERT_MES(dst_entr.amount > 0 || tx.version > 1, false, "Destination with wrong amount: " << dst_entr.amount);
+        for(const cryptonote::tx_destination_entry& destination: destinations) {
+            if(!(destination.amount > 0 || tx.version > 1))
+                throw ots::exception::tx::Construct("Destination with wrong amount: " + std::to_string(destination.amount)); // TODO: split errors
             crypto::public_key out_eph_public_key;
             crypto::view_tag view_tag;
             hwdev.generate_output_ephemeral_keys(
                 tx.version,
-                sender_account_keys,
+                senderAccountKeys,
                 txkey_pub, tx_key,
-                dst_entr, change_addr, output_index,
+                destination, changeAddress, output_index,
                 need_additional_txkeys, additional_tx_keys,
                 additional_tx_public_keys, amount_keys, out_eph_public_key,
                 use_view_tags, view_tag
             );
             cryptonote::tx_out out;
-            cryptonote::set_tx_out(dst_entr.amount, out_eph_public_key, use_view_tags, view_tag, out);
+            cryptonote::set_tx_out(destination.amount, out_eph_public_key, use_view_tags, view_tag, out);
             tx.vout.push_back(out);
             output_index++;
-            summary_outs_money += dst_entr.amount;
+            summary_outs_money += destination.amount;
         }
-        CHECK_AND_ASSERT_MES(additional_tx_public_keys.size() == additional_tx_keys.size(), false, "Internal error creating additional public keys");
+        if(additional_tx_public_keys.size() != additional_tx_keys.size())
+            throw ots::exception::tx::Construct("Internal error creating additional public keys");
         cryptonote::remove_field_from_tx_extra(tx.extra, typeid(cryptonote::tx_extra_additional_pub_keys));
         if(need_additional_txkeys)
             cryptonote::add_additional_tx_pub_keys_to_extra(tx.extra, additional_tx_public_keys);
         if(!cryptonote::sort_tx_extra(tx.extra, tx.extra))
-            return false;
-        CHECK_AND_ASSERT_MES(tx.extra.size() <= MAX_TX_EXTRA_SIZE, false, "TX extra size (" << tx.extra.size() << ") is greater than max allowed (" << MAX_TX_EXTRA_SIZE << ")");
+            throw ots::exception::tx::Construct("Failed to sort tx extra");
+        if(tx.extra.size() > MAX_TX_EXTRA_SIZE)
+            throw ots::exception::tx::Construct("Transaction extra size (" + std::to_string(tx.extra.size()) + ") is greater than max allowed: " + std::to_string(MAX_TX_EXTRA_SIZE));
         //check money
-        if(summary_outs_money > summary_inputs_money ) {
-            std::cerr << "Transaction inputs money ("<< summary_inputs_money << ") less than outputs money (" << summary_outs_money << ")" << std::endl; // TODO: debug only, remove or throw
-            return false;
-        }
+        if(summary_outs_money > summary_inputs_money )
+            throw ots::exception::tx::Construct("Transaction inputs money (" + std::to_string(summary_inputs_money) + ") less than outputs money (" + std::to_string(summary_outs_money) + ")");
         // check for watch only wallet
         bool zero_secret_key = true;
-        for(size_t i = 0; i < sizeof(sender_account_keys.m_spend_secret_key); ++i)
-            zero_secret_key &= (sender_account_keys.m_spend_secret_key.data[i] == 0);
-        if(zero_secret_key)
-            std::cerr << "Null secret key, skipping signatures" << std::endl; // TODO: debug only, remove or throw
-        if(tx.version == 1) { 
+        for(size_t i = 0; i < sizeof(senderAccountKeys.m_spend_secret_key); ++i)
+            zero_secret_key &= (senderAccountKeys.m_spend_secret_key.data[i] == 0);
+        if(tx.version == 1) { // TODO: Think tx.version == 1 part can be removed. How to make sure?
             //generate ring signatures
             crypto::hash tx_prefix_hash;
             get_transaction_prefix_hash(tx, tx_prefix_hash);
-            std::stringstream ss_ring_s;
             size_t i = 0;
-            for(const cryptonote::tx_source_entry& src_entr:  sources) {
-                ss_ring_s << "pub_keys:" << std::endl;
+            for(const cryptonote::tx_source_entry& source:  sources) {
                 std::vector<const crypto::public_key*> keys_ptrs;
-                std::vector<crypto::public_key> keys(src_entr.outputs.size());
-                size_t ii = 0;
-                for(const cryptonote::tx_source_entry::output_entry& o: src_entr.outputs) {
-                    keys[ii] = rct2pk(o.second.dest);
-                    keys_ptrs.push_back(&keys[ii]);
-                    ss_ring_s << o.second.dest << std::endl;
-                    ++ii;
+                std::vector<crypto::public_key> keys(source.outputs.size());
+                for(const cryptonote::tx_source_entry::output_entry& o: source.outputs) {
+                    keys.emplace_back(rct2pk(o.second.dest));
+                    keys_ptrs.push_back(&keys.back());
                 }
                 tx.signatures.push_back(std::vector<crypto::signature>());
                 std::vector<crypto::signature>& sigs = tx.signatures.back();
-                sigs.resize(src_entr.outputs.size());
+                sigs.resize(source.outputs.size());
                 if(!zero_secret_key)
                     crypto::generate_ring_signature(
                         tx_prefix_hash,
                         boost::get<cryptonote::txin_to_key>(tx.vin[i]).k_image,
                         keys_ptrs,
                         in_contexts[i].in_ephemeral.sec,
-                        src_entr.real_output,
+                        source.real_output,
                         sigs.data()
                     );
-                ss_ring_s << "signatures:" << std::endl;
-                std::for_each(sigs.begin(), sigs.end(), [&](const crypto::signature& s){ss_ring_s << s << std::endl;});
-                ss_ring_s << "prefix_hash:" << tx_prefix_hash << std::endl << "in_ephemeral_key: " << crypto::secret_key_explicit_print_ref{in_contexts[i].in_ephemeral.sec} << std::endl << "real_output: " << src_entr.real_output << std::endl;
                 i++;
             }
-            std::cerr << "construct_tx, transaction_created: " << get_transaction_hash(tx) << std::endl << obj_to_json_str(tx) << std::endl << ss_ring_s.str() << std::endl; // TODO: debug only remove!
-        } else {
-            size_t n_total_outs = sources[0].outputs.size(); // only for non-simple rct
+        } else { // TODO: suspect that this is the only path still used tx.version != 1
+            size_t n_total_outs = sources.begin()->outputs.size(); // only for non-simple rct
             // the non-simple version is slightly smaller, but assumes all real inputs
             // are on the same index, so can only be used if there just one ring.
             bool use_simple_rct = sources.size() > 1 || rct_config.range_proof_type != rct::RangeProofBorromean;
             if(!use_simple_rct) {
                 // non simple ringct requires all real inputs to be at the same index for all inputs
-                for(const cryptonote::tx_source_entry& src_entr:  sources) {
-                    if(src_entr.real_output != sources.begin()->real_output) {
-                        std::cerr << "All inputs must have the same index for non-simple ringct" << std::endl; // TODO: debug only, remove or throw
-                        return false;
-                    }
-                }
+                for(const cryptonote::tx_source_entry& source:  sources)
+                    if(source.real_output != sources.begin()->real_output)
+                        throw ots::exception::tx::Construct("All inputs must have the same index for non-simple ringct");
                 // enforce same mixin for all outputs
-                for(size_t i = 1; i < sources.size(); ++i) {
-                    if(n_total_outs != sources[i].outputs.size()) {
-                        std::cerr << "Non-simple ringct transaction has varying ring size" << std::endl; // TODO: debug only, remove or throw
-                        return false;
-                    }
-                }
+                for(const cryptonote::tx_source_entry& source:  sources)
+                    if(n_total_outs != source.outputs.size())
+                        throw ots::exception::tx::Construct("Non-simple ringct transaction has varying ring size");
             }
             uint64_t amount_in = 0, amount_out = 0;
             rct::ctkeyV inSk;
@@ -353,26 +338,23 @@ namespace ots {
                 // mixRing indexing is done the other way round for simple
                 for(size_t i = 0; i < sources.size(); ++i) {
                     mixRing[i].resize(sources[i].outputs.size());
-                    for(size_t n = 0; n < sources[i].outputs.size(); ++n) {
+                    for(size_t n = 0; n < sources[i].outputs.size(); ++n)
                         mixRing[i][n] = sources[i].outputs[n].second;
-                    }
                 }
             } else {
                 for(size_t i = 0; i < n_total_outs; ++i) { // same index assumption
                     mixRing[i].resize(sources.size());
-                    for(size_t n = 0; n < sources.size(); ++n) {
+                    for(size_t n = 0; n < sources.size(); ++n)
                         mixRing[i][n] = sources[n].outputs[i].second;
-                    }
                 }
             }
             // fee
             if(!use_simple_rct && amount_in > amount_out)
                 outamounts.push_back(amount_in - amount_out);
             // zero out all amounts to mask rct outputs, real amounts are now encrypted
-            for(size_t i = 0; i < tx.vin.size(); ++i) {
+            for(size_t i = 0; i < tx.vin.size(); ++i)
                 if(sources[i].rct)
                     boost::get<cryptonote::txin_to_key>(tx.vin[i]).amount = 0;
-            }
             for(size_t i = 0; i < tx.vout.size(); ++i)
                 tx.vout[i].amount = 0;
             crypto::hash tx_prefix_hash;
@@ -398,69 +380,63 @@ namespace ots {
                     outamounts,
                     mixRing,
                     amount_keys,
-                    sources[0].real_output,
+                    sources.begin()->real_output,
                     outSk,
                     rct_config,
                     hwdev
             );
             memwipe(inSk.data(), inSk.size() * sizeof(rct::ctkey));
-            CHECK_AND_ASSERT_MES(tx.vout.size() == outSk.size(), false, "outSk size does not match vout");
-
-            std::cerr << "construct_tx, transaction_created: " << get_transaction_hash(tx) << std::endl << obj_to_json_str(tx) << std::endl; // TODO: debug only remove!
+            if(tx.vout.size() != outSk.size())
+                throw ots::exception::tx::Construct("outSk size does not match vout");
         }
         tx.invalidate_hashes();
-        return true;
     }
 
-    // from cryptonote_tx_utils.cpp
-    void classifyAddresses(
+    // from cryptonote_tx_utils.cpp: cryptonote::classify_addresses
+    std::tuple<size_t, size_t, cryptonote::account_public_address> classifyAddresses(
         const std::vector<cryptonote::tx_destination_entry> &destinations,
-        const boost::optional<cryptonote::account_public_address>& change_addr,
-        size_t &num_stdaddresses,
-        size_t &num_subaddresses,
-        cryptonote::account_public_address &single_dest_subaddress
+        const boost::optional<cryptonote::account_public_address>& changeAddress
     ) {
-        num_stdaddresses = 0;
-        num_subaddresses = 0;
-        std::unordered_set<cryptonote::account_public_address> unique_dst_addresses;
-        for(const cryptonote::tx_destination_entry& dst_entr: destinations) {
-            if(change_addr && dst_entr.addr == change_addr)
+        size_t stdAddressesCount = 0, subAddressesCount = 0;
+        cryptonote::account_public_address singleDestSubAddress;
+        bool uniqueDestAddresses = false;
+        for(const cryptonote::tx_destination_entry& destination: destinations) {
+            if(changeAddress && destination.addr == changeAddress)
                 continue;
-            if(unique_dst_addresses.count(dst_entr.addr) == 0) {
-                unique_dst_addresses.insert(dst_entr.addr);
-                if(dst_entr.is_subaddress) {
-                    ++num_subaddresses;
-                    single_dest_subaddress = dst_entr.addr;
-                } else {
-                    ++num_stdaddresses;
+            if(!uniqueDestAddresses) {
+                uniqueDestAddresses = true;
+                if(destination.is_subaddress) {
+                    subAddressesCount++;
+                    singleDestSubAddress = destination.addr;
+                    continue;
                 }
+                stdAddressesCount++;
             }
         }
-        std::cerr << "destinations include " << num_stdaddresses << " standard addresses and " << num_subaddresses << " subaddresses" << std::endl; // TODO: debug only, remove!
+        return {stdAddressesCount, subAddressesCount, singleDestSubAddress};
     }
 
-    // from cryptonote_tx_utils.cpp
+    // from cryptonote_tx_utils.cpp: cryptonote::get_destination_view_key_pub
     crypto::public_key getDestinationViewKeyPub(
         const std::vector<cryptonote::tx_destination_entry> &destinations,
-        const boost::optional<cryptonote::account_public_address>& change_addr
+        const boost::optional<cryptonote::account_public_address>& changeAddress
     ) {
-        cryptonote::account_public_address addr = {crypto::null_pkey, crypto::null_pkey};
+        cryptonote::account_public_address address = {crypto::null_pkey, crypto::null_pkey};
         size_t count = 0;
-        for (const auto &i : destinations)
-        {
-            if (i.amount == 0)
+        for(const auto &destination : destinations) {
+            if(
+                destination.amount == 0
+                || changeAddress && destination.addr == *changeAddress
+                || destination.addr == address
+            )
                 continue;
-            if (change_addr && i.addr == *change_addr)
-                continue;
-            if (i.addr == addr)
-                continue;
-            if (count > 0)
+            if(count > 0)
                 return crypto::null_pkey;
-            addr = i.addr;
-            ++count;
+            address = destination.addr;
+            count++;
         }
-        if (count == 0 && change_addr)
-            return change_addr->m_view_public_key;
-        return addr.m_view_public_key;
+        return (count == 0 && changeAddress)
+            ? changeAddress->m_view_public_key
+            : address.m_view_public_key;
     }
 } // namespace ots

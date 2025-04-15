@@ -664,10 +664,7 @@ process:
                 throw ots::exception::tx::UnlockTime("Non-zero unlock time");
             signed_txes.ptx.push_back(pending_tx());
             pending_tx &ptx = signed_txes.ptx.back();
-            rct::RCTConfig rct_config = sd.rct_config;
-            crypto::secret_key tx_key;
-            std::vector<crypto::secret_key> additional_tx_keys;
-            if(!constructTxAndGetTxKey(
+            auto [tx_key, additional_tx_keys] = constructTxAndGetTxKey(
                 m_account.get_keys(),
                 m_subaddresses,
                 sd.sources,
@@ -675,29 +672,10 @@ process:
                 sd.change_dts.addr,
                 sd.extra,
                 ptx.tx,
-                tx_key,
-                additional_tx_keys,
                 sd.use_rct,
-                rct_config,
+                sd.rct_config,
                 sd.use_view_tags
-            ))
-                throw ots::exception::tx::Construct("Failed to construct transaction");
-            // we don't test tx size, because we don't know the current limit, due to not having a blockchain,
-            // and it's a bit pointless to fail there anyway, since it'd be a (good) guess only. We sign anyway,
-            // and if we really go over limit, the daemon will reject when it gets submitted. Chances are it's
-            // OK anyway since it was generated in the first place, and rerolling should be within a few bytes.
-
-            // normally, the tx keys are saved in commit_tx, when the tx is actually sent to the daemon.
-            // we can't do that here since the tx will be sent from the compromised wallet, which we don't want
-            // to see that info, so we save it here
-            /* TODO: THOR seem not to be used anywhere
-            if(tx_key != crypto::null_skey) {
-                const crypto::hash txid = get_transaction_hash(ptx.tx);
-                m_tx_keys[txid] = tx_key;
-                m_additional_tx_keys[txid] = additional_tx_keys;
-            }
-            */
-
+            );
             std::string key_images;
             bool all_are_txin_to_key = std::all_of(
                 ptx.tx.vin.begin(),
@@ -708,13 +686,12 @@ process:
                 key_images += boost::to_string(in.k_image) + " ";
                 return true;
             });
-            // THROW_WALLET_EXCEPTION_IF(!all_are_txin_to_key, error::unexpected_txin_type, ptx.tx);
             if(!all_are_txin_to_key)
-                throw ots::exception::tx::UnexpectedInputType("Unexpected input type");
+                throw ots::exception::tx::UnexpectedInputType("Unexpected tx input type");
             ptx.key_images = key_images;
             ptx.fee = 0;
-            for(const auto &i: sd.sources) ptx.fee += i.amount;
-            for(const auto &i: sd.splitted_dsts) ptx.fee -= i.amount;
+            for(const auto &source: sd.sources) ptx.fee += source.amount;
+            for(const auto &destination: sd.splitted_dsts) ptx.fee -= destination.amount;
             ptx.dust = 0;
             ptx.dust_added_to_fee = false;
             ptx.change_dts = sd.change_dts;
