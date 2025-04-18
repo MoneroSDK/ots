@@ -24,7 +24,6 @@ namespace ots {
         const boost::optional<cryptonote::account_public_address>& changeAddress,
         const std::vector<uint8_t> &extra,
         cryptonote::transaction& tx,
-        bool rct,
         const rct::RCTConfig &rct_config,
         bool use_view_tags
     );
@@ -39,9 +38,7 @@ namespace ots {
         cryptonote::transaction& tx,
         const crypto::secret_key &tx_key,
         const std::vector<crypto::secret_key> &additional_tx_keys,
-        bool rct,
         const rct::RCTConfig &rct_config,
-        bool shuffle_outs,
         bool use_view_tags
     );
 

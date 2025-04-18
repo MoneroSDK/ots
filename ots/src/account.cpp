@@ -662,6 +662,8 @@ process:
                 throw ots::exception::tx::Sign("Empty sources");
             if(sd.unlock_time)
                 throw ots::exception::tx::UnlockTime("Non-zero unlock time");
+            if(!sd.use_rct)
+                throw ots::exception::tx::Sign("Legacy Non-RingCT transaction not supported");
             signed_txes.ptx.push_back(pending_tx());
             pending_tx &ptx = signed_txes.ptx.back();
             auto [tx_key, additional_tx_keys] = constructTxAndGetTxKey(
@@ -672,7 +674,6 @@ process:
                 sd.change_dts.addr,
                 sd.extra,
                 ptx.tx,
-                sd.use_rct,
                 sd.rct_config,
                 sd.use_view_tags
             );

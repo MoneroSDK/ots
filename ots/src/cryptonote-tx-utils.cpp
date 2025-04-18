@@ -14,7 +14,6 @@ namespace ots {
         const boost::optional<cryptonote::account_public_address>& changeAddress,
         const std::vector<uint8_t> &extra,
         cryptonote::transaction& tx,
-        bool rct,
         const rct::RCTConfig &rct_config,
         bool use_view_tags
     ) {
@@ -47,9 +46,7 @@ namespace ots {
             tx,
             tx_key,
             additional_tx_keys,
-            rct,
             rct_config,
-            true, // shuffle outs
             use_view_tags
         );
         return std::pair(tx_key, additional_tx_keys);
@@ -66,9 +63,7 @@ namespace ots {
         cryptonote::transaction& tx,
         const crypto::secret_key &tx_key,
         const std::vector<crypto::secret_key> &additional_tx_keys,
-        bool rct,
         const rct::RCTConfig &rct_config,
-        bool shuffle_outs,
         bool use_view_tags
     ) {
         hw::device &hwdev = senderAccountKeys.get_device();
@@ -77,7 +72,7 @@ namespace ots {
         std::vector<rct::key> amount_keys;
         tx.set_null();
         amount_keys.clear();
-        tx.version = rct ? 2 : 1;
+        tx.version = 2; // we always use version rct (version > 2)
         tx.unlock_time = 0;
         tx.extra = extra;
         crypto::public_key txkey_pub;
@@ -107,8 +102,6 @@ namespace ots {
                     cryptonote::remove_field_from_tx_extra(tx.extra, typeid(cryptonote::tx_extra_nonce));
                     if(!cryptonote::add_extra_nonce_to_tx_extra(tx.extra, extra_nonce))
                         throw ots::exception::tx::Construct("Failed to add encrypted payment id to tx extra");
-                    add_dummy_payment_id = false;
-                } else if(cryptonote::get_payment_id_from_tx_extra_nonce(extra_nonce.nonce, payment_id)) {
                     add_dummy_payment_id = false;
                 }
             }
@@ -189,8 +182,8 @@ namespace ots {
             input_to_key.key_offsets = cryptonote::absolute_output_offsets_to_relative(input_to_key.key_offsets);
             tx.vin.push_back(input_to_key);
         }
-        if(shuffle_outs)
-            std::shuffle(destinations.begin(), destinations.end(), crypto::random_device{});
+        // shuffle outs
+        std::shuffle(destinations.begin(), destinations.end(), crypto::random_device{});
         // sort ins by their key image
         std::vector<size_t> ins_order(sources.size());
         for(size_t n = 0; n < sources.size(); ++n)
@@ -230,8 +223,6 @@ namespace ots {
         //fill outputs
         size_t output_index = 0;
         for(const cryptonote::tx_destination_entry& destination: destinations) {
-            if(!(destination.amount > 0 || tx.version > 1))
-                throw ots::exception::tx::Construct("Destination with wrong amount: " + std::to_string(destination.amount)); // TODO: split errors
             crypto::public_key out_eph_public_key;
             crypto::view_tag view_tag;
             hwdev.generate_output_ephemeral_keys(
@@ -265,130 +256,102 @@ namespace ots {
         bool zero_secret_key = true;
         for(size_t i = 0; i < sizeof(senderAccountKeys.m_spend_secret_key); ++i)
             zero_secret_key &= (senderAccountKeys.m_spend_secret_key.data[i] == 0);
-        if(tx.version == 1) { // TODO: Think tx.version == 1 part can be removed. How to make sure?
-            //generate ring signatures
-            crypto::hash tx_prefix_hash;
-            get_transaction_prefix_hash(tx, tx_prefix_hash);
-            size_t i = 0;
-            for(const cryptonote::tx_source_entry& source:  sources) {
-                std::vector<const crypto::public_key*> keys_ptrs;
-                std::vector<crypto::public_key> keys(source.outputs.size());
-                for(const cryptonote::tx_source_entry::output_entry& o: source.outputs) {
-                    keys.emplace_back(rct2pk(o.second.dest));
-                    keys_ptrs.push_back(&keys.back());
-                }
-                tx.signatures.push_back(std::vector<crypto::signature>());
-                std::vector<crypto::signature>& sigs = tx.signatures.back();
-                sigs.resize(source.outputs.size());
-                if(!zero_secret_key)
-                    crypto::generate_ring_signature(
-                        tx_prefix_hash,
-                        boost::get<cryptonote::txin_to_key>(tx.vin[i]).k_image,
-                        keys_ptrs,
-                        in_contexts[i].in_ephemeral.sec,
-                        source.real_output,
-                        sigs.data()
-                    );
-                i++;
-            }
-        } else { // TODO: suspect that this is the only path still used tx.version != 1
-            size_t n_total_outs = sources.begin()->outputs.size(); // only for non-simple rct
-            // the non-simple version is slightly smaller, but assumes all real inputs
-            // are on the same index, so can only be used if there just one ring.
-            bool use_simple_rct = sources.size() > 1 || rct_config.range_proof_type != rct::RangeProofBorromean;
-            if(!use_simple_rct) {
-                // non simple ringct requires all real inputs to be at the same index for all inputs
-                for(const cryptonote::tx_source_entry& source:  sources)
-                    if(source.real_output != sources.begin()->real_output)
-                        throw ots::exception::tx::Construct("All inputs must have the same index for non-simple ringct");
-                // enforce same mixin for all outputs
-                for(const cryptonote::tx_source_entry& source:  sources)
-                    if(n_total_outs != source.outputs.size())
-                        throw ots::exception::tx::Construct("Non-simple ringct transaction has varying ring size");
-            }
-            uint64_t amount_in = 0, amount_out = 0;
-            rct::ctkeyV inSk;
-            inSk.reserve(sources.size());
-            // mixRing indexing is done the other way round for simple
-            rct::ctkeyM mixRing(use_simple_rct ? sources.size() : n_total_outs);
-            rct::keyV destinations;
-            std::vector<uint64_t> inamounts, outamounts;
-            std::vector<unsigned int> index;
-            for(size_t i = 0; i < sources.size(); ++i) {
-                rct::ctkey ctkey;
-                amount_in += sources[i].amount;
-                inamounts.push_back(sources[i].amount);
-                index.push_back(sources[i].real_output);
-                // inSk: (secret key, mask)
-                ctkey.dest = rct::sk2rct(in_contexts[i].in_ephemeral.sec);
-                ctkey.mask = sources[i].mask;
-                inSk.push_back(ctkey);
-                memwipe(&ctkey, sizeof(rct::ctkey));
-                // inPk: (public key, commitment)
-                // will be done when filling in mixRing
-            }
-            for(size_t i = 0; i < tx.vout.size(); ++i) {
-                crypto::public_key output_public_key;
-                get_output_public_key(tx.vout[i], output_public_key);
-                destinations.push_back(rct::pk2rct(output_public_key));
-                outamounts.push_back(tx.vout[i].amount);
-                amount_out += tx.vout[i].amount;
-            }
-            if(use_simple_rct) {
-                // mixRing indexing is done the other way round for simple
-                for(size_t i = 0; i < sources.size(); ++i) {
-                    mixRing[i].resize(sources[i].outputs.size());
-                    for(size_t n = 0; n < sources[i].outputs.size(); ++n)
-                        mixRing[i][n] = sources[i].outputs[n].second;
-                }
-            } else {
-                for(size_t i = 0; i < n_total_outs; ++i) { // same index assumption
-                    mixRing[i].resize(sources.size());
-                    for(size_t n = 0; n < sources.size(); ++n)
-                        mixRing[i][n] = sources[n].outputs[i].second;
-                }
-            }
-            // fee
-            if(!use_simple_rct && amount_in > amount_out)
-                outamounts.push_back(amount_in - amount_out);
-            // zero out all amounts to mask rct outputs, real amounts are now encrypted
-            for(size_t i = 0; i < tx.vin.size(); ++i)
-                if(sources[i].rct)
-                    boost::get<cryptonote::txin_to_key>(tx.vin[i]).amount = 0;
-            for(size_t i = 0; i < tx.vout.size(); ++i)
-                tx.vout[i].amount = 0;
-            crypto::hash tx_prefix_hash;
-            get_transaction_prefix_hash(tx, tx_prefix_hash, hwdev);
-            rct::ctkeyV outSk;
-            tx.rct_signatures = use_simple_rct ? rct::genRctSimple(
-                    rct::hash2rct(tx_prefix_hash),
-                    inSk,
-                    destinations,
-                    inamounts,
-                    outamounts,
-                    amount_in - amount_out,
-                    mixRing,
-                    amount_keys,
-                    index,
-                    outSk,
-                    rct_config,
-                    hwdev
-            ) : rct::genRct( // same index assumption
-                    rct::hash2rct(tx_prefix_hash),
-                    inSk,
-                    destinations,
-                    outamounts,
-                    mixRing,
-                    amount_keys,
-                    sources.begin()->real_output,
-                    outSk,
-                    rct_config,
-                    hwdev
-            );
-            memwipe(inSk.data(), inSk.size() * sizeof(rct::ctkey));
-            if(tx.vout.size() != outSk.size())
-                throw ots::exception::tx::Construct("outSk size does not match vout");
+        size_t n_total_outs = sources.begin()->outputs.size(); // only for non-simple rct
+        // the non-simple version is slightly smaller, but assumes all real inputs
+        // are on the same index, so can only be used if there just one ring.
+        bool use_simple_rct = sources.size() > 1 || rct_config.range_proof_type != rct::RangeProofBorromean;
+        if(!use_simple_rct) {
+            // non simple ringct requires all real inputs to be at the same index for all inputs
+            for(const cryptonote::tx_source_entry& source:  sources)
+                if(source.real_output != sources.begin()->real_output)
+                    throw ots::exception::tx::Construct("All inputs must have the same index for non-simple ringct");
+            // enforce same mixin for all outputs
+            for(const cryptonote::tx_source_entry& source:  sources)
+                if(n_total_outs != source.outputs.size())
+                    throw ots::exception::tx::Construct("Non-simple ringct transaction has varying ring size");
         }
+        uint64_t amount_in = 0, amount_out = 0;
+        rct::ctkeyV inSk;
+        inSk.reserve(sources.size());
+        // mixRing indexing is done the other way round for simple
+        rct::ctkeyM mixRing(use_simple_rct ? sources.size() : n_total_outs);
+        rct::keyV ringDestinations;
+        std::vector<uint64_t> inamounts, outamounts;
+        std::vector<unsigned int> index;
+        for(size_t i = 0; i < sources.size(); ++i) {
+            rct::ctkey ctkey;
+            amount_in += sources[i].amount;
+            inamounts.push_back(sources[i].amount);
+            index.push_back(sources[i].real_output);
+            // inSk: (secret key, mask)
+            ctkey.dest = rct::sk2rct(in_contexts[i].in_ephemeral.sec);
+            ctkey.mask = sources[i].mask;
+            inSk.push_back(ctkey);
+            memwipe(&ctkey, sizeof(rct::ctkey));
+            // inPk: (public key, commitment)
+            // will be done when filling in mixRing
+        }
+        for(size_t i = 0; i < tx.vout.size(); ++i) {
+            crypto::public_key output_public_key;
+            get_output_public_key(tx.vout[i], output_public_key);
+            ringDestinations.push_back(rct::pk2rct(output_public_key));
+            outamounts.push_back(tx.vout[i].amount);
+            amount_out += tx.vout[i].amount;
+        }
+        if(use_simple_rct) {
+            // mixRing indexing is done the other way round for simple
+            for(size_t i = 0; i < sources.size(); ++i) {
+                mixRing[i].resize(sources[i].outputs.size());
+                for(size_t n = 0; n < sources[i].outputs.size(); ++n)
+                    mixRing[i][n] = sources[i].outputs[n].second;
+            }
+        } else {
+            for(size_t i = 0; i < n_total_outs; ++i) { // same index assumption
+                mixRing[i].resize(sources.size());
+                for(size_t n = 0; n < sources.size(); ++n)
+                    mixRing[i][n] = sources[n].outputs[i].second;
+            }
+        }
+        // fee
+        if(!use_simple_rct && amount_in > amount_out)
+            outamounts.push_back(amount_in - amount_out);
+        // zero out all amounts to mask rct outputs, real amounts are now encrypted
+        for(size_t i = 0; i < tx.vin.size(); ++i)
+            if(sources[i].rct)
+                boost::get<cryptonote::txin_to_key>(tx.vin[i]).amount = 0;
+        for(size_t i = 0; i < tx.vout.size(); ++i)
+            tx.vout[i].amount = 0;
+        crypto::hash tx_prefix_hash;
+        get_transaction_prefix_hash(tx, tx_prefix_hash, hwdev);
+        rct::ctkeyV outSk;
+        tx.rct_signatures = use_simple_rct ? rct::genRctSimple(
+                rct::hash2rct(tx_prefix_hash),
+                inSk,
+                ringDestinations,
+                inamounts,
+                outamounts,
+                amount_in - amount_out,
+                mixRing,
+                amount_keys,
+                index,
+                outSk,
+                rct_config,
+                hwdev
+        ) : rct::genRct( // same index assumption
+                rct::hash2rct(tx_prefix_hash),
+                inSk,
+                ringDestinations,
+                outamounts,
+                mixRing,
+                amount_keys,
+                sources.begin()->real_output,
+                outSk,
+                rct_config,
+                hwdev
+        );
+        memwipe(inSk.data(), inSk.size() * sizeof(rct::ctkey));
+        if(tx.vout.size() != outSk.size())
+            throw ots::exception::tx::Construct("outSk size does not match vout");
         tx.invalidate_hashes();
     }
 
