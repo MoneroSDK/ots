@@ -17,6 +17,7 @@
 #include "data-seed-language.hpp"
 #include "data-seed-legacy.hpp"
 #include "data-seed-monero.hpp"
+#include "data-seed-polyseed.hpp"
 #include "data-wallet-sign.hpp"
 #include "data-wallet.hpp"
 #include "data-blocktime.hpp"
@@ -758,19 +759,19 @@ TEST_F(OTSTest, OtsMoneroSeed) {
             continue;
         }
         EXPECT_NO_THROW({
-                auto seed = ots::MoneroSeed::decode(tc.phrase, tc.height, tc.time, tc.network, tc.password);
-                EXPECT_EQ(seed.height(), tc.height) << "Height should be the same as in the map";
-                EXPECT_EQ(seed.network(), tc.network) << "Network should be the same as in the map";
-                EXPECT_EQ(seed.address(), tc.address) << "Address should be the same as in the map";
-                EXPECT_EQ(seed.address().fingerprint(), tc.fingerprint) << "Fingerprint should be the same as in the map";
-                }) << "Valid seed " << tc.name << "(" << tc.phrase << ") should not throw";
+            auto seed = ots::MoneroSeed::decode(tc.phrase, tc.height, tc.time, tc.network, tc.password);
+            EXPECT_EQ(seed.height(), tc.height) << "Height should be the same as in the map";
+            EXPECT_EQ(seed.network(), tc.network) << "Network should be the same as in the map";
+            EXPECT_EQ(seed.address(), tc.address) << "Address should be the same as in the map";
+            EXPECT_EQ(seed.address().fingerprint(), tc.fingerprint) << "Fingerprint should be the same as in the map";
+        }) << "Valid seed " << tc.name << "(" << tc.phrase << ") should not throw";
         EXPECT_NO_THROW({
-                auto tc = monero_seed_test_cases[2];
-                auto seed = ots::MoneroSeed::decode(tc.phrase, tc.height, tc.time, tc.network, tc.password);
-                ots::SeedIndices indices = seed.indices(tc.password);
-                auto seedFromIndices = ots::MoneroSeed::decode(indices, tc.height, tc.time, tc.network, tc.password);
-                EXPECT_EQ(seedFromIndices.phrase(ots::SeedLanguage::fromCode(tc.lang_code), tc.password).insecure(), tc.phrase) << "Phrase should be the same as in the map";
-                }) << "Seed indices should lead to the same seed";
+            auto tc = monero_seed_test_cases[2];
+            auto seed = ots::MoneroSeed::decode(tc.phrase, tc.height, tc.time, tc.network, tc.password);
+            ots::SeedIndices indices = seed.indices(tc.password);
+            auto seedFromIndices = ots::MoneroSeed::decode(indices, tc.height, tc.time, tc.network, tc.password);
+            EXPECT_EQ(seedFromIndices.phrase(ots::SeedLanguage::fromCode(tc.lang_code), tc.password).insecure(), tc.phrase) << "Phrase should be the same as in the map";
+        }) << "Seed indices should lead to the same seed";
     }
 }
 
@@ -792,18 +793,18 @@ TEST_F(OTSTest, OtsPolyseedPlain) {
 
 TEST_F(OTSTest, OtsPolyseedEncrypted) {
     EXPECT_NO_THROW({
-            auto password = "password";
-            auto lang = ots::SeedLanguage::fromCode("en");
-            auto ps = ots::Polyseed::generate(ots::Network::MAIN);
-            auto phrase = ps.phrase(lang, password).insecure();
-            auto ps2 = ots::Polyseed::decode(phrase, ots::Network::MAIN, password);
-            EXPECT_THROW(ots::Polyseed::decode(phrase, ots::Network::MAIN), ots::exception::polyseed::NoPasswordProvided) << "Decryption without password should throw";
-            EXPECT_EQ(phrase, ps2.phrase(lang, password).insecure()) << "Decrypted phrase should be the same as the original";
-            EXPECT_EQ(ps.indices(password), ps2.indices(password)) << "Seed indices should be the same as the original";
-            EXPECT_EQ(ps.indices(), ps2.indices()) << "Seed indices should be the same as the original";
-            EXPECT_NE(ps.indices(), ps2.indices(password)) << "Seed indices should be different with different passwords";
-            EXPECT_EQ(ps2.address(), ps.address()) << "Address should be the same as the original";
-            });
+        auto password = "password";
+        auto lang = ots::SeedLanguage::fromCode("en");
+        auto ps = ots::Polyseed::generate(ots::Network::MAIN);
+        auto phrase = ps.phrase(lang, password).insecure();
+        auto ps2 = ots::Polyseed::decode(phrase, ots::Network::MAIN, password);
+        EXPECT_THROW(ots::Polyseed::decode(phrase, ots::Network::MAIN), ots::exception::polyseed::NoPasswordProvided) << "Decryption without password should throw";
+        EXPECT_EQ(phrase, ps2.phrase(lang, password).insecure()) << "Decrypted phrase should be the same as the original";
+        EXPECT_EQ(ps.indices(password), ps2.indices(password)) << "Seed indices should be the same as the original";
+        EXPECT_EQ(ps.indices(), ps2.indices()) << "Seed indices should be the same as the original";
+        EXPECT_NE(ps.indices(), ps2.indices(password)) << "Seed indices should be different with different passwords";
+        EXPECT_EQ(ps2.address(), ps.address()) << "Address should be the same as the original";
+    });
 }
 
 TEST_F(OTSTest, OtsPolyseedOffsetphrase) {
@@ -841,6 +842,56 @@ TEST_F(OTSTest, OtsPolyseedPasswordAndPassphrase) {
         EXPECT_EQ(ps_phrase.address(), ps_indices.address()) << "Address should be the same as the original";
         EXPECT_EQ(ps_phrase.address(), ps_created.address()) << "Address should be the same as the original";
     });
+}
+
+TEST_F(OTSTest, OtsPolyseedTestCases) {
+    for(auto& tc: polyseed_test_cases) {
+        if(!tc.valid) {
+            EXPECT_THROW(
+                ots::Polyseed::decode(
+                    tc.phrase,
+                    tc.network,
+                    tc.password,
+                    tc.passphrase
+                ),
+                ots::exception::polyseed::InvalidSeedFormat
+            ) << "Invalid seed " << tc.name << " should throw";
+            continue;
+        }
+        EXPECT_NO_THROW({
+            auto seed = ots::Polyseed::decode(
+                tc.phrase,
+                tc.network,
+                tc.password,
+                tc.passphrase
+            );
+            EXPECT_EQ(
+                seed.address(),
+                tc.address
+            ) << "Address should be the same as in the map";
+            EXPECT_EQ(
+                seed.address().fingerprint(),
+                tc.fingerprint
+            ) << "Fingerprint should be the same as in the map";
+            EXPECT_EQ(
+                seed.wallet()->secretSpendKey().insecure(),
+                tc.secret_spend_key
+            ) << "Secret spend key should be the same as in the map";
+            EXPECT_EQ(
+                seed.wallet()->secretViewKey().insecure(),
+                tc.secret_view_key
+            ) << "Secret view key should be the same as in the map";
+            EXPECT_EQ(
+                seed.wallet()->publicSpendKey().insecure(),
+                tc.public_spend_key
+            ) << "Public spend key should be the same as in the map";
+            EXPECT_EQ(
+                seed.wallet()->publicViewKey().insecure(),
+                tc.public_view_key
+            ) << "Public view key should be the same as in the map";
+        }) << "Valid seed " << tc.name << "(" << tc.phrase << ") should not throw";
+
+    }
 }
 
 TEST_F(OTSTest, WalletVerifySignedMessageFromTestData) {
