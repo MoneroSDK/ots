@@ -174,7 +174,10 @@ extern "C" {
     /**
      * @brief Validate handle type
      */
-    static inline bool ots_handle_valid(const ots_handle_t* h, ots_handle_type expected) {
+    static inline bool ots_handle_valid(
+        const ots_handle_t* h,
+        ots_handle_type expected
+    ) {
         return h->type == expected && h->ptr != NULL;
     }
 
@@ -362,7 +365,10 @@ extern "C" {
      * @param[in] type Address type to check for
      * @return true if result is the specified address type
      */
-    bool ots_result_address_type_is_type(const ots_result_t* result, OTS_ADDRESS_TYPE type);
+    bool ots_result_address_type_is_type(
+        const ots_result_t* result,
+        OTS_ADDRESS_TYPE type
+    );
 
     /**
      * @brief Check if result is an address index
@@ -397,7 +403,10 @@ extern "C" {
      * @param[in] network Network type to check for
      * @return true if result is the specified network type
      */
-    bool ots_result_network_is_type(const ots_result_t* result, OTS_NETWORK network);
+    bool ots_result_network_is_type(
+        const ots_result_t* result,
+        OTS_NETWORK network
+    );
 
     /**
      * @brief Check if result is a seed type
@@ -412,7 +421,10 @@ extern "C" {
      * @param[in] type Seed type to check for
      * @return true if result is the specified seed type
      */
-    bool ots_result_seed_type_is_type(const ots_result_t* result, OTS_SEED_TYPE type);
+    bool ots_result_seed_type_is_type(
+        const ots_result_t* result,
+        OTS_SEED_TYPE type
+    );
 
     /**
      * @brief Check if a pointer is NULL
@@ -434,7 +446,10 @@ extern "C" {
      * @param[in] type Type to check for
      * @return true if handle is the specified type
      */
-    bool ots_handle_is_type(const ots_handle_t* handle, ots_handle_type type);
+    bool ots_handle_is_type(
+        const ots_handle_t* handle,
+        ots_handle_type type
+    );
 
     /**
      * @brief Check if handle is a reference
@@ -519,7 +534,10 @@ extern "C" {
      * @return Result containing seed indices handle
      * @see ots::SeedIndices::fromNumeric()
      */
-    ots_result_t* ots_seed_indices_create_from_string(const char* str, const char* separator);
+    ots_result_t* ots_seed_indices_create_from_string(
+        const char* str,
+        const char* separator
+    );
 
     /**
      * @brief Create seed indices container from hex string
@@ -528,7 +546,10 @@ extern "C" {
      * @return Result containing seed indices handle
      * @see ots::SeedIndices::fromHex()
      */
-    ots_result_t* ots_seed_indices_create_from_hex(const char* hex, const char* separator);
+    ots_result_t* ots_seed_indices_create_from_hex(
+        const char* hex,
+        const char* separator
+    );
 
     /**
      * @brief Get seed indices values
@@ -555,7 +576,10 @@ extern "C" {
      * @param[in] handle Seed indices handle
      * @param[in] value Index value to append
      */
-    void ots_seed_indices_append(const ots_handle_t* handle, uint16_t value);
+    void ots_seed_indices_append(
+        const ots_handle_t* handle,
+        uint16_t value
+    );
 
     /**
      * @brief Get numeric seed indices
@@ -563,7 +587,10 @@ extern "C" {
      * @param[in] separator separator between indices, set "" for default behavior
      * @return Numeric representation of seed indices or NULL
      */
-    char* ots_seed_indices_numeric(const ots_handle_t* handle, const char* separator);
+    char* ots_seed_indices_numeric(
+        const ots_handle_t* handle,
+        const char* separator
+    );
 
     /**
      * @brief Get hex seed indices
@@ -571,7 +598,10 @@ extern "C" {
      * @param[in] separator separator between indices, set "" for default behavior
      * @return Hex representation of seed indices or NULL
      */
-    char* ots_seed_indices_hex(const ots_handle_t* handle, const char* separator);
+    char* ots_seed_indices_hex(
+        const ots_handle_t* handle,
+        const char* separator
+    );
 
     /*******************************************************************************
      * Seed Management Functions
@@ -626,9 +656,9 @@ extern "C" {
      * @note Only need to `check ots_is_result(handle)` or `!ots_is_error(handle)`
      */
     ots_result_t* ots_seed_language_set_default(
-            OTS_SEED_TYPE type,
-            const ots_handle_t* language
-            );
+        OTS_SEED_TYPE type,
+        const ots_handle_t* language
+    );
 
     /**
      * @brief Seed language code
@@ -679,9 +709,9 @@ extern "C" {
      * @return true if language supports seed type
      */
     ots_result_t* ots_seed_language_supported(
-            const ots_handle_t* language,
-            OTS_SEED_TYPE type
-            );
+        const ots_handle_t* language,
+        OTS_SEED_TYPE type
+    );
 
     /**
      * @brief Seed language is default for seed type
@@ -690,9 +720,9 @@ extern "C" {
      * @return true if language is default for seed type
      */
     ots_result_t* ots_seed_language_is_default(
-            const ots_handle_t* language,
-            OTS_SEED_TYPE type
-            );
+        const ots_handle_t* language,
+        OTS_SEED_TYPE type
+    );
 
     /**
      * @brief Seed language equals
@@ -701,9 +731,9 @@ extern "C" {
      * @return true if languages are equal
      */
     ots_result_t* ots_seed_language_equals(
-            const ots_handle_t* language1,
-            const ots_handle_t* language2
-            );
+        const ots_handle_t* language1,
+        const ots_handle_t* language2
+    );
 
     /**
      * @brief Seed language equals code
@@ -712,9 +742,9 @@ extern "C" {
      * @return true if language code matches
      */
     ots_result_t* ots_seed_language_equals_code(
-            const ots_handle_t* language,
-            const char* code
-            );
+        const ots_handle_t* language,
+        const char* code
+    );
 
     /**
      * @brief Get seed phrase in specified language
@@ -724,10 +754,10 @@ extern "C" {
      * @return Result containing wipeable string
      */
     ots_result_t* ots_seed_phrase(
-            const ots_handle_t* seed,
-            const ots_handle_t* language,
-            const char* password
-            );
+        const ots_handle_t* seed,
+        const ots_handle_t* language,
+        const char* password
+    );
 
     /**
      * @brief Get seed phrase in specified language
@@ -737,10 +767,10 @@ extern "C" {
      * @return Result containing wipeable string
      */
     ots_result_t* ots_seed_phrase_for_language_code(
-            const ots_handle_t* seed,
-            const char* language_code,
-            const char* password
-            );
+        const ots_handle_t* seed,
+        const char* language_code,
+        const char* password
+    );
 
     /**
      * @brief Get seed indices
@@ -749,9 +779,9 @@ extern "C" {
      * @return Result containing seed indices
      */
     ots_result_t* ots_seed_indices(
-            const ots_handle_t* handle,
-            const char* password
-            );
+        const ots_handle_t* handle,
+        const char* password
+    );
 
     /**
      * @brief Get seed fingerprint
@@ -803,9 +833,9 @@ extern "C" {
      * @throws OTS_ERROR_LENGTH_MISMATCH if value sets have different sizes
      */
     ots_result_t* ots_seed_indices_merge_values(
-            const ots_handle_t* seed_indices1,
-            const ots_handle_t* seed_indices2
-            );
+        const ots_handle_t* seed_indices1,
+        const ots_handle_t* seed_indices2
+    );
 
     /**
      * @brief Merge seed values with password
@@ -815,9 +845,9 @@ extern "C" {
      * @throws OTS_ERROR_MERGE_FAILED if merge operation fails
      */
     ots_result_t* ots_seed_indices_merge_with_password(
-            const char* password,
-            const ots_handle_t* seed_indices
-            );
+        const char* password,
+        const ots_handle_t* seed_indices
+    );
 
     /**
      * @brief Merge multiple sets of seed values
@@ -829,10 +859,10 @@ extern "C" {
      * @throws OTS_ERROR_TOO_FEW_VALUES if less than two value sets provided
      */
     ots_result_t* ots_seed_indices_merge_multiple_values(
-            const ots_handle_t* seed_indices[],
-            size_t elements,
-            size_t count
-            );
+        const ots_handle_t* seed_indices[],
+        size_t elements,
+        size_t count
+    );
 
     /**
      * @brief Merge and zero two sets of seed values
@@ -843,10 +873,10 @@ extern "C" {
      * @throws OTS_ERROR_LENGTH_MISMATCH if value sets have different sizes
      */
     ots_result_t* ots_seed_indices_merge_values_and_zero(
-            const ots_handle_t* seed_indices1,
-            const ots_handle_t* seed_indices2,
-            bool delete_after
-            );
+        const ots_handle_t* seed_indices1,
+        const ots_handle_t* seed_indices2,
+        bool delete_after
+    );
 
     /**
      * @brief Merge seed values with password and zero
@@ -857,10 +887,10 @@ extern "C" {
      * @throws OTS_ERROR_MERGE_FAILED if merge operation fails
      */
     ots_result_t* ots_seed_indices_merge_values_with_password_and_zero(
-            char* password,
-            const ots_handle_t* seed_indices,
-            bool delete_after
-            );
+        char* password,
+        const ots_handle_t* seed_indices,
+        bool delete_after
+    );
 
     /**
      * @brief Merge multiple sets of seed values and zero
@@ -873,11 +903,11 @@ extern "C" {
      * @throws OTS_ERROR_TOO_FEW_VALUES if less than two value sets provided
      */
     ots_result_t* ots_seed_indices_merge_multiple_values_and_zero(
-            const ots_handle_t* seed_indices[],
-            size_t elements,
-            size_t count,
-            bool delete_after
-            );
+        const ots_handle_t* seed_indices[],
+        size_t elements,
+        size_t count,
+        bool delete_after
+    );
 
     /*******************************************************************************
      * Legacy Seed Functions
@@ -893,11 +923,11 @@ extern "C" {
      * @throws OTS_ERROR_INVALID_SEED if decoding fails
      */
     ots_result_t* ots_legacy_seed_decode(
-            const char* phrase,
-            uint64_t height,
-            uint64_t time,
-            OTS_NETWORK network
-            );
+        const char* phrase,
+        uint64_t height,
+        uint64_t time,
+        OTS_NETWORK network
+    );
 
     /**
      * @brief Decode a legacy seed from indices
@@ -909,11 +939,11 @@ extern "C" {
      * @throws OTS_ERROR_INVALID_SEED if decoding fails
      */
     ots_result_t* ots_legacy_seed_decode_indices(
-            const ots_handle_t* indices,
-            uint64_t height,
-            uint64_t time,
-            OTS_NETWORK network
-            );
+        const ots_handle_t* indices,
+        uint64_t height,
+        uint64_t time,
+        OTS_NETWORK network
+    );
 
     /*******************************************************************************
      * Monero Seed Functions
@@ -930,11 +960,11 @@ extern "C" {
      * @note height or timestamp must be set to 0
      */
     ots_result_t* ots_monero_seed_create(
-            const uint8_t random[32],
-            uint64_t height,
-            uint64_t time,
-            OTS_NETWORK network
-            );
+        const uint8_t random[32],
+        uint64_t height,
+        uint64_t time,
+        OTS_NETWORK network
+    );
 
     /**
      * @brief Generate a new Monero seed
@@ -945,10 +975,10 @@ extern "C" {
      * @note height or timestamp must be set to 0
      */
     ots_result_t* ots_monero_seed_generate(
-            uint64_t height,
-            uint64_t time,
-            OTS_NETWORK network
-            );
+        uint64_t height,
+        uint64_t time,
+        OTS_NETWORK network
+    );
 
     /**
      * @brief Decode a Monero seed from phrase
@@ -961,12 +991,12 @@ extern "C" {
      * @throws OTS_ERROR_INVALID_SEED if decoding fails
      */
     ots_result_t* ots_monero_seed_decode(
-            const char* phrase,
-            uint64_t height,
-            uint64_t time,
-            OTS_NETWORK network,
-            const char* passphrase
-            );
+        const char* phrase,
+        uint64_t height,
+        uint64_t time,
+        OTS_NETWORK network,
+        const char* passphrase
+    );
 
     /**
      * @brief Decode a Monero seed from indices
@@ -979,12 +1009,12 @@ extern "C" {
      * @throws OTS_ERROR_INVALID_SEED if decoding fails
      */
     ots_result_t* ots_monero_seed_decode_indices(
-            const ots_handle_t* indices,
-            uint64_t height,
-            uint64_t time,
-            OTS_NETWORK network,
-            const char* passphrase
-            );
+        const ots_handle_t* indices,
+        uint64_t height,
+        uint64_t time,
+        OTS_NETWORK network,
+        const char* passphrase
+    );
 
     /*******************************************************************************
      * Polyseed Functions
@@ -1000,11 +1030,11 @@ extern "C" {
      * @throws OTS_ERROR_INVALID_INPUT if random data is invalid
      */
     ots_result_t* ots_polyseed_create(
-            const uint8_t random[19],
-            OTS_NETWORK network,
-            uint64_t time,
-            const char* passphrase
-            );
+        const uint8_t random[19],
+        OTS_NETWORK network,
+        uint64_t time,
+        const char* passphrase
+    );
 
     /**
      * @brief Generate a new Polyseed
@@ -1014,10 +1044,10 @@ extern "C" {
      * @return Result containing seed handle
      */
     ots_result_t* ots_polyseed_generate(
-            OTS_NETWORK network,
-            uint64_t time,
-            const char* passphrase
-            );
+        OTS_NETWORK network,
+        uint64_t time,
+        const char* passphrase
+    );
 
     /**
      * @brief Decode a Polyseed from phrase
@@ -1029,11 +1059,11 @@ extern "C" {
      * @throws OTS_ERROR_INVALID_SEED if decoding fails
      */
     ots_result_t* ots_polyseed_decode(
-            const char* phrase,
-            OTS_NETWORK network,
-            const char* password,
-            const char* passphrase
-            );
+        const char* phrase,
+        OTS_NETWORK network,
+        const char* password,
+        const char* passphrase
+    );
 
     /**
      * @brief Decode a Polyseed from indices
@@ -1045,11 +1075,11 @@ extern "C" {
      * @throws OTS_ERROR_INVALID_SEED if decoding fails
      */
     ots_result_t* ots_polyseed_decode_indices(
-            const ots_handle_t* indices,
-            OTS_NETWORK network,
-            const char* password,
-            const char* passphrase
-            );
+        const ots_handle_t* indices,
+        OTS_NETWORK network,
+        const char* password,
+        const char* passphrase
+    );
 
     /**
      * @brief Decode a Polyseed from phrase with specific language
@@ -1062,12 +1092,12 @@ extern "C" {
      * @throws OTS_ERROR_INVALID_SEED if decoding fails
      */
     ots_result_t* ots_polyseed_decode_with_language(
-            const char* phrase,
-            const ots_handle_t* language,
-            OTS_NETWORK network,
-            const char* password,
-            const char* passphrase
-            );
+        const char* phrase,
+        const ots_handle_t* language,
+        OTS_NETWORK network,
+        const char* password,
+        const char* passphrase
+    );
 
     /**
      * @brief Decode a Polyseed from phrase with specific language code
@@ -1080,12 +1110,12 @@ extern "C" {
      * @throws OTS_ERROR_INVALID_SEED if decoding fails
      */
     ots_result_t* ots_polyseed_decode_with_language_code(
-            const char* phrase,
-            const char* language_code,
-            OTS_NETWORK network,
-            const char* password,
-            const char* passphrase
-            );
+        const char* phrase,
+        const char* language_code,
+        OTS_NETWORK network,
+        const char* password,
+        const char* passphrase
+    );
 
     /*******************************************************************************
      * Address Management Functions
@@ -1168,9 +1198,9 @@ extern "C" {
      * @throws OTS_ERROR_INVALID_ADDRESS if either address is invalid
      */
     ots_result_t* ots_address_equal(
-            const ots_handle_t* address1,
-            const ots_handle_t* address2
-            );
+        const ots_handle_t* address1,
+        const ots_handle_t* address2
+    );
 
     /**
      * @brief Compare address handle with string
@@ -1179,9 +1209,9 @@ extern "C" {
      * @return Result containing boolean equality status
      */
     ots_result_t* ots_address_equal_string(
-            const ots_handle_t* address_handle,
-            const char* address_string
-            );
+        const ots_handle_t* address_handle,
+        const char* address_string
+    );
 
     /**
      * @brief Validate a Monero address
@@ -1189,7 +1219,10 @@ extern "C" {
      * @param[in] network Network to validate against
      * @return Result containing validation status
      */
-    ots_result_t* ots_address_string_valid(const char* address, OTS_NETWORK network);
+    ots_result_t* ots_address_string_valid(
+        const char* address,
+        OTS_NETWORK network
+    );
 
     /**
      * @brief Get network type for an address string
@@ -1254,10 +1287,10 @@ extern "C" {
      * @return Result containing wallet handle
      */
     ots_result_t* ots_wallet_create(
-            const uint8_t key[32],
-            uint64_t height,
-            OTS_NETWORK network
-            );
+        const uint8_t key[32],
+        uint64_t height,
+        OTS_NETWORK network
+    );
 
     /**
      * @brief Get wallet restore height
@@ -1281,10 +1314,10 @@ extern "C" {
      * @return Result containing address
      */
     ots_result_t* ots_wallet_subaddress(
-            const ots_handle_t* wallet,
-            uint32_t account,
-            uint32_t index
-            );
+        const ots_handle_t* wallet,
+        uint32_t account,
+        uint32_t index
+    );
 
     /**
      * @brief Get list of accounts in wallet
@@ -1294,10 +1327,10 @@ extern "C" {
      * @return Result containing array of address handles
      */
     ots_result_t* ots_wallet_accounts(
-            const ots_handle_t* wallet,
-            uint32_t max,
-            uint32_t offset
-            );
+        const ots_handle_t* wallet,
+        uint32_t max,
+        uint32_t offset
+    );
 
     /**
      * @brief Get list of subaddresses for an account
@@ -1308,11 +1341,11 @@ extern "C" {
      * @return Result containing array of address handles
      */
     ots_result_t* ots_wallet_subaddresses(
-            const ots_handle_t* wallet,
-            uint32_t account,
-            uint32_t max,
-            uint32_t offset
-            );
+        const ots_handle_t* wallet,
+        uint32_t account,
+        uint32_t max,
+        uint32_t offset
+    );
 
     /**
      * @brief Check if address belongs to wallet using Address handle
@@ -1323,11 +1356,11 @@ extern "C" {
      * @return Result containing boolean status
      */
     ots_result_t* ots_wallet_has_address(
-            const ots_handle_t* wallet,
-            const ots_handle_t* address,
-            uint32_t max_account_depth,
-            uint32_t max_index_depth
-            );
+        const ots_handle_t* wallet,
+        const ots_handle_t* address,
+        uint32_t max_account_depth,
+        uint32_t max_index_depth
+    );
 
     /**
      * @brief Check if address belongs to wallet
@@ -1338,11 +1371,11 @@ extern "C" {
      * @return Result containing boolean status
      */
     ots_result_t* ots_wallet_has_address_string(
-            const ots_handle_t* wallet_handle,
-            const char* address,
-            uint32_t max_account_depth,
-            uint32_t max_index_depth
-            );
+        const ots_handle_t* wallet_handle,
+        const char* address,
+        uint32_t max_account_depth,
+        uint32_t max_index_depth
+    );
 
     /**
      * @brief Get account and index for address handle in wallet
@@ -1354,11 +1387,11 @@ extern "C" {
      * @throws OTS_ERROR_ADDRESS_NOT_FOUND if address not found in wallet
      */
     ots_result_t* ots_wallet_address_index(
-            const ots_handle_t* wallet,
-            const ots_handle_t* address,
-            uint32_t max_account_depth,
-            uint32_t max_index_depth
-            );
+        const ots_handle_t* wallet,
+        const ots_handle_t* address,
+        uint32_t max_account_depth,
+        uint32_t max_index_depth
+    );
 
     /**
      * @brief Get account and index for address in wallet
@@ -1370,11 +1403,11 @@ extern "C" {
      * @throws OTS_ERROR_ADDRESS_NOT_FOUND if address not found in wallet
      */
     ots_result_t* ots_wallet_address_string_index(
-            const ots_handle_t* wallet_handle,
-            const char* address,
-            uint32_t max_account_depth,
-            uint32_t max_index_depth
-            );
+        const ots_handle_t* wallet_handle,
+        const char* address,
+        uint32_t max_account_depth,
+        uint32_t max_index_depth
+    );
 
     /**
      * @brief Get secret view key
@@ -1413,9 +1446,9 @@ extern "C" {
      * @throws OTS_ERROR_RANGE_ERROR if imported outputs are bigger then 9,223,372,036,854,775,807 (should never happen IMO), if so, contact me and kick me for this stupid decision
      */
     ots_result_t* ots_wallet_import_outputs(
-            const ots_handle_t* wallet,
-            const char* outputs
-            );
+        const ots_handle_t* wallet,
+        const char* outputs
+    );
 
     /**
      * @brief Export key images
@@ -1431,7 +1464,10 @@ extern "C" {
      * @param[in] unsigned_tx Unsigned transaction data
      * @return Result containing transaction description
      */
-    ots_result_t* ots_wallet_describe_tx(const ots_handle_t* wallet, const char* unsigned_tx);
+    ots_result_t* ots_wallet_describe_tx(
+        const ots_handle_t* wallet,
+        const char* unsigned_tx
+    );
 
     /**
      * @brief Check transaction for warnings
@@ -1439,7 +1475,10 @@ extern "C" {
      * @param[in] unsigned_tx unsigned transaction handle
      * @return Result containing array of warnings
      */
-    ots_result_t* ots_wallet_check_tx(const ots_handle_t* wallet, const ots_handle_t* unsigned_tx);
+    ots_result_t* ots_wallet_check_tx(
+        const ots_handle_t* wallet,
+        const ots_handle_t* unsigned_tx
+    );
 
     /**
      * @brief Check transaction string for warnings
@@ -1448,9 +1487,9 @@ extern "C" {
      * @return Result containing array of warnings
      */
     ots_result_t* ots_wallet_check_tx_string(
-            const ots_handle_t* wallet,
-            const char* unsigned_tx
-            );
+        const ots_handle_t* wallet,
+        const char* unsigned_tx
+    );
 
     /**
      * @brief Sign unsigned transaction
@@ -1460,9 +1499,9 @@ extern "C" {
      * @throws OTS_ERROR_INVALID_TRANSACTION if transaction is invalid
      */
     ots_result_t* ots_wallet_sign_transaction(
-            const ots_handle_t* wallet,
-            const char* unsigned_tx
-            );
+        const ots_handle_t* wallet,
+        const char* unsigned_tx
+    );
 
     /**
      * @brief Sign arbitrary data
@@ -1471,9 +1510,9 @@ extern "C" {
      * @return Result containing signature
      */
     ots_result_t* ots_wallet_sign_data(
-            const ots_handle_t* wallet,
-            const char* data
-            );
+        const ots_handle_t* wallet,
+        const char* data
+    );
 
     /**
      * @brief Sign data with specific subaddress
@@ -1484,11 +1523,11 @@ extern "C" {
      * @return Result containing signature string
      */
     ots_result_t* ots_wallet_sign_data_with_index(
-            const ots_handle_t* wallet,
-            const char* data,
-            uint32_t account,
-            uint32_t subaddr
-            );
+        const ots_handle_t* wallet,
+        const char* data,
+        uint32_t account,
+        uint32_t subaddr
+    );
 
     /**
      * @brief Sign data with specific address
@@ -1499,10 +1538,10 @@ extern "C" {
      * @throws OTS_ERROR_ADDRESS_NOT_FOUND if address not found in wallet
      */
     ots_result_t* ots_wallet_sign_data_with_address(
-            const ots_handle_t* wallet,
-            const char* data,
-            const ots_handle_t* address
-            );
+        const ots_handle_t* wallet,
+        const char* data,
+        const ots_handle_t* address
+    );
 
     /**
      * @brief Sign data with specific address
@@ -1513,10 +1552,10 @@ extern "C" {
      * @throws OTS_ERROR_ADDRESS_NOT_FOUND if address not found in wallet
      */
     ots_result_t* ots_wallet_sign_data_with_address_string(
-            const ots_handle_t* wallet,
-            const char* data,
-            const char* address
-            );
+        const ots_handle_t* wallet,
+        const char* data,
+        const char* address
+    );
 
     /**
      * @brief Verify signed data for the wallet address with legacy support
@@ -1527,11 +1566,11 @@ extern "C" {
      * @return Result containing verification status
      */
     ots_result_t* ots_wallet_verify_data(
-            const ots_handle_t* wallet,
-            const char* data,
-            const char* signature,
-            bool legacy_fallback
-            );
+        const ots_handle_t* wallet,
+        const char* data,
+        const char* signature,
+        bool legacy_fallback
+    );
 
     /**
      * @brief Verify signed data with specific subaddress
@@ -1544,13 +1583,13 @@ extern "C" {
      * @return Result containing verification status
      */
     ots_result_t* ots_wallet_verify_data_with_index(
-            const ots_handle_t* wallet,
-            const char* data,
-            uint32_t account,
-            uint32_t subaddr,
-            const char* signature,
-            bool legacy_fallback
-            );
+        const ots_handle_t* wallet,
+        const char* data,
+        uint32_t account,
+        uint32_t subaddr,
+        const char* signature,
+        bool legacy_fallback
+    );
 
     /**
      * @brief Verify signed data with specific address
@@ -1563,12 +1602,12 @@ extern "C" {
      * @throws OTS_ERROR_ADDRESS_NOT_FOUND if address not found in wallet
      */
     ots_result_t* ots_wallet_verify_data_with_address(
-            const ots_handle_t* wallet,
-            const char* data,
-            const ots_handle_t* address,
-            const char* signature,
-            bool legacy_fallback
-            );
+        const ots_handle_t* wallet,
+        const char* data,
+        const ots_handle_t* address,
+        const char* signature,
+        bool legacy_fallback
+    );
 
     /**
      * @brief Verify signed data with specific address
@@ -1581,12 +1620,12 @@ extern "C" {
      * @throws OTS_ERROR_ADDRESS_NOT_FOUND if address not found in wallet
      */
     ots_result_t* ots_wallet_verify_data_with_address_string(
-            const ots_handle_t* wallet,
-            const char* data,
-            const char* address,
-            const char* signature,
-            bool legacy_fallback
-            );
+        const ots_handle_t* wallet,
+        const char* data,
+        const char* address,
+        const char* signature,
+        bool legacy_fallback
+    );
 
     /*******************************************************************************
      * Seed Jar Functions
@@ -1612,7 +1651,10 @@ extern "C" {
      * @param[in|out] seed Seed handle, will be freed
      * @return Result with reference handle to seed in jar
      */
-    ots_result_t* ots_seed_jar_transfer_seed_in(ots_handle_t** seed, const char* name);
+    ots_result_t* ots_seed_jar_transfer_seed_in(
+        ots_handle_t** seed,
+        const char* name
+    );
 
     /**
      * @brief Move the seed from the jar to a new handle
@@ -1676,7 +1718,10 @@ extern "C" {
      * @param[in] name New name
      * @return Result containing seed handle
      */
-    ots_result_t* ots_seed_jar_seed_rename(const ots_handle_t* seed, const char* name);
+    ots_result_t* ots_seed_jar_seed_rename(
+        const ots_handle_t* seed,
+        const char* name
+    );
 
     /*******************************************************************************
      * OTS Utility Functions
@@ -1701,9 +1746,9 @@ extern "C" {
      * @return Result containing estimated block height
      */
     ots_result_t* ots_height_from_timestamp(
-            uint64_t timestamp,
-            OTS_NETWORK network
-            );
+        uint64_t timestamp,
+        OTS_NETWORK network
+    );
 
     /**
      * @brief Convert block height to estimated timestamp
@@ -1712,9 +1757,9 @@ extern "C" {
      * @return Result containing estimated timestamp
      */
     ots_result_t* ots_timestamp_from_height(
-            uint64_t height,
-            OTS_NETWORK network
-            );
+        uint64_t height,
+        OTS_NETWORK network
+    );
 
     /**
      * @brief Generate random bytes
@@ -1739,10 +1784,10 @@ extern "C" {
      * @return Result containing boolean (true if entropy is sufficient)
      */
     ots_result_t* ots_check_low_entropy(
-            const uint8_t* data,
-            size_t size,
-            double min_entropy
-            );
+        const uint8_t* data,
+        size_t size,
+        double min_entropy
+    );
 
     /**
      * @brief Set entropy enforcement
@@ -1795,7 +1840,11 @@ extern "C" {
      * @param[in] signature Signature to verify
      * @return Result containing verification status
      */
-    ots_result_t* ots_verify_data(const char* data, const char* address, const char* signature);
+    ots_result_t* ots_verify_data(
+        const char* data,
+        const char* address,
+        const char* signature
+    );
 
 #ifdef __cplusplus
 }
