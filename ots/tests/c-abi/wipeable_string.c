@@ -54,7 +54,7 @@ START_TEST(test_wipeable_string)
     str1 = ots_wipeable_string_c_str(ws1);
     ck_assert_ptr_null(str1);
     ots_free_handle(&ws2);
-    ots_free_string(&str1); // TODO: should check how to use const char* for strings without linter warnings to not confuse user
+    ots_free_string((char **)&str1); // allowed to free `const char**`
     ck_assert_ptr_null(str1);
     const char* str2 = ots_wipeable_string_c_str(ws2);
     ck_assert_ptr_null(str2);
