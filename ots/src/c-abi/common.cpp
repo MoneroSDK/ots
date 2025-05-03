@@ -67,7 +67,7 @@ extern "C" {
         if(ots_result_is_type(result, OTS_RESULT_STRING))
             return static_cast<char*>(result->result.data.ptr);
         if(
-            ots_result_is_type(result, OTS_RESULT_HANDLE) ||
+            ots_result_is_handle(result) &&
             result->result.handle.type == OTS_HANDLE_WIPEABLE_STRING
             ) {
             try {
@@ -83,7 +83,7 @@ extern "C" {
         if(ots_result_is_type(result, OTS_RESULT_STRING))
             return result->result.data.size;
         if(
-            ots_result_is_type(result, OTS_RESULT_HANDLE) ||
+            ots_result_is_handle(result) &&
             result->result.handle.type == OTS_HANDLE_WIPEABLE_STRING
             ) {
             try {
@@ -166,8 +166,60 @@ extern "C" {
         return result->result.number == static_cast<int64_t>(type);
     }
 
+    bool ots_result_is_handle(const ots_result_t* result) {
+        return result && ots_result_is_handle(result);
+    }
+
+    bool ots_result_is_wipeable_string(const ots_result_t* result) {
+        return ots_result_handle_is_type(result, OTS_HANDLE_WIPEABLE_STRING);
+    }
+
+    bool ots_result_is_seed_indices(const ots_result_t* result) {
+        return ots_result_handle_is_type(result, OTS_HANDLE_SEED_INDICES);
+    }
+
+    bool ots_result_is_seed_language(const ots_result_t* result) {
+        return ots_result_handle_is_type(result, OTS_HANDLE_SEED_LANGUAGE);
+    }
+
+    bool ots_result_is_address(const ots_result_t* result) {
+        return ots_result_handle_is_type(result, OTS_HANDLE_ADDRESS);
+    }
+
+    bool ots_result_is_seed(const ots_result_t* result) {
+        return ots_result_handle_is_type(result, OTS_HANDLE_SEED);
+    }
+
+    bool ots_result_is_wallet(const ots_result_t* result) {
+        return ots_result_handle_is_type(result, OTS_HANDLE_WALLET);
+    }
+
+    bool ots_result_is_transaction(const ots_result_t* result) {
+        return ots_result_handle_is_type(result, OTS_HANDLE_TX);
+    }
+
+    bool ots_result_is_transaction_description(const ots_result_t* result) {
+        return ots_result_handle_is_type(result, OTS_HANDLE_TX_DESCRIPTION);
+    }
+
+    bool ots_result_is_transaction_warning(const ots_result_t* result) {
+        return ots_result_handle_is_type(result, OTS_HANDLE_TX_WARNING);
+    }
+
+    bool ots_result_is_string(const ots_result_t* result) {
+        return result && ots_result_is_type(result, OTS_RESULT_STRING);
+    }
+
+    bool ots_result_is_boolean(const ots_result_t* result) {
+        return result && ots_result_is_type(result, OTS_RESULT_BOOLEAN);
+    }
+
+    bool ots_result_is_number(const ots_result_t* result) {
+        return result && ots_result_is_type(result, OTS_RESULT_NUMBER);
+    }
+
     bool ots_result_is_network(const ots_result_t* result) {
-        return ots_result_is_type(result, OTS_RESULT_NETWORK);
+        return result && ots_result_is_type(result, OTS_RESULT_NETWORK);
     }
 
     bool ots_result_network_is_type(const ots_result_t* result, OTS_NETWORK network) {
@@ -177,7 +229,7 @@ extern "C" {
     }
 
     bool ots_result_is_seed_type(const ots_result_t* result) {
-        return ots_result_is_type(result, OTS_RESULT_SEED_TYPE);
+        return result && ots_result_is_type(result, OTS_RESULT_SEED_TYPE);
     }
 
     bool ots_result_seed_type_is_type(const ots_result_t* result, OTS_SEED_TYPE type) {
@@ -186,10 +238,15 @@ extern "C" {
         return result->result.number == static_cast<int64_t>(type);
     }
 
-    ots_handle_t* ots_result_handle(const ots_result_t* result) {
+    ots_handle_t* ots_result_handle(ots_result_t* result) {
         if(!result || !ots_result_is_type(result, OTS_RESULT_HANDLE))
             return nullptr;
-        return new ots_handle_t{result->result.handle};
+        result->result.handle.reference = true; // Don't free the handle anymore
+        return new ots_handle_t{
+            result->result.handle.type,
+                result->result.handle.ptr,
+                false
+        };
     }
 
     bool ots_result_handle_is_type(const ots_result_t* result, ots_handle_type type) {
@@ -199,7 +256,7 @@ extern "C" {
     }
 
     bool ots_result_handle_is_reference(const ots_result_t* result) {
-        if(!result || !ots_result_is_type(result, OTS_RESULT_HANDLE))
+        if(!result || !ots_result_is_handle(result))
             return false;
         return result->result.handle.reference;
     }

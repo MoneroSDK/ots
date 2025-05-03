@@ -226,6 +226,97 @@ extern "C" {
     bool ots_result_is_type(const ots_result_t* result, ots_result_type type);
 
     /**
+     * @brief Check if result is an handle
+     * @param[in] result Result to check
+     * @return true if result is an handle
+     */
+    bool ots_result_is_handle(const ots_result_t* result);
+
+    /**
+     * @brief Check if result is a wipeable string
+     * @param[in] result Result to check
+     * @return true if result is a wipeable string
+     */
+    bool ots_result_is_wipeable_string(const ots_result_t* result);
+
+    /**
+     * @brief Check if result are seed indices
+     * @param[in] result Result to check
+     * @return true if result are seed indices
+     */
+    bool ots_result_is_seed_indices(const ots_result_t* result);
+
+    /**
+     * @brief Check if result is a seed language
+     * @param[in] result Result to check
+     * @return true if result is a seed language
+     */
+    bool ots_result_is_seed_language(const ots_result_t* result);
+
+    /**
+     * @brief Check if result is an address
+     * @param[in] result Result to check
+     * @return true if result is an address
+     */
+    bool ots_result_is_address(const ots_result_t* result);
+
+    /**
+     * @brief Check if result is a seed
+     * @param[in] result Result to check
+     * @return true if result is a seed
+     */
+    bool ots_result_is_seed(const ots_result_t* result);
+
+    /**
+     * @brief Check if result is a wallet
+     * @param[in] result Result to check
+     * @return true if result is a wallet
+     */
+    bool ots_result_is_wallet(const ots_result_t* result);
+
+    /**
+     * @brief Check if result is a transaction
+     * @param[in] result Result to check
+     * @return true if result is a transaction
+     */
+    bool ots_result_is_transaction(const ots_result_t* result);
+
+    /**
+     * @brief Check if result is a transaction description
+     * @param[in] result Result to check
+     * @return true if result is a transaction description
+     */
+    bool ots_result_is_transaction_description(const ots_result_t* result);
+
+    /**
+     * @brief Check if result is a transaction warning
+     * @param[in] result Result to check
+     * @return true if result is a transaction warning
+     */
+    bool ots_result_is_transaction_warning(const ots_result_t* result);
+
+    /**
+     * @brief Check if result is a string
+     * @param[in] result Result to check
+     * @return true if result is a string
+     */
+    bool ots_result_is_string(const ots_result_t* result);
+
+    /**
+     * @brief Check if result is boolean
+     * @param[in] result Result to check
+     * @return true if result is boolean
+     */
+    bool ots_result_is_boolean(const ots_result_t* result);
+
+    /**
+     * @brief Check if result is a number
+     * @param[in] result Result to check
+     * @return true if result is a number
+     */
+    bool ots_result_is_number(const ots_result_t* result);
+
+    /**
      * @brief Check if result has a specific data type
      * @param[in] result Result to check
      * @param[in] type Data type to check for
@@ -242,10 +333,11 @@ extern "C" {
 
     /**
      * @brief Get handle from result if result type OTS_RESULT_HANDLE is available
-     * @param[in] result Result to get handle from
+     * @param result Result to get handle from, handle will be set to reference
+     *        so it will not be freed with the result anymore
      * @return Handle or NULL
      */
-    ots_handle_t* ots_result_handle(const ots_result_t* result);
+    ots_handle_t* ots_result_handle(ots_result_t* result);
 
     /**
      * @brief Check if handle is of a specific type
