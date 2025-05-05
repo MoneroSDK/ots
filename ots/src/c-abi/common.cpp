@@ -1,6 +1,5 @@
 #include "ots-internal.h"
 #include <cstring>
-#include <iostream> // TODO: remove, it's only for debugging
 
 using namespace ots::internal;
 
