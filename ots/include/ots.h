@@ -581,6 +581,15 @@ extern "C" {
     void ots_free_handle(ots_handle_t** handle);
 
     /**
+     * @brief Free a handle object
+     * @param[in] handle Handle to free
+     * @note This function is used internally to free the handle object only.
+     *       It does not free the handle itself.
+     * @internal
+     */
+    void ots_free_handle_object(ots_handle_t* handle);
+
+    /**
      * @brief Securely wipe and free a buffer
      * @param[in,out] buffer Buffer to wipe and free
      * @param[in] size Size of buffer

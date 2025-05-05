@@ -1,5 +1,6 @@
 #include "ots-internal.h"
 #include <cstring>
+#include <iostream> // TODO: remove, it's only for debugging
 
 using namespace ots::internal;
 
@@ -291,8 +292,28 @@ extern "C" {
                     break;
                 size_t size = (*result)->result.data.size;
                 switch((*result)->result.data.type) {
+                    case OTS_DATA_INT:
+                        size = sizeof(int);
+                        break;
+                    case OTS_DATA_CHAR:
+                        size = sizeof(char);
+                        break;
+                    case OTS_DATA_UINT8:
+                        size = sizeof(uint8_t);
+                        break;
                     case OTS_DATA_UINT16:
-                        size *= sizeof(uint16_t);
+                        size = sizeof(uint16_t);
+                        break;
+                    case OTS_DATA_UINT32:
+                        size = sizeof(uint32_t);
+                        break;
+                    case OTS_DATA_HANDLE:
+                        // Free the objects of the handles in the array first
+                        for(size_t i = 0; i < (*result)->result.data.size; ++i) {
+                            ots_handle_t* handle = &static_cast<ots_handle_t*>((*result)->result.data.ptr)[i];
+                            ots_free_handle_object(handle);
+                        }
+                        size = sizeof(ots_handle_t);
                         break;
                     default:
                         break;
@@ -304,25 +325,7 @@ extern "C" {
             case OTS_RESULT_HANDLE: {
                 if((*result)->result.handle.reference)
                     break;
-                switch((*result)->result.handle.type) {
-                    OTS_HANDLE_WIPEABLE_STRING:
-                        delete static_cast<ots::WipeableString*>((*result)->result.handle.ptr);
-                        break;
-                    case OTS_HANDLE_SEED_INDICES:
-                        delete static_cast<ots::SeedIndices*>((*result)->result.handle.ptr);
-                        break;
-                    case OTS_HANDLE_SEED:
-                        delete static_cast<ots::Seed*>((*result)->result.handle.ptr);
-                        break;
-                    case OTS_HANDLE_WALLET:
-                        delete static_cast<ots::Wallet*>((*result)->result.handle.ptr);
-                        break;
-                    case OTS_HANDLE_TX:
-                        delete static_cast<ots::TxDescription*>((*result)->result.handle.ptr);
-                        break;
-                    default:
-                        break;
-                }
+                ots_free_handle_object(&(*result)->result.handle);
                 break;
             }
             default:
@@ -336,28 +339,34 @@ extern "C" {
         if(!*handle)
             return;
         if(!(*handle)->reference)
-            switch((*handle)->type) {
-                case OTS_HANDLE_WIPEABLE_STRING:
-                    delete static_cast<ots::WipeableString*>((*handle)->ptr);
-                    break;
-                case OTS_HANDLE_SEED_INDICES:
-                    delete static_cast<ots::SeedIndices*>((*handle)->ptr);
-                    break;
-                case OTS_HANDLE_SEED:
-                    delete static_cast<ots::Seed*>((*handle)->ptr);
-                    break;
-                case OTS_HANDLE_WALLET:
-                    delete static_cast<ots::Wallet*>((*handle)->ptr);
-                    break;
-                case OTS_HANDLE_TX:
-                    delete static_cast<ots::TxDescription*>((*handle)->ptr);
-                    break;
-                case OTS_HANDLE_SEED_LANGUAGE: // is always a reference
-                default:
-                    break;
-            }
+            ots_free_handle_object(*handle);
         delete *handle;
         *handle = nullptr;
+    }
+
+    void ots_free_handle_object(ots_handle_t* handle) {
+        if(!handle)
+            return;
+        switch(handle->type) {
+            case OTS_HANDLE_WIPEABLE_STRING:
+                delete static_cast<ots::WipeableString*>(handle->ptr);
+                break;
+            case OTS_HANDLE_SEED_INDICES:
+                delete static_cast<ots::SeedIndices*>(handle->ptr);
+                break;
+            case OTS_HANDLE_SEED:
+                delete static_cast<ots::Seed*>(handle->ptr);
+                break;
+            case OTS_HANDLE_WALLET:
+                delete static_cast<ots::Wallet*>(handle->ptr);
+                break;
+            case OTS_HANDLE_TX:
+                delete static_cast<ots::TxDescription*>(handle->ptr);
+                break;
+            case OTS_HANDLE_SEED_LANGUAGE: // is always a reference
+            default:
+                break;
+        }
     }
 
     void ots_secure_free(void** buffer, size_t size) {
