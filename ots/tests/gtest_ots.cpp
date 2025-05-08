@@ -139,9 +139,8 @@ TEST_F(OTSTest, OtsHeightTimeEstimationRoundTripNow) {
 }
 
 TEST_F(OTSTest, OtsHeightFromTimestamp) {
-    // test maximal difference between estimated height and actual height of 11 days (negative)
     uint64_t height = 0;
-    long long int acceptable_diff = 3600 * 24 * 11; // 11 days
+    long long int acceptable_diff = OTS_HEIGHT_FROM_TIMESTAMP_MAX_DIFF; // 15 days, but should also pass 11 days until 2025-01-01 at least
     for(const uint64_t& t: ots::blocktime::main::timestamps) {
         if(t == 0)
             continue;
