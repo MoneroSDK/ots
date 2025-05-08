@@ -112,6 +112,7 @@ extern "C" {
         OTS_DATA_UINT8,
         OTS_DATA_UINT16,
         OTS_DATA_UINT32,
+        OTS_DATA_UINT64,
         OTS_DATA_HANDLE
     } ots_data_type;
 
@@ -331,6 +332,134 @@ extern "C" {
      */
     bool ots_result_data_is_reference(const ots_result_t* result);
 
+
+    /**
+     * @brief Check if result data is of type int
+     * @param[in] result Result to Check
+     * @return true if result data is of type int
+     */
+    bool ots_result_data_is_int(const ots_result_t* result);
+
+    /**
+     * @brief Check if result data is of type char
+     * @param[in] result Result to Check
+     * @return true if result data is of type char
+     */
+    bool ots_result_data_is_char(const ots_result_t* result);
+
+    /**
+     * @brief Check if result data is of type uint8_t
+     * @param[in] result Result to Check
+     * @return true if result data is of type uint8_t
+     */
+    bool ots_result_data_is_uint8(const ots_result_t* result);
+
+    /**
+     * @brief Check if result data is of type uint16_t
+     * @param[in] result Result to Check
+     * @return true if result data is of type uint16_t
+     */
+    bool ots_result_data_is_uint16(const ots_result_t* result);
+
+    /**
+     * @brief Check if result data is of type uint32_t
+     * @param[in] result Result to Check
+     * @return true if result data is of type uint32_t
+     */
+    bool ots_result_data_is_uint32(const ots_result_t* result);
+
+    /**
+     * @brief Check if result data is of type uint64_t
+     * @param[in] result Result to Check
+     * @return true if result data is of type uint64_t
+     */
+    bool ots_result_data_is_uint64(const ots_result_t* result);
+
+    /**
+     * @brief Check if result data is of type handle
+     * @param[in] result Result to Check
+     * @return true if result data is of type handle
+     */
+    bool ots_result_data_is_handle(const ots_result_t* result);
+
+    /**
+     * @brief Check if result data handle is of a specific handle type
+     * @param[in] result Result to check
+     * @param[in] type Type to check for
+     * @return true if result data handle is the specified handle type
+     */
+    bool ots_result_data_handle_is_type(const ots_result_t* result, ots_handle_type type);
+
+    /**
+     * @brief Check if result data handle is a reference
+     * @param[in] result Result to check
+     * @return true if result data handle is a reference
+     */
+    bool ots_result_data_handle_is_reference(const ots_result_t* result);
+
+    /**
+     * @brief Check if result data handle is a wipeable string
+     * @param[in] result Result to check
+     * @return true if result data handle is a wipeable string
+     */
+    bool ots_result_data_handle_is_wipeable_string(const ots_result_t* result);
+
+    /**
+     * @brief Check if result data handle is a seed indices
+     * @param[in] result Result to check
+     * @return true if result data handle is a seed indices
+     */
+    bool ots_result_data_handle_is_seed_indices(const ots_result_t* result);
+
+    /**
+     * @brief Check if result data handle is a seed language
+     * @param[in] result Result to check
+     * @return true if result data handle is a seed language
+     */
+    bool ots_result_data_handle_is_seed_language(const ots_result_t* result);
+
+    /**
+     * @brief Check if result data handle is an address
+     * @param[in] result Result to check
+     * @return true if result data handle is an address
+     */
+    bool ots_result_data_handle_is_address(const ots_result_t* result);
+
+    /**
+     * @brief Check if result data handle is a seed
+     * @param[in] result Result to check
+     * @return true if result data handle is a seed
+     */
+    bool ots_result_data_handle_is_seed(const ots_result_t* result);
+
+    /**
+     * @brief Check if result data handle is a wallet
+     * @param[in] result Result to check
+     * @return true if result data handle is a wallet
+     */
+    bool ots_result_data_handle_is_wallet(const ots_result_t* result);
+
+    /**
+     * @brief Check if result data handle is a transaction
+     * @param[in] result Result to check
+     * @return true if result data handle is a transaction
+     */
+    bool ots_result_data_handle_is_transaction(const ots_result_t* result);
+
+    /**
+     * @brief Check if result data handle is a transaction description
+     * @param[in] result Result to check
+     * @return true if result data handle is a transaction description
+     */
+    bool ots_result_data_handle_is_transaction_description(const ots_result_t* result);
+
+    /**
+     * @brief Check if result data handle is a transaction warning
+     * @param[in] result Result to check
+     * @return true if result data handle is a transaction warning
+     */
+    bool ots_result_data_handle_is_transaction_warning(const ots_result_t* result);
+
     /**
      * @brief Get handle from result if result type OTS_RESULT_HANDLE is available
      * @param result Result to get handle from, handle will be set to reference
@@ -385,13 +514,6 @@ extern "C" {
     char* ots_result_string_copy(const ots_result_t* result);
 
     /**
-     * @brief Get size of string from result if result type OTS_RESULT_STRING is available
-     * @param[in] result Result to get string size from
-     * @return Size of string or 0
-     */
-    size_t ots_result_string_size(const ots_result_t* result);
-
-    /**
      * @brief Get boolean from result if result type OTS_RESULT_BOOLEAN is available
      * @param[in] result Result to get boolean from
      * @param[in] default_value Default value if result doesn't contain a boolean type
@@ -413,6 +535,227 @@ extern "C" {
      * @return Array pointer or NULL
      */
     void* ots_result_array(const ots_result_t* result);
+
+    /**
+     * @brief Get element on index from array if result type OTS_RESULT_ARRAY is available
+     * @param[in] result Result to get element
+     * @param[in] index Index of element to get
+     * @return Element pointer or NULL
+     */
+    void* ots_result_array_get(const ots_result_t* result, size_t index);
+
+    /**
+     * @brief Get handle on index from array if result type OTS_RESULT_ARRAY
+     *        is available and data type is OTS_DATA_HANDLE
+     * @param[in] result Result to get element
+     * @param[in] index Index of element to get
+     * @return Element handle or NULL
+     */
+    ots_handle_t* ots_result_array_get_handle(const ots_result_t* result, size_t index);
+
+    /**
+     * @brief Get element as int on index from array if result type OTS_RESULT_ARRAY
+     *        is available and data type is OTS_DATA_INT
+     * @param[in] result Result to get element
+     * @param[in] index Index of element to get
+     * @return Element int value or 0
+     */
+    int ots_result_array_get_int(const ots_result_t* result, size_t index);
+
+    /**
+     * @brief Get element as char on index from array if result type OTS_RESULT_ARRAY
+     *        is available and data type is OTS_DATA_CHAR
+     * @param[in] result Result to get element
+     * @param[in] index Index of element to get
+     * @return Element char value or 0
+     */
+    char ots_result_array_get_char(const ots_result_t* result, size_t index);
+
+    /**
+     * @brief Get element as uint8_t on index from array if result type OTS_RESULT_ARRAY
+     *       is available and data type is OTS_DATA_UINT8
+     *       @param[in] result Result to get element
+     *       @param[in] index Index of element to get
+     *       @return Element uint8_t value or 0
+     */
+    uint8_t ots_result_array_get_uint8(const ots_result_t* result, size_t index);
+
+    /**
+     * @brief Get element as uint16_t on index from array if result type OTS_RESULT_ARRAY
+     *        is available and data type is OTS_DATA_UINT16
+     * @param[in] result Result to get element
+     * @param[in] index Index of element to get
+     * @return Element uint16_t value or 0
+     */
+    uint16_t ots_result_array_get_uint16(const ots_result_t* result, size_t index);
+
+    /**
+     * @brief Get element as uint32_t on index from array if result type OTS_RESULT_ARRAY
+     *        is available and data type is OTS_DATA_UINT32
+     * @param[in] result Result to get element
+     * @param[in] index Index of element to get
+     * @return Element uint32_t value or 0
+     */
+    uint32_t ots_result_array_get_uint32(const ots_result_t* result, size_t index);
+
+    /**
+     * @brief Get element as uint64_t on index from array if result type OTS_RESULT_ARRAY
+     *        is available and data type is OTS_DATA_UINT64
+     * @param[in] result Result to get element
+     * @param[in] index Index of element to get
+     * @return Element uint64_t value or 0
+     */
+    uint64_t ots_result_array_get_uint64(const ots_result_t* result, size_t index);
+
+    /**
+     * @brief Get array as reference from result if result type OTS_RESULT_ARRAY is available
+     * @param[in] result Result to get array from
+     * @return Array pointer or NULL
+     * @warning DO NOT free the array with ots_free_array()
+     *         content will be freed with the result.
+     * @warning The array will be freed with the result, so don't use it after!
+     */
+    void* ots_result_array_reference(const ots_result_t* result);
+
+    /**
+     * @brief Get array as handle[] from result if result type OTS_RESULT_ARRAY is available
+     *       and data type is OTS_DATA_HANDLE
+     * @param[in] result Result to get array from
+     * @return Array of handles or NULL
+     * @warning DO NOT free the array with ots_free_array()
+     *        content will be freed with the result.
+     * @warning The array will be freed with the result, so don't use it after!
+     */
+    ots_handle_t* ots_result_handle_array_reference(const ots_result_t* result);
+
+    /**
+     * @brief Get array as int[] from result if result type OTS_RESULT_ARRAY is available
+     *       and data type is OTS_DATA_INT
+     * @param[in] result Result to get array from
+     * @return Array of int or NULL
+     * @warning DO NOT free the array with ots_free_array()
+     *        content will be freed with the result.
+     * @warning The array will be freed with the result, so don't use it after!
+     */
+    int* ots_result_int_array_reference(const ots_result_t* result);
+
+    /**
+     * @brief Get array as char[] from result if result type OTS_RESULT_ARRAY is available
+     *       and data type is OTS_DATA_CHAR
+     * @param[in] result Result to get array from
+     * @return Array of char or NULL
+     * @warning DO NOT free the array with ots_free_array()
+     *        content will be freed with the result.
+     * @warning The array will be freed with the result, so don't use it after!
+     */
+    char* ots_result_char_array_reference(const ots_result_t* result);
+
+    /**
+     * @brief Get array as uint8_t[] from result if result type OTS_RESULT_ARRAY is available
+     *       and data type is OTS_DATA_UINT8
+     * @param[in] result Result to get array from
+     * @return Array of uint8_t or NULL
+     * @warning DO NOT free the array with ots_free_array()
+     *        content will be freed with the result.
+     * @warning The array will be freed with the result, so don't use it after!
+     */
+    uint8_t* ots_result_uint8_array_reference(const ots_result_t* result);
+
+    /**
+     * @brief Get array as uint16_t[] from result if result type OTS_RESULT_ARRAY is available
+     *       and data type is OTS_DATA_UINT16
+     * @param[in] result Result to get array from
+     * @return Array of uint16_t or NULL
+     * @warning DO NOT free the array with ots_free_array()
+     *        content will be freed with the result.
+     * @warning The array will be freed with the result, so don't use it after!
+     */
+    uint16_t* ots_result_uint16_array_reference(const ots_result_t* result);
+
+    /**
+     * @brief Get array as uint32_t[] from result if result type OTS_RESULT_ARRAY is available
+     *       and data type is OTS_DATA_UINT32
+     * @param[in] result Result to get array from
+     * @return Array of uint32_t or NULL
+     * @warning DO NOT free the array with ots_free_array()
+     *        content will be freed with the result.
+     * @warning The array will be freed with the result, so don't use it after!
+     */
+    uint32_t* ots_result_uint32_array_reference(const ots_result_t* result);
+
+    /**
+     * @brief Get array as uint64_t[] from result if result type OTS_RESULT_ARRAY is available
+     *       and data type is OTS_DATA_UINT64
+     * @param[in] result Result to get array from
+     * @return Array of uint64_t or NULL
+     * @warning DO NOT free the array with ots_free_array()
+     *        content will be freed with the result.
+     * @warning The array will be freed with the result, so don't use it after!
+     */
+    uint64_t* ots_result_uint64_array_reference(const ots_result_t* result);
+
+    /**
+     * @brief Get array as handle[] from result if result type OTS_RESULT_ARRAY is available
+     *       and data type is OTS_DATA_HANDLE
+     * @param[in] result Result to get array from
+     * @return Array of handles or NULL
+     */
+    ots_handle_t* ots_result_handle_array(const ots_result_t* result);
+
+    /**
+     * @brief Get array as int[] from result if result type OTS_RESULT_ARRAY is available
+     *       and data type is OTS_DATA_INT
+     * @param[in] result Result to get array from
+     * @return Array of int or NULL
+     */
+    int* ots_result_int_array(const ots_result_t* result);
+
+    /**
+     * @brief Get array as char[] from result if result type OTS_RESULT_ARRAY is available
+     *       and data type is OTS_DATA_CHAR
+     * @param[in] result Result to get array from
+     * @return Array of char or NULL
+     */
+    char* ots_result_char_array(const ots_result_t* result);
+
+    /**
+     * @brief Get array as uint8_t[] from result if result type OTS_RESULT_ARRAY is available
+     *       and data type is OTS_DATA_UINT8
+     * @param[in] result Result to get array from
+     * @return Array of uint8_t or NULL
+     */
+    uint8_t* ots_result_uint8_array(const ots_result_t* result);
+
+    /**
+     * @brief Get array as uint16_t[] from result if result type OTS_RESULT_ARRAY is available
+     *       and data type is OTS_DATA_UINT16
+     * @param[in] result Result to get array from
+     * @return Array of uint16_t or NULL
+     */
+    uint16_t* ots_result_uint16_array(const ots_result_t* result);
+
+    /**
+     * @brief Get array as uint32_t[] from result if result type OTS_RESULT_ARRAY is available
+     *       and data type is OTS_DATA_UINT32
+     * @param[in] result Result to get array from
+     * @return Array of uint32_t or NULL
+     */
+    uint32_t* ots_result_uint32_array(const ots_result_t* result);
+
+    /**
+     * @brief Get array as uint64_t[] from result if result type OTS_RESULT_ARRAY is available
+     *       and data type is OTS_DATA_UINT64
+     * @param[in] result Result to get array from
+     * @return Array of uint64_t or NULL
+     */
+    uint64_t* ots_result_uint64_array(const ots_result_t* result);
+
+    /**
+     * @brief Check if result is an array
+     * @param[in] result Result to check
+     * @return true if result is an array
+     */
+    bool ots_result_is_array(const ots_result_t* result);
 
     /**
      * @brief Check if result is a comparison result
@@ -438,7 +781,8 @@ extern "C" {
     bool ots_result_is_equal(const ots_result_t* result);
 
     /**
-     * @brief returns the size of the result if it is an array or string
+     * @brief returns the size of the result if it is an array, string
+     *        or wipeable string
      * @param[in] result Result to get size from
      * @return Size of result or 0 if it is not a supported result type
      */
@@ -524,13 +868,6 @@ extern "C" {
      * @return true if pointer is NULL
      */
     bool ots_is_null(const void* ptr);
-
-    /**
-     * @brief Get array from result if result type OTS_RESULT_ARRAY is available
-     * @param[in] result Result to get array from
-     * @return Array or NULL
-     */
-    void* ots_result_array(const ots_result_t* result);
 
     /**
      * @brief Check if handle is of a specific type
@@ -1844,7 +2181,7 @@ extern "C" {
      * @brief Convert timestamp to estimated block height
      * @param[in] timestamp Unix timestamp
      * @param[in] network Network type
-     * @return Result containing estimated block height
+     * @return Result containing estimated block height as number uint64_t
      */
     ots_result_t* ots_height_from_timestamp(
         uint64_t timestamp,
@@ -1855,7 +2192,7 @@ extern "C" {
      * @brief Convert block height to estimated timestamp
      * @param[in] height Block height
      * @param[in] network Network type
-     * @return Result containing estimated timestamp
+     * @return Result containing estimated timestamp as number uint64_t
      */
     ots_result_t* ots_timestamp_from_height(
         uint64_t height,
@@ -1865,14 +2202,14 @@ extern "C" {
     /**
      * @brief Generate random bytes
      * @param[in] size Number of bytes to generate
-     * @return Result random bytes as array
+     * @return Result random bytes as array of uint8_t[size]
      * @warning Entropy quality depends on system random number generator
      */
     ots_result_t* ots_random_bytes(size_t size);
 
     /**
      * @brief Generate 32 random bytes
-     * @return Result containing 32-byte array
+     * @return Result containing 32-byte array uint8_t[32]
      * @warning Entropy quality depends on system random number generator
      */
     ots_result_t* ots_random_32(void);
@@ -1891,10 +2228,29 @@ extern "C" {
     );
 
     /**
+     * @brief Calculate entropy level of data
+     * @param[in] data Data to check
+     * @param[in] size Size of data
+     * @return Result containing entropy level (0.00 to 5.00 as string)
+     */
+    ots_result_t* ots_entropy_level(
+        const uint8_t* data,
+        size_t size
+    );
+
+    /**
      * @brief Set entropy enforcement
      * @param[in] enforce Whether to enforce entropy checks
+     * @note Default entropy level (3.5) is used.
+     * @see OTS::enforceEntropy
      */
     void ots_set_enforce_entropy(bool enforce);
+
+    /**
+     * @brief Set entropy level for enforcement
+     * @param[in] level Minimum entropy level to enforce
+     */
+    void ots_set_enforce_entropy_level(double level);
 
     /**
      * @brief Set maximum account depth for searching
@@ -1925,14 +2281,14 @@ extern "C" {
      * @param[in] depth Optional new depth (0 to just query current)
      * @return Current/new maximum account depth
      */
-    uint32_t ots_max_account_depth(uint32_t depth);
+    uint32_t ots_get_max_account_depth(uint32_t depth);
 
     /**
      * @brief Get maximum index depth
      * @param[in] depth Optional new depth (0 to just query current)
      * @return Current/new maximum index depth
      */
-    uint32_t ots_max_index_depth(uint32_t depth);
+    uint32_t ots_get_max_index_depth(uint32_t depth);
 
     /**
      * @brief Verify signed data

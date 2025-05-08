@@ -17,6 +17,14 @@
  */
 
 /**
+ * @def OTS_MIN_ENTROPY_LEVEL
+ * @brief The default minimum entropy level
+ */
+#ifndef OTS_MIN_ENTROPY_LEVEL
+#define OTS_MIN_ENTROPY_LEVEL 3.5
+#endif
+
+/**
  * @def DEFAULT_MAX_ACCOUNT_DEPTH
  * @brief The default maximum account depth, to search for an address
  *        in the wallet
@@ -1079,13 +1087,13 @@ namespace ots {
              * @param minEntropy the minimum entropy to accept
              * @return true if the entropy is lower than minEntropy
              */
-            static bool lowEntropy(size_t size, const uint8_t* data, double minEntropy = 3.5) noexcept;
+            static bool lowEntropy(size_t size, const uint8_t* data, double minEntropy = OTS_MIN_ENTROPY_LEVEL) noexcept;
 
             /**
              * @brief switch enforcement of sufficient entropy
              * @param enforce true to enforce entropy check, default is true
              */
-            static void enforceEntropy(bool enforce = true) noexcept;
+            static void enforceEntropy(bool enforce = true, double minEntropy = OTS_MIN_ENTROPY_LEVEL) noexcept;
 
             /**
              * @brief set the maximum depth of the accounts to search through
@@ -1168,10 +1176,11 @@ namespace ots {
              * @param minEntropy the minimum entropy to accept
              * @throws ots::exception::LowEntropy if the entropy is lower than minEntropy
              */
-            static void ensureEntropy(size_t size, const uint8_t* data, double minEntropy = 3.5);
+            static void ensureEntropy(size_t size, const uint8_t* data, double minEntropy = OTS_MIN_ENTROPY_LEVEL);
 
         private:
             static bool sEnforceEntropy;
+            static double sEnforceEntropyMinLevel;
             static uint32_t sMaxAccountDepth;
             static uint32_t sMaxIndexDepth;
 	};

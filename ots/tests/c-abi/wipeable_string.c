@@ -9,41 +9,35 @@ START_TEST(test_wipeable_string)
     const char* s3 = "Hello, Universe!";
     // Create a wipeable string ws1
     ots_result_t* result = ots_wipeable_string_create(s1);
-    ck_assert_int_eq(ots_is_result(result), true);
-    ck_assert_int_eq(ots_result_is_type(result, OTS_RESULT_HANDLE), true);
+    ck_assert(ots_result_is_wipeable_string(result));
     ots_handle_t* ws1 = ots_result_handle(result);
     ots_free_result(&result);
-
     // Create a wipeable string ws2
     result = ots_wipeable_string_create(s2);
-    ck_assert_int_eq(ots_is_result(result), true);
-    ck_assert_int_eq(ots_result_is_type(result, OTS_RESULT_HANDLE), true);
+    ck_assert(ots_result_is_wipeable_string(result));
     ots_handle_t* ws2 = ots_result_handle(result);
     ots_free_result(&result);
-
     // Compare ws1 and ws2
     result = ots_wipeable_string_compare(ws1, ws2);
-    ck_assert_int_eq(ots_is_result(result), true);
-    ck_assert_int_eq(ots_result_is_type(result, OTS_RESULT_COMPARISON), true);
+    ck_assert(ots_result_is_comparison(result));
     ck_assert_int_eq(ots_result_comparison(result), 0);
     ck_assert_int_eq(ots_result_is_equal(result), true);
     ots_free_result(&result);
-
     // Change ws2
     ots_free_handle(&ws2);
     result = ots_wipeable_string_create(s3);
-    ck_assert_int_eq(ots_is_result(result), true);
-    ck_assert_int_eq(ots_result_is_type(result, OTS_RESULT_HANDLE), true);
+    ck_assert(ots_result_is_wipeable_string(result));
     ws2 = ots_result_handle(result);
-
+    const char* ws2_str = ots_result_string_copy(result);
+    ck_assert_str_eq(ws2_str, s3);
+    ots_free_result(&result);
+    ots_free_string((char **)&ws2_str); // allowed to free `const char**`
     // Compare ws1 and ws2 again
     result = ots_wipeable_string_compare(ws1, ws2);
-    ck_assert_int_eq(ots_is_result(result), true);
-    ck_assert_int_eq(ots_result_is_type(result, OTS_RESULT_COMPARISON), true);
+    ck_assert(ots_result_is_comparison(result));
     ck_assert_int_ne(ots_result_comparison(result), 0);
     ck_assert_int_eq(ots_result_is_equal(result), false);
     ots_free_result(&result);
-
     // Get c_str from ws1
     const char* str1 = ots_wipeable_string_c_str(ws1);
     ck_assert_ptr_nonnull(str1);

@@ -1,7 +1,12 @@
 #include "ots.h"
 #include "ots.hpp"
 #include "ots-internal.h"
+#include "entropy.hpp"
 #include <cstring>
+#include <sstream>
+#include <string>
+#include <iomanip>
+#include <iostream>
 
 using namespace ots::internal;
 
@@ -95,8 +100,32 @@ extern "C" {
         return result;
     }
 
-    void ots_set_enforce_checksums(bool enforce) {
+    ots_result_t* ots_entropy_level(
+            const uint8_t* data,
+            size_t size
+            ) {
+        ots_result_t* result = new ots_result_t();
+        double entropy = ots::Entropy::shannonEntropy(data, size);
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(2) << entropy;
+        std::string entropy_str = oss.str();
+        try {
+            set_string(
+                result,
+                entropy_str.c_str()
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    void ots_set_enforce_entropy(bool enforce) {
         ots::OTS::enforceEntropy(enforce);
+    }
+
+    void ots_set_enforce_entropy_level(double min_entropy) {
+        ots::OTS::enforceEntropy(true, min_entropy);
     }
 
     void ots_set_max_account_depth(uint32_t depth) {

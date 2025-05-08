@@ -63,7 +63,7 @@ namespace ots {
             // and after 3 tries we throw an exception
             for(size_t i = 0; i < 3; i++) {
                 crypto::generate_random_bytes_thread_safe(size, bytes);
-                if(!OTS::sEnforceEntropy || !OTS::lowEntropy(size, bytes))
+                if(!OTS::sEnforceEntropy || !OTS::lowEntropy(size, bytes, OTS::sEnforceEntropyMinLevel))
                     return; // success
             }
             throw ots::exception::LowEntropy(); // after 3 tries still low entropy
@@ -88,11 +88,13 @@ namespace ots {
             throw ots::exception::LowEntropy();
     }
 
-    void OTS::enforceEntropy(bool enforce) noexcept {
+    void OTS::enforceEntropy(bool enforce, double minEntropy) noexcept {
         OTS::sEnforceEntropy = enforce;
+        OTS::sEnforceEntropyMinLevel = minEntropy;
     }
 
     bool OTS::sEnforceEntropy = true;
+    double OTS::sEnforceEntropyMinLevel = OTS_MIN_ENTROPY_LEVEL;
     uint32_t OTS::sMaxAccountDepth = (uint32_t)DEFAULT_MAX_ACCOUNT_DEPTH;
     uint32_t OTS::sMaxIndexDepth = (uint32_t)DEFAULT_MAX_INDEX_DEPTH;
 
