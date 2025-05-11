@@ -60,7 +60,7 @@ const std::vector<MoneroSeedTestCase> monero_seed_test_cases = {
     {
         "wallet test (mainnet)",
         "large nuisance tiger drying runway january cavernous powder adopt boil vehicle tidy talent fetches future trendy usual basin hiker smuggled when pheasants cinema diplomat hiker",
-        3164653, 0, 3164653, 0,
+        3164653, 0, 3164653, 1717596972,
         ots::Network::MAIN,
         "", false,
         "42q2w6k8pcWiYViMdnqPRTQeyigWkJmBr1LsHh5KPYKrFWFZniZKgTTbx8ePnK4yHpFSbijdAHqkM9iGoVsFhtqTHsxHyBq", "092F1B",
