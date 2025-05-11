@@ -1,4 +1,5 @@
 #include "ots-internal.h"
+#include <iostream>
 
 using namespace ots::internal;
 
@@ -31,33 +32,39 @@ extern "C" {
         return result;
     }
 
-    ots_result_t* ots_seed_language_for_code(const char* code) {
+    ots_result_t* ots_seed_language_from_code(const char* code) {
         ots_result_t* result = new ots_result_t();
         try {
             auto language = ots::SeedLanguage::fromCode(code);
-            set_handle_reference(result, OTS_HANDLE_SEED_LANGUAGE, (void *)&language);
+            set_handle(result, OTS_HANDLE_SEED_LANGUAGE, new ots::SeedLanguage(ots::SeedLanguage::fromCode(code)));
         } catch(const ots::exception::Exception& e) {
             set_error(result, e);
         }
         return result;
     }
 
-    ots_result_t* ots_seed_language_for_name(const char* name) {
+    ots_result_t* ots_seed_language_from_name(const char* name) {
         ots_result_t* result = new ots_result_t();
         try {
-            auto language = ots::SeedLanguage::fromName(name);
-            set_handle_reference(result, OTS_HANDLE_SEED_LANGUAGE, (void *)&language);
+            set_handle(
+                result,
+                OTS_HANDLE_SEED_LANGUAGE,
+                new ots::SeedLanguage(ots::SeedLanguage::fromName(name))
+            );
         } catch(const ots::exception::Exception& e) {
             set_error(result, e);
         }
         return result;
     }
 
-    ots_result_t* ots_seed_language_for_english_name(const char* name) {
+    ots_result_t* ots_seed_language_from_english_name(const char* name) {
         ots_result_t* result = new ots_result_t();
         try {
-            auto language = ots::SeedLanguage::fromEnglishName(name);
-            set_handle_reference(result, OTS_HANDLE_SEED_LANGUAGE, (void *)&language);
+            set_handle(
+                result,
+                OTS_HANDLE_SEED_LANGUAGE,
+                new ots::SeedLanguage(ots::SeedLanguage::fromEnglishName(name))
+            );
         } catch(const ots::exception::Exception& e) {
             set_error(result, e);
         }
@@ -67,8 +74,15 @@ extern "C" {
     ots_result_t* ots_seed_language_default(OTS_SEED_TYPE type) {
         ots_result_t* result = new ots_result_t();
         try {
-            auto language = ots::SeedLanguage::defaultLanguage(static_cast<ots::SeedType>(type));
-            set_handle_reference(result, OTS_HANDLE_SEED_LANGUAGE, (void *)&language);
+            set_handle(
+                result,
+                OTS_HANDLE_SEED_LANGUAGE,
+                new ots::SeedLanguage(
+                    ots::SeedLanguage::defaultLanguage(
+                        static_cast<ots::SeedType>(type)
+                    )
+                )
+            );
         } catch(const ots::exception::Exception& e) {
             set_error(result, e);
         }
@@ -88,39 +102,6 @@ extern "C" {
                 result, OTS_HANDLE_SEED_LANGUAGE,
                 (void *)&(ots::SeedLanguage::defaultLanguage(static_cast<ots::SeedType>(type)))
             );
-        } catch(const ots::exception::Exception& e) {
-            set_error(result, e);
-        }
-        return result;
-    }
-
-    ots_result_t* ots_seed_language_from_code(const char* code) {
-        ots_result_t* result = new ots_result_t();
-        try {
-            auto language = ots::SeedLanguage::fromCode(code);
-            set_handle_reference(result, OTS_HANDLE_SEED_LANGUAGE, (void *)&language);
-        } catch(const ots::exception::Exception& e) {
-            set_error(result, e);
-        }
-        return result;
-    }
-
-    ots_result_t* ots_seed_language_from_name(const char* name) {
-        ots_result_t* result = new ots_result_t();
-        try {
-            auto language = ots::SeedLanguage::fromName(name);
-            set_handle_reference(result, OTS_HANDLE_SEED_LANGUAGE, (void *)&language);
-        } catch(const ots::exception::Exception& e) {
-            set_error(result, e);
-        }
-        return result;
-    }
-
-    ots_result_t* ots_seed_language_from_english_name(const char* name) {
-        ots_result_t* result = new ots_result_t();
-        try {
-            auto language = ots::SeedLanguage::fromEnglishName(name);
-            set_handle_reference(result, OTS_HANDLE_SEED_LANGUAGE, (void *)&language);
         } catch(const ots::exception::Exception& e) {
             set_error(result, e);
         }

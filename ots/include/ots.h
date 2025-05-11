@@ -1059,27 +1059,6 @@ extern "C" {
     ots_result_t* ots_seed_languages_for_type(OTS_SEED_TYPE type);
 
     /**
-     * @brief Get language from language code
-     * @param[in] code Language code
-     * @return Result containing language handle
-     */
-    ots_result_t* ots_seed_language_for_code(const char* code);
-
-    /**
-     * @brief Get language from language name
-     * @param[in] name Language name
-     * @return Result containing language handle
-     */
-    ots_result_t* ots_seed_language_for_name(const char* name);
-
-    /**
-     * @brief Get language from English language name
-     * @param[in] name English language name
-     * @return Result containing language handle
-     */
-    ots_result_t* ots_seed_language_for_english_name(const char* name);
-
-    /**
      * @brief Get default language for seed type
      * @param[in] type Seed type
      * @return Result containing language handle
@@ -1099,44 +1078,44 @@ extern "C" {
     );
 
     /**
-     * @brief Seed language code
-     * @param[in] language Language handle
-     * @return Result containing language code
+     * @brief Seed language from language code
+     * @param[in] code Language code
+     * @return Result containing language handle
      */
     ots_result_t* ots_seed_language_from_code(const char* code);
 
     /**
-     * @brief Seed language name
-     * @param[in] language Language handle
-     * @return Result containing language name
+     * @brief Seed language from name
+     * @param[in] name Language name
+     * @return Result containing language handle
      */
     ots_result_t* ots_seed_language_from_name(const char* name);
 
     /**
-     * @brief Seed language English name
-     * @param[in] language Language handle
-     * @return Result containing English language name
+     * @brief Seed language from English name
+     * @param[in] name English language name
+     * @return Result containing language handle
      */
     ots_result_t* ots_seed_language_from_english_name(const char* name);
 
     /**
      * @brief Seed language code
      * @param[in] language Language handle
-     * @return Result containing language code
+     * @return Result containing language code as string
      */
     ots_result_t* ots_seed_language_code(const ots_handle_t* language);
 
     /**
      * @brief Seed language name
      * @param[in] language Language handle
-     * @return Result containing language name
+     * @return Result containing language name as string
      */
     ots_result_t* ots_seed_language_name(const ots_handle_t* language);
 
     /**
      * @brief Seed language English name
      * @param[in] language Language handle
-     * @return Result containing English language name
+     * @return Result containing English language name as string
      */
     ots_result_t* ots_seed_language_english_name(const ots_handle_t* language);
 
