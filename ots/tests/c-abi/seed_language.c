@@ -18,11 +18,29 @@ START_TEST(test_seed_languages_for_type)
     ots_result_t* result = ots_seed_languages_for_type(OTS_SEED_TYPE_MONERO);
     ck_assert(ots_result_data_handle_is_seed_language(result));
     ck_assert_int_eq(ots_result_size(result), 12);
+    ots_handle_t* langs = ots_result_handle_array(result);
+    size_t count = ots_result_size(result);
     ots_free_result(&result);
+    for(size_t i = 0; i < count; i++) {
+        result = ots_seed_language_supported(&langs[i], OTS_SEED_TYPE_MONERO);
+        ck_assert(ots_result_is_boolean(result));
+        ck_assert_int_eq(ots_result_boolean(result, false), true);
+        ots_free_result(&result);
+    }
+    ots_free_array((void**)&langs, sizeof(ots_handle_t), count);
     result = ots_seed_languages_for_type(OTS_SEED_TYPE_POLYSEED);
     ck_assert(ots_result_data_handle_is_seed_language(result));
     ck_assert_int_eq(ots_result_size(result), 10);
+    langs = ots_result_handle_array(result);
+    count = ots_result_size(result);
     ots_free_result(&result);
+    for(size_t i = 0; i < count; i++) {
+        result = ots_seed_language_supported(&langs[i], OTS_SEED_TYPE_POLYSEED);
+        ck_assert(ots_result_is_boolean(result));
+        ck_assert_int_eq(ots_result_boolean(result, false), true);
+        ots_free_result(&result);
+    }
+    ots_free_array((void**)&langs, sizeof(ots_handle_t), count);
 }
 END_TEST
 

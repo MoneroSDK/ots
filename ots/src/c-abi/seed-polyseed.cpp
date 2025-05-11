@@ -82,34 +82,6 @@ extern "C" {
         return result;
     }
 
-    ots_result_t* ots_polyseed_decode_indices(
-            const ots_handle_t* indices,
-            OTS_NETWORK network,
-            const char* password,
-            const char* passphrase
-            ) {
-        ots_result_t* result = new ots_result_t();
-        try {
-            if(indices->type != OTS_HANDLE_SEED_INDICES)
-                throw ots::exception::InvalidArgument("Invalid handle type");
-            set_handle(
-                result,
-                OTS_HANDLE_SEED,
-                new ots::Polyseed(
-                    ots::Polyseed::decode(
-                        *static_cast<ots::SeedIndices*>(indices->ptr),
-                        to_cpp_network(network),
-                        password,
-                        passphrase
-                    )
-                )
-            );
-        } catch(const ots::exception::Exception& e) {
-            set_error(result, e);
-        }
-        return result;
-    }
-
     ots_result_t* ots_polyseed_decode_with_language(
             const char* phrase,
             const ots_handle_t* language,
@@ -156,6 +128,34 @@ extern "C" {
                     ots::Polyseed::decode(
                         phrase,
                         ots::SeedLanguage::fromCode(language_code),
+                        to_cpp_network(network),
+                        password,
+                        passphrase
+                    )
+                )
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_polyseed_decode_indices(
+            const ots_handle_t* indices,
+            OTS_NETWORK network,
+            const char* password,
+            const char* passphrase
+            ) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            if(indices->type != OTS_HANDLE_SEED_INDICES)
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            set_handle(
+                result,
+                OTS_HANDLE_SEED,
+                new ots::Polyseed(
+                    ots::Polyseed::decode(
+                        *static_cast<ots::SeedIndices*>(indices->ptr),
                         to_cpp_network(network),
                         password,
                         passphrase
