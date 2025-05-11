@@ -122,7 +122,7 @@ extern "C" {
         try {
             if(handle->type != OTS_HANDLE_SEED)
                 throw ots::exception::InvalidArgument("Invalid handle type");
-            set_number(result, static_cast<int64_t>(static_cast<ots::Seed*>(handle->ptr)->network()));
+            set_network(result, static_cast<ots::Seed*>(handle->ptr)->network());
         } catch(const ots::exception::Exception& e) {
             set_error(result, e);
         }
