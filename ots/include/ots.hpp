@@ -300,6 +300,18 @@ namespace ots {
 			virtual ~Seed() = default;
 
             /**
+             * @brief Retrieves the type of the seed
+             * @return SeedType Type of the seed
+             */
+            virtual SeedType type() const = 0;
+
+            /**
+             * @brief Checks if the seed is a legacy type
+             * @return bool True if the seed is a legacy type, false otherwise
+             */
+            virtual bool isLegacy() const = 0;
+
+            /**
              * @brief Generates the seed phrase in a specified language
              * @param language SeedLanguage to generate phrase in
              * @return Seed phrase
@@ -388,7 +400,7 @@ namespace ots {
             static std::vector<uint16_t> mergeValues(
                 const std::vector<uint16_t>& values1,
                 const std::vector<uint16_t>& values2
-                );
+            );
 
             /**
              * @brief Merges multiple seed values, so you can join multiple SeedQRs to one seed
@@ -415,7 +427,7 @@ namespace ots {
                 std::vector<uint16_t>& values1,
                 std::vector<uint16_t>& values2,
                 bool del = true
-                );
+            );
 
             /**
              * @brief Merges multiple seed values, so you can join multiple SeedQRs to one seed
@@ -430,7 +442,7 @@ namespace ots {
             static std::vector<uint16_t> mergeAndZeorizeValues(
                 std::vector<std::vector<uint16_t>>& values,
                 bool del = true
-                );
+            );
 
             /**
              * @brief Merge password with seed values
@@ -442,7 +454,7 @@ namespace ots {
             static std::vector<uint16_t> mergeWithPassword(
                 const std::string& password,
                 const std::vector<uint16_t>& values
-                );
+            );
 
             /**
              * @brief Merge password with seed values and zeroize password
@@ -453,10 +465,10 @@ namespace ots {
              * @throws ots::exception::seed::MergeError On failures
              */
             static std::vector<uint16_t> mergeWithPasswordAndZeorize(
-                    std::string& password,
-                    std::vector<uint16_t>& values,
-                    bool del = true
-                    );
+                std::string& password,
+                std::vector<uint16_t>& values,
+                bool del = true
+            );
 
             /**
              * @brief Merge password with seed values
@@ -466,9 +478,9 @@ namespace ots {
              * @throws ots::exception::seed::MergeError On failures
              */
             static std::vector<uint16_t> mergeWithPassword(
-                    const WipeableString& password,
-                    const std::vector<uint16_t>& values
-                    );
+                const WipeableString& password,
+                const std::vector<uint16_t>& values
+            );
 
             /**
              * @brief Merge password with seed values and zeroize values
@@ -478,10 +490,11 @@ namespace ots {
              * @throws ots::exception::seed::MergeError On failures
              */
             static std::vector<uint16_t> mergeWithPasswordAndZeorize(
-                    const WipeableString& password,
-                    std::vector<uint16_t>& values,
-                    bool del = true
-                    );
+                const WipeableString& password,
+                std::vector<uint16_t>& values,
+                bool del = true
+            );
+
 		protected:
             Seed();
             std::unique_ptr<Address> m_address;
@@ -500,6 +513,17 @@ namespace ots {
      */
 	class LegacySeed: public Seed {
 		public:
+
+            /**
+             * @brief Always returns the Monero as seed type
+             */
+            inline SeedType type() const override { return SeedType::Monero; };
+
+            /**
+             * @brief Always returns true as legacy seed type
+             */
+            inline bool isLegacy() const override { return true; };
+
             /**
              * @brief seed phrase in a specified language
              * @param language SeedLanguage to use
@@ -576,6 +600,17 @@ namespace ots {
      */
 	class MoneroSeed: public Seed {
 		public:
+
+            /**
+             * @brief Always returns the Monero as seed type
+             */
+            inline SeedType type() const override { return SeedType::Monero; };
+
+            /**
+             * @brief Always returns false as legacy seed type
+             */
+            inline bool isLegacy() const override { return false; };
+
             /**
              * @brief Generates the seed phrase in a specified language
              * @param language SeedLanguage to generate phrase in
@@ -724,6 +759,17 @@ namespace ots {
      */
 	class Polyseed: public Seed {
 		public:
+
+            /**
+             * @brief Always returns the Polyseed as seed type
+             */
+            inline SeedType type() const override { return SeedType::Polyseed; };
+
+            /**
+             * @brief Always returns false as legacy seed type
+             */
+            inline bool isLegacy() const override { return false; };
+
 			const WipeableString phrase(const SeedLanguage& language, const std::string& password = "") const override;
 			const SeedIndices indices(const std::string& password = "") const override;
 
