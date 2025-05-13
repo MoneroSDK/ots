@@ -8,20 +8,20 @@ extern "C" {
         return result && result->error.code != 0;
     }
 
-    char* ots_get_error_message(const ots_result_t* result) {
-        if(!result)
+    char* ots_error_message(const ots_result_t* result) {
+        if(!ots_is_error(result))
             return nullptr;
         return create_string_copy(result->error.message);
     }
 
-    char* ots_get_error_class(const ots_result_t* result) {
-        if(!result)
+    char* ots_error_class(const ots_result_t* result) {
+        if(!ots_is_error(result))
             return nullptr;
         return create_string_copy(result->error.cls);
     }
 
-    int32_t ots_get_error_code(const ots_result_t* result) {
-        if(!result)
+    int32_t ots_error_code(const ots_result_t* result) {
+        if(!ots_is_error(result))
             return 0;
         return result->error.code;
     }
@@ -486,6 +486,12 @@ extern "C" {
 
     bool ots_result_is_seed_type(const ots_result_t* result) {
         return result && ots_result_is_type(result, OTS_RESULT_SEED_TYPE);
+    }
+
+    OTS_SEED_TYPE ots_result_seed_type(const ots_result_t* result) {
+        if(!result || !ots_result_is_seed_type(result))
+            return OTS_SEED_TYPE_MONERO;
+        return static_cast<OTS_SEED_TYPE>(result->result.number);
     }
 
     bool ots_result_seed_type_is_type(const ots_result_t* result, OTS_SEED_TYPE type) {
