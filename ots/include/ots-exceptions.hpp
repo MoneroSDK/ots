@@ -17,6 +17,8 @@
     protected: \
     static constexpr int32_t error_code = CODE; \
     static constexpr const char* error_class = NAME; \
+    inline int32_t code() const override { return error_code; } \
+    inline const char* cls() const override { return error_class; } \
     static inline bool registered = ots::exception::Exception::registerException<CLASS>(error_code, error_class);
 
 
@@ -67,8 +69,8 @@ namespace ots {
 
             public:
                 virtual ~Exception() = default;
-                inline int32_t code() const { return error_code; }
-                inline const char* cls() const { return error_class; }
+                virtual inline int32_t code() const { return -1; }
+                virtual inline const char* cls() const { return "Exception"; }
         };
 
         /**
