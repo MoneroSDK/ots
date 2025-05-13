@@ -77,6 +77,30 @@ extern "C" {
         return result;
     }
 
+    ots_result_t* ots_seed_is_legacy(const ots_handle_t* handle) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            if(handle->type != OTS_HANDLE_SEED)
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            set_boolean(result, static_cast<ots::Seed*>(handle->ptr)->isLegacy());
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_seed_type(const ots_handle_t* handle) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            if(handle->type != OTS_HANDLE_SEED)
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            set_seed_type(result, static_cast<ots::Seed*>(handle->ptr)->type());
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
     ots_result_t* ots_seed_address(const ots_handle_t* handle) {
         ots_result_t* result = new ots_result_t();
         try {

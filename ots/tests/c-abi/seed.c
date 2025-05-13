@@ -113,6 +113,106 @@ START_TEST(test_seed_fingerprint)
 }
 END_TEST
 
+START_TEST(test_seed_is_legacy)
+{
+    ots_result_t* result = ots_monero_seed_decode(
+        get_monero_seed_test_case_phrase(5),
+        get_monero_seed_test_case_height(5),
+        get_monero_seed_test_case_time(5),
+        get_monero_seed_test_case_network(5),
+        get_monero_seed_test_case_password(5)
+    );
+    ck_assert(ots_result_is_seed(result));
+    ots_handle_t* seed = ots_result_handle(result);
+    ots_free_result(&result);
+    result = ots_seed_is_legacy(seed);
+    ck_assert(ots_result_is_boolean(result));
+    ck_assert(!ots_result_boolean(result, true));
+    ots_free_result(&result);
+    ots_free_handle(&seed);
+    result = ots_legacy_seed_decode(
+        get_legacy_seed_test_case_phrase(2),
+        get_legacy_seed_test_case_height(2),
+        get_legacy_seed_test_case_time(2),
+        get_legacy_seed_test_case_network(2)
+    );
+    ck_assert(ots_result_is_seed(result));
+    seed = ots_result_handle(result);
+    ots_free_result(&result);
+    result = ots_seed_is_legacy(seed);
+    ck_assert(ots_result_is_boolean(result));
+    ck_assert(ots_result_boolean(result, false));
+    ots_free_result(&result);
+    ots_free_handle(&seed);
+    result = ots_polyseed_decode(
+        get_polyseed_test_case_phrase(0),
+        get_polyseed_test_case_network(0),
+        get_polyseed_test_case_password(0),
+        get_polyseed_test_case_passphrase(0)
+    );
+    ck_assert(ots_result_is_seed(result));
+    seed = ots_result_handle(result);
+    ots_free_result(&result);
+    result = ots_seed_is_legacy(seed);
+    ck_assert(ots_result_is_boolean(result));
+    ck_assert(!ots_result_boolean(result, true));
+    ots_free_result(&result);
+    ots_free_handle(&seed);
+}
+END_TEST
+
+START_TEST(test_seed_type)
+{
+    ots_result_t* result = ots_monero_seed_decode(
+        get_monero_seed_test_case_phrase(5),
+        get_monero_seed_test_case_height(5),
+        get_monero_seed_test_case_time(5),
+        get_monero_seed_test_case_network(5),
+        get_monero_seed_test_case_password(5)
+    );
+    ck_assert(ots_result_is_seed(result));
+    ots_handle_t* seed = ots_result_handle(result);
+    ots_free_result(&result);
+    result = ots_seed_type(seed);
+    ck_assert(ots_result_is_seed_type(result));
+    ck_assert(ots_result_seed_type_is_type(result, OTS_SEED_TYPE_MONERO));
+    ck_assert(ots_result_seed_type(result) == OTS_SEED_TYPE_MONERO);
+    ots_free_result(&result);
+    ots_free_handle(&seed);
+
+    result = ots_legacy_seed_decode(
+        get_legacy_seed_test_case_phrase(2),
+        get_legacy_seed_test_case_height(2),
+        get_legacy_seed_test_case_time(2),
+        get_legacy_seed_test_case_network(2)
+    );
+    ck_assert(ots_result_is_seed(result));
+    seed = ots_result_handle(result);
+    ots_free_result(&result);
+    result = ots_seed_type(seed);
+    ck_assert(ots_result_is_seed_type(result));
+    ck_assert(ots_result_seed_type_is_type(result, OTS_SEED_TYPE_MONERO));
+    ck_assert(ots_result_seed_type(result) == OTS_SEED_TYPE_MONERO);
+    ots_free_result(&result);
+    ots_free_handle(&seed);
+
+    result = ots_polyseed_decode(
+        get_polyseed_test_case_phrase(0),
+        get_polyseed_test_case_network(0),
+        get_polyseed_test_case_password(0),
+        get_polyseed_test_case_passphrase(0)
+    );
+    ck_assert(ots_result_is_seed(result));
+    seed = ots_result_handle(result);
+    ots_free_result(&result);
+    result = ots_seed_type(seed);
+    ck_assert(ots_result_is_seed_type(result));
+    ck_assert(ots_result_seed_type_is_type(result, OTS_SEED_TYPE_POLYSEED));
+    ck_assert(ots_result_seed_type(result) == OTS_SEED_TYPE_POLYSEED);
+    ots_free_result(&result);
+    ots_free_handle(&seed);
+}
+
 START_TEST(test_seed_address)
 {
     ots_result_t* result = ots_monero_seed_decode(
@@ -244,6 +344,8 @@ Suite* seed_suite(void)
     tcase_add_test(tc_core, test_seed_phrase_for_language_code);
     tcase_add_test(tc_core, test_seed_indices);
     tcase_add_test(tc_core, test_seed_fingerprint);
+    tcase_add_test(tc_core, test_seed_is_legacy);
+    tcase_add_test(tc_core, test_seed_type);
     tcase_add_test(tc_core, test_seed_address);
     tcase_add_test(tc_core, test_seed_seed_timestamp);
     tcase_add_test(tc_core, test_seed_seed_height);
