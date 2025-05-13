@@ -8,7 +8,9 @@ namespace ots::internal {
         error->code = e.code();
         strncpy(error->message, e.what(), OTS_MAX_ERROR_MESSAGE - 1);
         error->message[OTS_MAX_ERROR_MESSAGE - 1] = '\0';
-        error->cls[0] = e.cls()[0];
+        memset(error->cls, 0, OTS_MAX_ERROR_CLASS);
+        strncpy(error->cls, e.cls(), OTS_MAX_ERROR_CLASS - 1);
+        error->cls[OTS_MAX_ERROR_CLASS - 1] = '\0';
     }
 
     void set_success(ots_result_t* result) {
