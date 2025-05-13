@@ -6,20 +6,10 @@ extern "C" {
     ots_result_t* ots_seed_indices_create(uint16_t* indices, size_t size) {
         ots_result_t* result = new ots_result_t();
         try {
-            set_handle(result, OTS_HANDLE_SEED_INDICES, new ots::SeedIndices(indices, size));
-        } catch(const ots::exception::Exception& e) {
-            set_error(result, e);
-        }
-        return result;
-    }
-
-    ots_result_t* ots_seed_indices_create_from_string(const char* str, const char* separator) {
-        ots_result_t* result = new ots_result_t();
-        try {
             set_handle(
                 result,
                 OTS_HANDLE_SEED_INDICES,
-                new ots::SeedIndices(ots::SeedIndices::fromNumeric(str, separator))
+                new ots::SeedIndices(indices, size)
             );
         } catch(const ots::exception::Exception& e) {
             set_error(result, e);
@@ -27,7 +17,29 @@ extern "C" {
         return result;
     }
 
-    ots_result_t* ots_seed_indices_create_from_hex(const char* hex, const char* separator) {
+    ots_result_t* ots_seed_indices_create_from_string(
+        const char* str,
+        const char* separator
+    ) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            set_handle(
+                result,
+                OTS_HANDLE_SEED_INDICES,
+                new ots::SeedIndices(
+                    ots::SeedIndices::fromNumeric(str, separator)
+                )
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
+
+    ots_result_t* ots_seed_indices_create_from_hex(
+        const char* hex,
+        const char* separator
+    ) {
         ots_result_t* result = new ots_result_t();
         try {
             set_handle(
@@ -65,16 +77,26 @@ extern "C" {
         static_cast<ots::SeedIndices*>(handle->ptr)->emplace_back(index);
     }
 
-    char* ots_seed_indices_numeric(const ots_handle_t* handle, const char* separator) {
+    char* ots_seed_indices_numeric(
+        const ots_handle_t* handle,
+        const char* separator
+    ) {
         if(handle->type != OTS_HANDLE_SEED_INDICES)
             return nullptr;
-        return create_string_copy(static_cast<ots::SeedIndices*>(handle->ptr)->numeric(separator));
+        return create_string_copy(
+            static_cast<ots::SeedIndices*>(handle->ptr)->numeric(separator)
+        );
     }
 
-    char* ots_seed_indices_hex(const ots_handle_t* handle, const char* separator) {
+    char* ots_seed_indices_hex(
+        const ots_handle_t* handle,
+        const char* separator
+    ) {
         if(handle->type != OTS_HANDLE_SEED_INDICES)
             return nullptr;
-        return create_string_copy(static_cast<ots::SeedIndices*>(handle->ptr)->hex(separator));
+        return create_string_copy(
+            static_cast<ots::SeedIndices*>(handle->ptr)->hex(separator)
+        );
     }
 
     ots_result_t* ots_seed_indices_merge_values(
@@ -84,7 +106,7 @@ extern "C" {
         ots_result_t* result = new ots_result_t();
         try {
             if(
-                seed_indices1->type != OTS_HANDLE_SEED ||
+                seed_indices1->type != OTS_HANDLE_SEED_INDICES ||
                 seed_indices2->type != OTS_HANDLE_SEED_INDICES
             )
                 throw ots::exception::InvalidArgument("Invalid handle type");
@@ -107,8 +129,8 @@ extern "C" {
     }
 
     ots_result_t* ots_seed_indices_merge_with_password(
-            const char* password,
-            const ots_handle_t* seed_indices
+            const ots_handle_t* seed_indices,
+            const char* password
             ) {
         ots_result_t* result = new ots_result_t();
         try {
@@ -178,11 +200,14 @@ extern "C" {
     }
 
     ots_result_t* ots_seed_indices_merge_with_password_and_zero(
-            const char* password,
             const ots_handle_t* seed_indices,
+            const char* password,
             bool delete_after
             ) {
-        ots_result_t* result = ots_seed_indices_merge_with_password(password, seed_indices);
+        ots_result_t* result = ots_seed_indices_merge_with_password(
+            seed_indices,
+            password
+        );
         if(ots_is_error(result))
             return result;
         try {
@@ -200,7 +225,11 @@ extern "C" {
             size_t count,
             bool delete_after
             ) {
-        ots_result_t* result = ots_seed_indices_merge_multiple_values(seed_indices, elements, count);
+        ots_result_t* result = ots_seed_indices_merge_multiple_values(
+            seed_indices,
+            elements,
+            count
+        );
         if(ots_is_error(result))
             return result;
         try {
