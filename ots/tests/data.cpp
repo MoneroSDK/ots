@@ -637,4 +637,28 @@ extern "C" {
             return 0;
         return wallet_verify_signed_message_test_cases[index].version;
     }
+
+    size_t get_wallet_subaddress_test_case_count(size_t walletIndex) {
+        if(walletIndex >= wallet_test_cases.size())
+            return 0;
+        return wallet_test_cases[walletIndex].subaddresses.size();
+    }
+
+    const uint32_t get_wallet_subaddress_test_case_account(size_t walletIndex, size_t index) {
+        if(walletIndex >= wallet_test_cases.size())
+            return 0;
+        return wallet_test_cases[walletIndex].subaddresses[index].account;
+    }
+
+    const uint32_t get_wallet_subaddress_test_case_index(size_t walletIndex, size_t index) {
+        if(walletIndex >= wallet_test_cases.size())
+            return 0;
+        return wallet_test_cases[walletIndex].subaddresses[index].index;
+    }
+
+    const char* get_wallet_subaddress_test_case_address(size_t walletIndex, size_t index) {
+        if(walletIndex >= wallet_test_cases.size())
+            return nullptr;
+        return wallet_test_cases[walletIndex].subaddresses[index].address.c_str();
+    }
 }

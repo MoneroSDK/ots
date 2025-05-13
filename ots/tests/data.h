@@ -138,6 +138,20 @@ extern "C" {
     const bool get_wallet_verify_signed_message_test_case_throws(size_t index);
     const size_t get_wallet_verify_signed_message_test_case_version(size_t index);
 
+    size_t get_wallet_subaddress_test_case_count(size_t walletIndex);
+    const uint32_t get_wallet_subaddress_test_case_account(
+        size_t walletIndex,
+        size_t index
+    );
+    const uint32_t get_wallet_subaddress_test_case_index(
+        size_t walletIndex,
+        size_t index
+    );
+    const char* get_wallet_subaddress_test_case_address(
+        size_t walletIndex,
+        size_t index
+    );
+
 #ifdef __cplusplus
 }
 #endif
