@@ -136,7 +136,7 @@ namespace ots {
 
     SeedIndices SeedIndices::fromHex(const std::string& hex, const std::string& separator) {
         SeedIndices indices;
-        std::vector<std::string> hexParts = ots::splitString(hex, separator, 2);
+        std::vector<std::string> hexParts = ots::splitString(hex, separator, 4);
         for(const auto& part : hexParts)
             if(!part.empty())
                 indices.emplace_back(std::stoi(part, nullptr, 16));
