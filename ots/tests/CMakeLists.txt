@@ -1,3 +1,10 @@
+# Require C++17
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+# Require C 11
+set(C_STANDARD 11)
+set(C_STANDARD_REQUIRED ON)
+
 # Use Monero's GTest from parent directory
 # TODO: will move to external/gtest: https://github.com/monero-project/monero/pull/9715
 set(GTEST_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../tests/gtest)
@@ -77,10 +84,28 @@ target_include_directories(rapidjson
     ${CMAKE_CURRENT_SOURCE_DIR}/../../external/rapidjson/include
 )
 
+add_library(
+	json-tx-description
+	STATIC
+	${CMAKE_CURRENT_SOURCE_DIR}/json-tx-description.cpp
+)
+target_include_directories(
+	json-tx-description
+	PUBLIC
+	${CMAKE_CURRENT_SOURCE_DIR}/../../external/rapidjson/include
+)
+target_link_libraries(
+	json-tx-description
+	PRIVATE
+	monero-ots
+	rapidjson
+)
+
+
 # C++ test executable, to check the OTS C++ library
 add_executable(gtest_ots.cpp
 	gtest_ots.cpp
-	json-tx-description.cpp
+	# json-tx-description.cpp
 	test-tx-description.cpp
 )
 
@@ -93,6 +118,7 @@ target_link_libraries(gtest_ots.cpp
 	utf8proc
 	monero-ots
 	rapidjson
+	json-tx-description
 	gtest
 	gtest_main
 )
@@ -192,6 +218,7 @@ target_link_libraries(check_ots_c
 	PRIVATE
 	check
 	monero-ots
+	json-tx-description
 	pthread
 	stdc++
 )
