@@ -48,10 +48,10 @@ namespace ots::internal {
         };
     }
 
-    char* create_string_copy(const std::string& str) {
-        char* copy = new char[str.length() + 1];
-        std::strncpy(copy, str.c_str(), str.length());
-        copy[str.length()] = '\0';
+    char* create_string_copy(const std::string& str, size_t size) {
+        char* copy = new char[size + 1];
+        std::strncpy(copy, str.c_str(), size);
+        copy[size] = '\0';
         return copy;
     }
 
@@ -73,8 +73,18 @@ namespace ots::internal {
         if(result == nullptr)
             return;
         set_result_type(result, OTS_RESULT_STRING);
-        result->result.data.ptr = create_string_copy(str);
+        result->result.data.ptr = create_string_copy(str, str.length());
         result->result.data.size = str.length();
+        result->result.data.type = OTS_DATA_CHAR;
+        result->result.data.reference = false;
+    }
+
+    void set_binary_string(ots_result_t* result, const std::string& data, size_t size) {
+        if(result == nullptr)
+            return;
+        set_result_type(result, OTS_RESULT_STRING);
+        result->result.data.ptr = create_string_copy(data, size);
+        result->result.data.size = size;
         result->result.data.type = OTS_DATA_CHAR;
         result->result.data.reference = false;
     }
