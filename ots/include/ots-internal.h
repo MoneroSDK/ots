@@ -65,7 +65,10 @@ namespace ots::internal {
      * @return Copy of the string
      * @internal
      */
-    char* create_string_copy(const std::string& str);
+    char* create_string_copy(
+        const std::string& str,
+        size_t size
+    );
 
     /**
      * @brief Set handle to result
@@ -92,6 +95,19 @@ namespace ots::internal {
      * @internal
      */
     void set_string(ots_result_t* result, const std::string& str);
+
+    /**
+     * @brief Set binary string to result
+     * @param[out] result Result to set
+     * @param[in] str Binary string to set
+     * @param[in] size Size of the string
+     * @internal
+     */
+    void set_binary_string(
+        ots_result_t* result,
+        const std::string& str,
+        size_t size
+    );
 
     /**
      * @brief Set boolean to result

@@ -11,13 +11,13 @@ extern "C" {
     char* ots_error_message(const ots_result_t* result) {
         if(!ots_is_error(result))
             return nullptr;
-        return create_string_copy(result->error.message);
+        return create_string_copy(result->error.message, strlen(result->error.message));
     }
 
     char* ots_error_class(const ots_result_t* result) {
         if(!ots_is_error(result))
             return nullptr;
-        return create_string_copy(result->error.cls);
+        return create_string_copy(result->error.cls, strlen(result->error.cls));
     }
 
     int32_t ots_error_code(const ots_result_t* result) {
@@ -151,6 +151,14 @@ extern "C" {
     bool ots_result_data_handle_is_transaction_warning(const ots_result_t* result) {
         if(!ots_result_data_is_handle(result))
             return false;
+        // we assume an empty arry, so we can't figure out the type
+        // TODO: design flaw, in the future I should change, so the type is in
+        // data struct itself, or, it seems also that tx warning became useless
+        // with last monero changes (unlock time) and also the inabilitiy to
+        // check if if tx fees are insane...
+        // So, probably the right thing to do would be to remove TxWarning completely
+        if(result->result.data.size == 0 && result->result.data.type == OTS_DATA_HANDLE)
+            return true;
         return ots_result_data_handle_is_type(result, OTS_HANDLE_TX_WARNING);
     }
 
@@ -170,7 +178,7 @@ extern "C" {
         const char* out = ots_result_string(result);
         if(!out)
             return nullptr;
-        return create_string_copy(out);
+        return create_string_copy(out, ots_result_size(result));
     }
 
     bool ots_result_boolean(const ots_result_t* result, bool default_value) {
@@ -383,9 +391,10 @@ extern "C" {
     }
 
     size_t ots_result_size(const ots_result_t* result) {
-        if(ots_result_is_array(result))
-            return result->result.data.size;
-        if(ots_result_is_string(result))
+        if(
+            ots_result_is_array(result)
+            || ots_result_is_string(result)
+        )
             return result->result.data.size;
         if(ots_result_is_wipeable_string(result))
             try {
@@ -400,8 +409,8 @@ extern "C" {
 
     bool ots_result_is_address_index(const ots_result_t* result) {
         return ots_result_is_type(result, OTS_RESULT_ADDRESS_INDEX) &&
-            ots_result_data_is_type(result, OTS_DATA_UINT32) &&
-            ots_result_size(result) == 2;
+            result->result.data.type == OTS_DATA_UINT32 &&
+            result->result.data.size == 2;
     }
 
     uint32_t ots_result_address_index_account(const ots_result_t* result) {
@@ -478,6 +487,12 @@ extern "C" {
         return result && ots_result_is_type(result, OTS_RESULT_NETWORK);
     }
 
+    OTS_NETWORK ots_result_network(const ots_result_t* result) {
+        if(!result || !ots_result_is_network(result))
+            return OTS_NETWORK_MAIN;
+        return static_cast<OTS_NETWORK>(result->result.number);
+    }
+
     bool ots_result_network_is_type(const ots_result_t* result, OTS_NETWORK network) {
         if(!result || !ots_result_is_type(result, OTS_RESULT_NETWORK))
             return false;
@@ -527,6 +542,14 @@ extern "C" {
         if(!str || !*str)
             return;
         memset(*str, 0, strlen(*str)); // Securely wipe memory always, cost is low, see no reason not to do it
+        delete[] *str;
+        *str = nullptr;
+    }
+
+    void ots_free_binary_string(char** str, size_t size) {
+        if(!str || !*str)
+            return;
+        memset(*str, 0, size); // Securely wipe memory always, cost is low, see no reason not to do it
         delete[] *str;
         *str = nullptr;
     }
@@ -628,6 +651,32 @@ extern "C" {
             default:
                 break;
         }
+    }
+
+    void ots_free_tx_description(ots_tx_description_t** tx_description) {
+        if(!*tx_description || tx_description == nullptr)
+            return;
+        for(size_t flow = 0; flow < (*tx_description)->flows_size; flow++) {
+            delete (*tx_description)->flows[flow].address;
+            (*tx_description)->flows[flow].address = nullptr;
+        }
+        delete[] (*tx_description)->flows;
+        for(size_t transfer = 0; transfer < (*tx_description)->transfers_size; transfer++) {
+            for(size_t flow = 0; flow < (*tx_description)->transfers[transfer].flows_size; flow++) {
+                delete (*tx_description)->transfers[transfer].flows[flow].address;
+                (*tx_description)->transfers[transfer].flows[flow].address = nullptr;
+            }
+            delete[] (*tx_description)->transfers[transfer].flows;
+            delete[] (*tx_description)->transfers[transfer].payment_id;
+            (*tx_description)->transfers[transfer].payment_id = nullptr;
+            delete[] (*tx_description)->transfers[transfer].tx_extra;
+            (*tx_description)->transfers[transfer].tx_extra = nullptr;
+        }
+        delete[] (*tx_description)->transfers;
+        delete[] (*tx_description)->tx_set;
+        (*tx_description)->tx_set = nullptr;
+        delete *tx_description;
+        *tx_description = nullptr;
     }
 
     void ots_secure_free(void** buffer, size_t size) {
