@@ -19,3 +19,13 @@ bool equalTxDescriptions(
     bool includeUnisignedTxSet = true
 );
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+    bool equalTxDescriptions(
+        const void* a,
+        const void* b
+    );
+#ifdef __cplusplus
+}
+#endif

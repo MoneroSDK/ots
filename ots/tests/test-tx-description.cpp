@@ -1,4 +1,5 @@
 #include "test-tx-description.hpp"
+#include "json-tx-description.h"
 #include <iostream>
 
 bool equalTxDescriptions(
@@ -41,4 +42,18 @@ bool equalTxDescriptions(
         }
     }
     return true;
+}
+
+extern "C" {
+    bool equalTxDescriptions(
+        const void* a,
+        const void* b
+    ) {
+        if(a == nullptr || b == nullptr)
+            return false;
+        return equalTxDescriptions(
+            *static_cast<const ots::TxDescription*>(a),
+            *static_cast<const ots::TxDescription*>(b)
+        );
+    }
 }

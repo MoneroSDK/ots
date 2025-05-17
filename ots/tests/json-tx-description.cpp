@@ -116,3 +116,19 @@ ots::TxDescription txDescriptionFromJsonDocument(
     }
     return txDesc;
 }
+
+extern "C" {
+    void* tx_description_from_json(
+        const char* json,
+        size_t json_size,
+        const char* unsigned_tx_set,
+        size_t unsigned_tx_set_size
+    ) {
+        if(!json || !unsigned_tx_set)
+            return nullptr;
+        return (void*)new ots::TxDescription(txDescriptionFromJson(
+            std::string(json, json_size),
+            std::string(unsigned_tx_set, unsigned_tx_set_size)
+        ));
+    }
+}
