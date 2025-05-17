@@ -1070,7 +1070,7 @@ TEST_F(OTSTest, WalletSignTransaction) {
                     filename << seed.fingerprint() << "_" << std::setw(2) << std::setfill('0') << std::setw(2) << i << ".signed_tx";
                 std::ofstream signedTxFile(filename.str());
                 signedTxFile << signedTransaction;
-                    signedTxFile.close();
+                signedTxFile.close();
                 auto keyImages = wallet->exportKeyImages();
                 filename << "_keyImages";
                 std::ofstream keyImagesFile(filename.str());
