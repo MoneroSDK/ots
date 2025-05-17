@@ -191,7 +191,7 @@ END_TEST
 START_TEST(test_seed_polyseed_decode_indices)
 {
     ots_result_t* result = ots_polyseed_generate(OTS_NETWORK_MAIN, 0, "");
-    ck_assert(ots_result_is_handle(result));
+    ck_assert(ots_result_is_seed(result));
     ots_handle_t* seed = ots_result_handle(result);
     ots_free_result(&result);
     result = ots_seed_fingerprint(seed);
