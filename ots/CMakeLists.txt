@@ -510,6 +510,7 @@ add_library(monero-ots
 	src/c-abi/address.cpp
 	src/c-abi/wallet.cpp
 	src/c-abi/seed-jar.cpp
+	src/c-abi/transaction.cpp
 	${EASYLOGGING} # WTF! All this chingadera makes me desires to rewrite the whole thing :@ But need to calm my horses because it will probably take a eternity to get it done
 )
 
