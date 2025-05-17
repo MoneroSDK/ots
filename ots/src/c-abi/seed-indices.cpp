@@ -83,8 +83,10 @@ extern "C" {
     ) {
         if(handle->type != OTS_HANDLE_SEED_INDICES)
             return nullptr;
+        const std::string& str = static_cast<ots::SeedIndices*>(handle->ptr)->numeric(separator);
         return create_string_copy(
-            static_cast<ots::SeedIndices*>(handle->ptr)->numeric(separator)
+            str,
+            str.length()
         );
     }
 
@@ -94,8 +96,10 @@ extern "C" {
     ) {
         if(handle->type != OTS_HANDLE_SEED_INDICES)
             return nullptr;
+        const std::string& str = static_cast<ots::SeedIndices*>(handle->ptr)->hex(separator);
         return create_string_copy(
-            static_cast<ots::SeedIndices*>(handle->ptr)->hex(separator)
+            str,
+            str.length()
         );
     }
 

@@ -1,5 +1,6 @@
 #include "ots-internal.h"
 #include <cstring>
+#include <iostream>
 
 using namespace ots::internal;
 
@@ -237,9 +238,12 @@ extern "C" {
         try {
             if(wallet->type != OTS_HANDLE_WALLET)
                 throw ots::exception::InvalidArgument("Invalid handle type");
-            set_string(
+            set_handle(
                 result,
-                static_cast<ots::Wallet*>(wallet->ptr)->secretViewKey()
+                OTS_HANDLE_WIPEABLE_STRING,
+                new ots::WipeableString(
+                    static_cast<ots::Wallet*>(wallet->ptr)->secretViewKey()
+                )
             );
         } catch(const ots::exception::Exception& e) {
             set_error(result, e);
@@ -252,9 +256,12 @@ extern "C" {
         try {
             if(wallet->type != OTS_HANDLE_WALLET)
                 throw ots::exception::InvalidArgument("Invalid handle type");
-            set_string(
+            set_handle(
                 result,
-                static_cast<ots::Wallet*>(wallet->ptr)->publicViewKey()
+                OTS_HANDLE_WIPEABLE_STRING,
+                new ots::WipeableString(
+                    static_cast<ots::Wallet*>(wallet->ptr)->publicViewKey()
+                )
             );
         } catch(const ots::exception::Exception& e) {
             set_error(result, e);
@@ -267,9 +274,12 @@ extern "C" {
         try {
             if(wallet->type != OTS_HANDLE_WALLET)
                 throw ots::exception::InvalidArgument("Invalid handle type");
-            set_string(
+            set_handle(
                 result,
-                static_cast<ots::Wallet*>(wallet->ptr)->secretSpendKey()
+                OTS_HANDLE_WIPEABLE_STRING,
+                new ots::WipeableString(
+                    static_cast<ots::Wallet*>(wallet->ptr)->secretSpendKey()
+                )
             );
         } catch(const ots::exception::Exception& e) {
             set_error(result, e);
@@ -282,9 +292,12 @@ extern "C" {
         try {
             if(wallet->type != OTS_HANDLE_WALLET)
                 throw ots::exception::InvalidArgument("Invalid handle type");
-            set_string(
+            set_handle(
                 result,
-                static_cast<ots::Wallet*>(wallet->ptr)->publicSpendKey()
+                OTS_HANDLE_WIPEABLE_STRING,
+                new ots::WipeableString(
+                    static_cast<ots::Wallet*>(wallet->ptr)->publicSpendKey()
+                )
             );
         } catch(const ots::exception::Exception& e) {
             set_error(result, e);
@@ -294,13 +307,16 @@ extern "C" {
 
     ots_result_t* ots_wallet_import_outputs(
             const ots_handle_t* wallet,
-            const char* outputs
-            ) {
+            const char* outputs,
+            const size_t outputs_size
+    ) {
         ots_result_t* result = new ots_result_t();
         try {
             if(wallet->type != OTS_HANDLE_WALLET)
                 throw ots::exception::InvalidArgument("Invalid handle type");
-            uint64_t imported = static_cast<ots::Wallet*>(wallet->ptr)->importOutputs(outputs);
+            uint64_t imported = static_cast<ots::Wallet*>(wallet->ptr)->importOutputs(
+                std::string(outputs, outputs_size)
+            );
             if(imported & 0x8000000000000000) // int64_t max would be 9,223,372,036,854,775,807 (should never happen IMO)
                 throw ots::exception::RangeError("Imported outputs count is too large to convert to int64_t: " + std::to_string(imported));
             set_number(result, static_cast<int64_t>(imported));
@@ -315,9 +331,11 @@ extern "C" {
         try {
             if(wallet->type != OTS_HANDLE_WALLET)
                 throw ots::exception::InvalidArgument("Invalid handle type");
-            set_string(
+            const std::string& key_images = static_cast<ots::Wallet*>(wallet->ptr)->exportKeyImages();
+            set_binary_string(
                 result,
-                static_cast<ots::Wallet*>(wallet->ptr)->exportKeyImages()
+                key_images,
+                key_images.size()
             );
         } catch(const ots::exception::Exception& e) {
             set_error(result, e);
@@ -325,7 +343,11 @@ extern "C" {
         return result;
     }
 
-    ots_result_t* ots_wallet_describe_tx(const ots_handle_t* wallet, const char* tx) {
+    ots_result_t* ots_wallet_describe_tx(
+        const ots_handle_t* wallet,
+        const char* tx,
+        const size_t tx_size
+    ) {
         ots_result_t* result = new ots_result_t();
         try {
             if(wallet->type != OTS_HANDLE_WALLET)
@@ -333,7 +355,11 @@ extern "C" {
             set_handle(
                 result,
                 OTS_HANDLE_TX_DESCRIPTION,
-                new ots::TxDescription(static_cast<ots::Wallet*>(wallet->ptr)->describeTransaction(tx))
+                new ots::TxDescription(
+                    static_cast<ots::Wallet*>(wallet->ptr)->describeTransaction(
+                        std::string(tx, tx_size)
+                    )
+                )
             );
         } catch(const ots::exception::Exception& e) {
             set_error(result, e);
@@ -344,7 +370,7 @@ extern "C" {
     ots_result_t* ots_wallet_check_tx(const ots_handle_t* wallet, const ots_handle_t* tx) {
         ots_result_t* result = new ots_result_t();
         try {
-            if(wallet->type != OTS_HANDLE_WALLET || tx->type != OTS_HANDLE_TX)
+            if(wallet->type != OTS_HANDLE_WALLET || tx->type != OTS_HANDLE_TX_DESCRIPTION)
                 throw ots::exception::InvalidArgument("Invalid handle type");
             std::vector<ots::TxWarning> warnings = static_cast<ots::Wallet*>(wallet->ptr)->checkTransaction(*static_cast<ots::TxDescription*>(tx->ptr));
             ots_handle_t* handles = new ots_handle_t[warnings.size()];
@@ -357,12 +383,16 @@ extern "C" {
         return result;
     }
 
-    ots_result_t* ots_wallet_check_tx_string(const ots_handle_t* wallet, const char* tx) {
+    ots_result_t* ots_wallet_check_tx_string(
+        const ots_handle_t* wallet,
+        const char* tx,
+        const size_t tx_size
+    ) {
         ots_result_t* result = new ots_result_t();
         try {
             if(wallet->type != OTS_HANDLE_WALLET)
                 throw ots::exception::InvalidArgument("Invalid handle type");
-            std::vector<ots::TxWarning> warnings = static_cast<ots::Wallet*>(wallet->ptr)->checkTransaction(tx);
+            std::vector<ots::TxWarning> warnings = static_cast<ots::Wallet*>(wallet->ptr)->checkTransaction(std::string(tx, tx_size));
             ots_handle_t* handles = new ots_handle_t[warnings.size()];
             for(size_t i = 0; i < warnings.size(); i++)
                 handles[i] = create_handle(OTS_HANDLE_TX_WARNING, new ots::TxWarning(warnings[i]));
@@ -375,15 +405,19 @@ extern "C" {
 
     ots_result_t* ots_wallet_sign_transaction(
             const ots_handle_t* wallet,
-            const char* tx
+            const char* tx,
+            const size_t tx_size
             ) {
         ots_result_t* result = new ots_result_t();
         try {
             if(wallet->type != OTS_HANDLE_WALLET)
                 throw ots::exception::InvalidArgument("Invalid handle type");
-            set_string(
+            const std::string unsigned_tx = std::string(tx, tx_size);
+            const std::string& signed_tx = static_cast<ots::Wallet*>(wallet->ptr)->signTransaction(unsigned_tx);
+            set_binary_string(
                 result,
-                static_cast<ots::Wallet*>(wallet->ptr)->signTransaction(tx)
+                signed_tx,
+                signed_tx.size()
             );
         } catch(const ots::exception::Exception& e) {
             set_error(result, e);
@@ -399,9 +433,11 @@ extern "C" {
         try {
             if(wallet->type != OTS_HANDLE_WALLET)
                 throw ots::exception::InvalidArgument("Invalid handle type");
-            set_string(
+            const std::string& signed_data = static_cast<ots::Wallet*>(wallet->ptr)->signData(data);
+            set_binary_string(
                 result,
-                static_cast<ots::Wallet*>(wallet->ptr)->signData(data)
+                signed_data,
+                signed_data.size()
             );
         } catch(const ots::exception::Exception& e) {
             set_error(result, e);
@@ -419,9 +455,11 @@ extern "C" {
         try {
             if(wallet->type != OTS_HANDLE_WALLET)
                 throw ots::exception::InvalidArgument("Invalid handle type");
-            set_string(
+            const std::string& signed_data = static_cast<ots::Wallet*>(wallet->ptr)->signData(data, std::pair(account, index));
+            set_binary_string(
                 result,
-                static_cast<ots::Wallet*>(wallet->ptr)->signData(data, std::pair(account, index))
+                signed_data,
+                signed_data.size()
             );
         } catch(const ots::exception::Exception& e) {
             set_error(result, e);
@@ -438,9 +476,14 @@ extern "C" {
         try {
             if(wallet->type != OTS_HANDLE_WALLET || address->type != OTS_HANDLE_ADDRESS)
                 throw ots::exception::InvalidArgument("Invalid handle type");
-            set_string(
+            const std::string& signed_data = static_cast<ots::Wallet*>(wallet->ptr)->signData(
+                data,
+                *static_cast<ots::Address*>(address->ptr)
+            );
+            set_binary_string(
                 result,
-                static_cast<ots::Wallet*>(wallet->ptr)->signData(data, *static_cast<ots::Address*>(address->ptr))
+                signed_data,
+                signed_data.size()
             );
         } catch(const ots::exception::Exception& e) {
             set_error(result, e);
@@ -457,9 +500,14 @@ extern "C" {
         try {
             if(wallet->type != OTS_HANDLE_WALLET)
                 throw ots::exception::InvalidArgument("Invalid handle type");
-            set_string(
+            const std::string& signed_data = static_cast<ots::Wallet*>(wallet->ptr)->signData(
+                data,
+                address
+            );
+            set_binary_string(
                 result,
-                static_cast<ots::Wallet*>(wallet->ptr)->signData(data, address)
+                signed_data,
+                signed_data.size()
             );
         } catch(const ots::exception::Exception& e) {
             set_error(result, e);
@@ -479,7 +527,11 @@ extern "C" {
                 throw ots::exception::InvalidArgument("Invalid handle type");
             set_boolean(
                 result,
-                static_cast<ots::Wallet*>(wallet->ptr)->verifyData(data, signature, legacy_fallback)
+                static_cast<ots::Wallet*>(wallet->ptr)->verifyData(
+                    data,
+                    signature,
+                    legacy_fallback
+                )
             );
         } catch(const ots::exception::Exception& e) {
             set_error(result, e);
@@ -501,7 +553,12 @@ extern "C" {
                 throw ots::exception::InvalidArgument("Invalid handle type");
             set_boolean(
                 result,
-                static_cast<ots::Wallet*>(wallet->ptr)->verifyData(data, std::pair(account, index), signature, legacy_fallback)
+                static_cast<ots::Wallet*>(wallet->ptr)->verifyData(
+                    data,
+                    std::pair(account, index),
+                    signature,
+                    legacy_fallback
+                )
             );
         } catch(const ots::exception::Exception& e) {
             set_error(result, e);
@@ -522,7 +579,12 @@ extern "C" {
                 throw ots::exception::InvalidArgument("Invalid handle type");
             set_boolean(
                 result,
-                ots::Wallet::verifyData(data, signature, *static_cast<ots::Address*>(address->ptr), legacy_fallback)
+                ots::Wallet::verifyData(
+                    data,
+                    *static_cast<ots::Address*>(address->ptr),
+                    signature,
+                    legacy_fallback
+                )
             );
         } catch(const ots::exception::Exception& e) {
             set_error(result, e);
@@ -543,7 +605,7 @@ extern "C" {
                 throw ots::exception::InvalidArgument("Invalid handle type");
             set_boolean(
                 result,
-                ots::Wallet::verifyData(data, signature, address, legacy_fallback)
+                ots::Wallet::verifyData(data, address, signature, legacy_fallback)
             );
         } catch(const ots::exception::Exception& e) {
             set_error(result, e);
