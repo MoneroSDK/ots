@@ -524,6 +524,15 @@ extern "C" {
         return wallet_test_cases[caseIndex].outputs[outputIndex].outputs.c_str();
     }
 
+    const size_t get_wallet_test_case_outputs_size(size_t caseIndex, size_t outputIndex) {
+        if(
+            caseIndex >= wallet_test_cases.size()
+            || outputIndex >= wallet_test_cases[caseIndex].outputs.size()
+        )
+            return 0;
+        return wallet_test_cases[caseIndex].outputs[outputIndex].outputs.size();
+    }
+
     const uint64_t get_wallet_test_case_outputs_count(size_t caseIndex, size_t outputIndex) {
         if(
             caseIndex >= wallet_test_cases.size()
@@ -554,6 +563,15 @@ extern "C" {
         return wallet_test_cases[index].unsigned_transactions[transactionIndex].tx.c_str();
     }
 
+    const size_t get_wallet_test_case_unsigned_transaction_size(
+        size_t index,
+        size_t transactionIndex
+    ) {
+        if(index >= wallet_test_cases.size())
+            return 0;
+        return wallet_test_cases[index].unsigned_transactions[transactionIndex].tx.size();
+    }
+
     const char* get_wallet_test_case_unsigned_transaction_json(
         size_t index,
         size_t transactionIndex
@@ -561,6 +579,15 @@ extern "C" {
         if(index >= wallet_test_cases.size())
             return nullptr;
         return wallet_test_cases[index].unsigned_transactions[transactionIndex].json.c_str();
+    }
+
+    const size_t get_wallet_test_case_unsigned_transaction_json_size(
+        size_t index,
+        size_t transactionIndex
+    ) {
+        if(index >= wallet_test_cases.size())
+            return 0;
+        return wallet_test_cases[index].unsigned_transactions[transactionIndex].json.size();
     }
 
     const size_t get_wallet_test_case_unsigned_transaction_for_outputs(

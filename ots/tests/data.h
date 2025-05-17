@@ -102,6 +102,10 @@ extern "C" {
         size_t caseIndex,
         size_t outputIndex
     );
+    const size_t get_wallet_test_case_outputs_size(
+        size_t caseIndex,
+        size_t outputIndex
+    );
     const uint64_t get_wallet_test_case_outputs_count(
         size_t caseIndex,
         size_t outputIndex
@@ -112,7 +116,15 @@ extern "C" {
         size_t index,
         size_t transactionIndex
     );
+    const size_t get_wallet_test_case_unsigned_transaction_size(
+        size_t index,
+        size_t transactionIndex
+    );
     const char* get_wallet_test_case_unsigned_transaction_json(
+        size_t index,
+        size_t transactionIndex
+    );
+    const size_t get_wallet_test_case_unsigned_transaction_json_size(
         size_t index,
         size_t transactionIndex
     );
