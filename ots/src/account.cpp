@@ -646,6 +646,7 @@ process:
         return (withMagic?std::string(SIGNED_TX_PREFIX):std::string("")) + encryptWithViewSecretKey(oss.str());
     }
 
+    // TODO: IMPORTANT something seems off here if used via C ABI, second call will crash. Investigate
     std::pair<signed_tx_set, std::vector<pending_tx>> Account::signTransaction(
         unsigned_tx_set &exported_txs
     ) {
