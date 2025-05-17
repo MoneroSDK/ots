@@ -26,7 +26,10 @@
  *       - wipeable string: src/c-abi/wipeable-string.cpp
  *
  * @note All functions returning an ots_result_t must be checked for errors using
- *       ots_is_error() before accessing the result.
+ *       ots_is_error() before accessing the result. Or the other way around,
+ *       you can check ots_is_result() to see if the result is valid. Or
+ *       recomended check directly for the type of result you expect using
+ *       which will make sure that there is a result and result of the type...
  */
 
 /*******************************************************************************
@@ -157,13 +160,45 @@ extern "C" {
         ots_error_t error;                           /**< Error information */
     } ots_result_t;
 
-    /** @brief Transaction description */
+    /**
+     * @brief Where the Moneros go
+     */
     typedef struct {
-        char* description;                          /**< Transaction description */
-        uint64_t amount;                           /**< Transaction amount */
+        char* address;
+        uint64_t amount;
+    } ots_flow_vector_t;
+
+    /**
+     * @brief Transfer Description
+     */
+    typedef struct {
+        uint64_t amount_in;           /**< Amount in */
+        uint64_t amount_out;          /**< Amount out */
+        uint32_t ring_size;           /**< Ring size */
+        uint64_t unlock_time;         /**< Unlock time */
+        ots_flow_vector_t* flows;     /**< Flows */
+        size_t flows_size;            /**< Size of flows */
+        ots_flow_vector_t* change;    /**< Change */
+        uint64_t fee;                 /**< Fee */
+        char* payment_id;             /**< Payment ID */
+        uint32_t dummy_outputs;       /**< Dummy outputs */
+        char* tx_extra;               /**< Transaction extra data */
+    } ots_transfer_description_t;
+
+    /**
+     * @brief Transaction description
+     */
+    typedef struct {
+        char* tx_set;                              /**< Transaction set string */
+        size_t tx_set_size;                        /**< Size of transaction set */
+        uint64_t amount_in;                        /**< Transaction amount in */
+        uint64_t amount_out;                       /**< Transaction amount out */
+        ots_flow_vector_t* flows;                  /**< Transaction flows */
+        size_t flows_size;                         /**< Size of flows */
+        ots_flow_vector_t* change;                 /**< Transaction change */
         uint64_t fee;                              /**< Transaction fee */
-        char* destination;                         /**< Destination address */
-        uint32_t unlock_time;                      /**< Unlock time */
+        ots_transfer_description_t* transfers;     /**< Transfers descriptions */
+        size_t transfers_size;                     /**< Size of transfers */
     } ots_tx_description_t;
 
     /** @brief Transaction warning */
@@ -194,21 +229,21 @@ extern "C" {
      * @param[in] result handle to get error message for
      * @return Result containing error message string or NULL
      */
-    char* ots_get_error_message(const ots_result_t* result);
+    char* ots_error_message(const ots_result_t* result);
 
     /**
      * @brief Get error class for result
      * @param[in] result handle to get error class for
      * @return Result containing error class string or NULL
      */
-    char* ots_get_error_class(const ots_result_t* result);
+    char* ots_error_class(const ots_result_t* result);
 
     /**
      * @brief Get error code for result
      * @param[in] result handle to get error code for
      * @return Error code
      */
-    int32_t ots_get_error_code(const ots_result_t* result);
+    int32_t ots_error_code(const ots_result_t* result);
 
     /**
      * @brief Check if result is a result and not an error
@@ -834,6 +869,13 @@ extern "C" {
     bool ots_result_is_network(const ots_result_t* result);
 
     /**
+     * @brief Get the network type from result
+     * @param[in] result Result to check
+     * @return Network type
+     */
+    OTS_NETWORK ots_result_network(const ots_result_t* result);
+
+    /**
      * @brief Check if result is a specific network type
      * @param[in] result Result to check
      * @param[in] network Network type to check for
@@ -850,6 +892,13 @@ extern "C" {
      * @return true if result is a seed type
      */
     bool ots_result_is_seed_type(const ots_result_t* result);
+
+    /**
+     * @brief Get the seed type from result
+     * @param[in] result Result to check
+     * @return Seed type
+     */
+    OTS_SEED_TYPE ots_result_seed_type(const ots_result_t* result);
 
     /**
      * @brief Check if result is a specific seed type
@@ -898,6 +947,13 @@ extern "C" {
     void ots_free_string(char** str);
 
     /**
+     * @brief Free a binary string allocated by the library
+     * @param[in] str String to free
+     * @param[in] size Size of string
+     */
+    void ots_free_binary_string(char** str, size_t size);
+
+    /**
      * @brief Free an array allocated by the library
      * @param[in] arr Array to free
      * @param[in] elem_size Size of array elements
@@ -925,6 +981,12 @@ extern "C" {
      * @internal
      */
     void ots_free_handle_object(ots_handle_t* handle);
+
+    /**
+     * @brief Free a transaction description
+     * @param[in] tx_description Transaction description to free
+     */
+    void ots_free_tx_description(ots_tx_description_t** tx_description);
 
     /**
      * @brief Securely wipe and free a buffer
@@ -1208,6 +1270,20 @@ extern "C" {
     ots_result_t* ots_seed_fingerprint(const ots_handle_t* handle);
 
     /**
+     * @brief Is seed a legacy seed
+     * @param[in] handle Seed handle
+     * @return Result containing boolean value
+     */
+    ots_result_t* ots_seed_is_legacy(const ots_handle_t* handle);
+
+    /**
+     * @brief Get seed type
+     * @param[in] handle Seed handle
+     * @return Result containing seed type
+     */
+    ots_result_t* ots_seed_type(const ots_handle_t* handle);
+
+    /**
      * @brief Get seed address
      * @param[in] handle Seed handle
      * @return Result containing address handle
@@ -1256,14 +1332,14 @@ extern "C" {
 
     /**
      * @brief Merge seed values with password
-     * @param[in] password Password to merge with
      * @param[in] seed_indices Seed values to merge
+     * @param[in] password Password to merge with
      * @return Result containing merged indices
      * @throws OTS_ERROR_MERGE_FAILED if merge operation fails
      */
     ots_result_t* ots_seed_indices_merge_with_password(
-        const char* password,
-        const ots_handle_t* seed_indices
+        const ots_handle_t* seed_indices,
+        const char* password
     );
 
     /**
@@ -1297,15 +1373,15 @@ extern "C" {
 
     /**
      * @brief Merge seed values with password and zero
-     * @param[in,out] password Password to merge with (will be zeroed)
      * @param[in,out] values Seed values to merge (will be zeroed)
+     * @param[in,out] password Password to merge with (will be zeroed)
      * @param[in] delete_after Delete values after merging
      * @return Result containing merged indices
      * @throws OTS_ERROR_MERGE_FAILED if merge operation fails
      */
-    ots_result_t* ots_seed_indices_merge_values_with_password_and_zero(
-        char* password,
+    ots_result_t* ots_seed_indices_merge_with_password_and_zero(
         const ots_handle_t* seed_indices,
+        const char* password,
         bool delete_after
     );
 
@@ -1858,13 +1934,15 @@ extern "C" {
      * @brief Import outputs from string
      * @param[in] wallet Wallet handle
      * @param[in] outputs Outputs string from view wallet
+     * @param[in] outputs_size Size of outputs string
      * @return Result containing number of imported outputs
      * @throws OTS_ERROR_INVALID_OUTPUTS if outputs data is invalid
      * @throws OTS_ERROR_RANGE_ERROR if imported outputs are bigger then 9,223,372,036,854,775,807 (should never happen IMO), if so, contact me and kick me for this stupid decision
      */
     ots_result_t* ots_wallet_import_outputs(
         const ots_handle_t* wallet,
-        const char* outputs
+        const char* outputs,
+        const size_t outputs_size
     );
 
     /**
@@ -1879,11 +1957,13 @@ extern "C" {
      * @brief Describe unsigned transaction
      * @param[in] wallet Wallet handle
      * @param[in] unsigned_tx Unsigned transaction data
+     * @param[in] unsigned_tx_size Size of unsigned transaction data
      * @return Result containing transaction description
      */
     ots_result_t* ots_wallet_describe_tx(
         const ots_handle_t* wallet,
-        const char* unsigned_tx
+        const char* unsigned_tx,
+        const size_t unsigned_tx_size
     );
 
     /**
@@ -1901,11 +1981,13 @@ extern "C" {
      * @brief Check transaction string for warnings
      * @param[in] wallet Wallet handle
      * @param[in] unsigned_tx Unsigned transaction string
+     * @param[in] unsigned_tx_size Size of unsigned transaction string
      * @return Result containing array of warnings
      */
     ots_result_t* ots_wallet_check_tx_string(
         const ots_handle_t* wallet,
-        const char* unsigned_tx
+        const char* unsigned_tx,
+        const size_t unsigned_tx_size
     );
 
     /**
@@ -1917,7 +1999,8 @@ extern "C" {
      */
     ots_result_t* ots_wallet_sign_transaction(
         const ots_handle_t* wallet,
-        const char* unsigned_tx
+        const char* unsigned_tx,
+        const size_t unsigned_tx_size
     );
 
     /**
@@ -2045,6 +2128,277 @@ extern "C" {
     );
 
     /*******************************************************************************
+     * Transaction Description Functions
+     ******************************************************************************/
+
+    /**
+     * @brief Get transaction description as struct from handle
+     * @param[in] tx_description Transaction description handle
+     * @return Pointer to transaction description struct
+     *
+     * @note Use this if you prefer the complete data of the
+     *       tx description in a single struct over using functions
+     *       to the individual values. But probably using the functions
+     *       is easier to work with and the performance can be neglected.
+     */
+    ots_tx_description_t* ots_tx_description(
+        const ots_handle_t* tx_description
+    );
+
+    /**
+     * @brief Get tx set string of the unsigned transaction
+     * @param[in] tx_description Transaction description handle
+     * @return Pointer to tx set string
+     *
+     * @warning The tx set string is not null terminated, so
+     *          you need to use the size function to get the length
+     */
+    const char* ots_tx_description_tx_set(
+        const ots_handle_t* tx_description
+    );
+
+    /**
+     * @brief Get size of the tx set string
+     * @param[in] tx_description Transaction description handle
+     * @return Size of the tx set string
+     */
+    size_t ots_tx_description_tx_set_size(
+        const ots_handle_t* tx_description
+    );
+
+    /**
+     * @brief Get total transaction ingoing amount
+     * @param[in] tx_description Transaction description handle
+     * @return Total amount ingoing of transaction
+     */
+    uint64_t ots_tx_description_amount_in(
+        const ots_handle_t* tx_description
+    );
+
+    /**
+     * @brief Get total transaction outgoing amount
+     * @param[in] tx_description Transaction description handle
+     * @return Total amount outgoing of transaction
+     */
+    uint64_t ots_tx_description_amount_out(
+        const ots_handle_t* tx_description
+    );
+
+    /**
+     * @brief Get the count of flow vectors
+     * @param[in] tx_description Transaction description handle
+     * @return Count of flow vectors
+     */
+    size_t ots_tx_description_flows_count(
+        const ots_handle_t* tx_description
+    );
+
+    /**
+     * @brief Get the flow address of a flow vector
+     * @param[in] tx_description Transaction description handle
+     * @param[in] index Index of the flow vector
+     * @return Flow address of the flow vector
+     */
+    const char* ots_tx_description_flow_address(
+        const ots_handle_t* tx_description,
+        size_t index
+    );
+
+    /**
+     * @brief Get the flow amount of a flow vector
+     * @param[in] tx_description Transaction description handle
+     * @param[in] index Index of the flow vector
+     * @return Flow amount of the flow vector
+     */
+    uint64_t ots_tx_description_flow_amount(
+        const ots_handle_t* tx_description,
+        size_t index
+    );
+
+    /**
+     * @brief Get the total fee of the transaction
+     * @param[in] tx_description Transaction description handle
+     * @return Total fee of the transaction
+     */
+    uint64_t ots_tx_description_fee(
+        const ots_handle_t* tx_description
+    );
+
+    /**
+     * @brief Get the count of transfers in the transaction
+     * @param[in] tx_description Transaction description handle
+     * @return Count of transfers in the transaction
+     */
+    size_t ots_tx_description_transfers_count(
+        const ots_handle_t* tx_description
+    );
+
+    /**
+     * @brief Get the ingoing amount of a transfer
+     * @param[in] tx_description Transaction description handle
+     * @param[in] index Index of the transfer
+     * @return Ingoing amount of the transfer
+     */
+    uint64_t ots_tx_description_transfer_amount_in(
+        const ots_handle_t* tx_description,
+        size_t index
+    );
+
+    /**
+     * @brief Get the outgoing amount of a transfer
+     * @param[in] tx_description Transaction description handle
+     * @param[in] index Index of the transfer
+     * @return Outgoing amount of the transfer
+     */
+    uint64_t ots_tx_description_transfer_amount_out(
+        const ots_handle_t* tx_description,
+        size_t index
+    );
+
+    /**
+     * @brief Get the ring size of the transfer
+     * @param[in] tx_description Transaction description handle
+     * @param[in] index Index of the transfer
+     * @return Ring size of the transfer
+     */
+    uint32_t ots_tx_description_transfer_ring_size(
+        const ots_handle_t* tx_description,
+        size_t index
+    );
+
+    /**
+     * @brief Get the unlock time of the transfer
+     * @param[in] tx_description Transaction description handle
+     * @param[in] index Index of the transfer
+     * @return Unlock time of the transfer
+     *
+     * @note Unlock time was removed from Monero in v0.18.3.4 // TODO: check if version is correct
+     */
+    uint64_t ots_tx_description_transfer_unlock_time(
+        const ots_handle_t* tx_description,
+        size_t index
+    );
+
+    /**
+     * @brief Get the count of flow vectors in a transfer
+     * @param[in] tx_description Transaction description handle
+     * @param[in] index Index of the transfer
+     * @return Count of flow vectors in the transfer
+     */
+    size_t ots_tx_description_transfer_flow_count(
+        const ots_handle_t* tx_description,
+        size_t index
+    );
+
+    /**
+     * @brief Get the flow address of a flow vector in a transfer
+     * @param[in] tx_description Transaction description handle
+     * @param[in] index Index of the transfer
+     * @param[in] flow_index Index of the flow vector
+     * @return Flow address of the flow vector in the transfer
+     */
+    const char* ots_tx_description_transfer_flow_address(
+        const ots_handle_t* tx_description,
+        size_t index,
+        size_t flow_index
+    );
+
+    /**
+     * @brief Get the flow amount of a flow vector in a transfer
+     * @param[in] tx_description Transaction description handle
+     * @param[in] index Index of the transfer
+     * @param[in] flow_index Index of the flow vector
+     * @return Flow amount of the flow vector in the transfer
+     */
+    uint64_t ots_tx_description_transfer_flow_amount(
+        const ots_handle_t* tx_description,
+        size_t index,
+        size_t flow_index
+    );
+
+    /**
+     * @brief Has a transfer of the transaction change
+     * @param[in] tx_description Transaction description handle
+     * @param[in] index Index of the transfer
+     * @return True if the transfer has change, false otherwise
+     */
+    bool ots_tx_description_transfer_has_change(
+        const ots_handle_t* tx_description,
+        size_t index
+    );
+
+    /**
+     * @brief Get the change address of a transfer
+     * @param[in] tx_description Transaction description handle
+     * @param[in] index Index of the transfer
+     * @return Change address of the transfer
+     */
+    const char* ots_tx_description_transfer_change_address(
+        const ots_handle_t* tx_description,
+        size_t index
+    );
+
+    /**
+     * @brief Get the change amount of a transfer
+     * @param[in] tx_description Transaction description handle
+     * @param[in] index Index of the transfer
+     * @return Change amount of the transfer
+     */
+    uint64_t ots_tx_description_transfer_change_amount(
+        const ots_handle_t* tx_description,
+        size_t index
+    );
+
+    /**
+     * @brief Get the fee of a transfer
+     * @param[in] tx_description Transaction description handle
+     * @param[in] index Index of the transfer
+     * @return Fee of the transfer
+     */
+    uint64_t ots_tx_description_transfer_fee(
+        const ots_handle_t* tx_description,
+        size_t index
+    );
+
+    const char* ots_tx_description_transfer_payment_id(
+        const ots_handle_t* tx_description,
+        size_t index
+    );
+
+    /**
+     * @brief Get the count of dummy outputs in a transfer
+     * @param[in] tx_description Transaction description handle
+     * @param[in] index Index of the transfer
+     * @return Count of dummy outputs in the transfer
+     */
+    uint32_t ots_tx_description_transfer_dummy_outputs(
+        const ots_handle_t* tx_description,
+        size_t index
+    );
+
+    /**
+     * @brief Get extra data of a transfer
+     * @param[in] tx_description Transaction description handle
+     * @param[in] index Index of the transfer
+     * @return Pointer to extra data of the transfer or NULL if not set
+     */
+    const char* ots_tx_description_transfer_extra(
+        const ots_handle_t* tx_description,
+        size_t index
+    );
+
+    /**
+     * @brief Get string size of extra data of a transfer
+     * @param[in] tx_description Transaction description handle
+     * @param[in] index Index of the transfer
+     * @return Size of extra data of the transfer
+     */
+    size_t ots_tx_description_transfer_extra_size(
+        const ots_handle_t* tx_description,
+        size_t index
+    );
+
+    /*******************************************************************************
      * Seed Jar Functions
      ******************************************************************************/
 
@@ -2062,6 +2416,34 @@ extern "C" {
      * @return Result true on success
      */
     ots_result_t* ots_seed_jar_remove_seed(ots_handle_t** seed);
+
+    /**
+     * @brief Remove a seed from the jar
+     * @param[in] index Index of the seed to remove
+     * @return Result true on success
+     */
+    ots_result_t* ots_seed_jar_purge_seed_for_index(size_t index);
+
+    /**
+     * @brief Remove a seed from the jar
+     * @param[in] name Name of the seed to remove
+     * @return Result true on success
+     */
+    ots_result_t* ots_seed_jar_purge_seed_for_name(const char* name);
+
+    /**
+     * @brief Remove a seed from the jar
+     * @param[in] fingerprint Fingerprint of the seed to remove
+     * @return Result true on success
+     */
+    ots_result_t* ots_seed_jar_purge_seed_for_fingerprint(const char* fingerprint);
+
+    /**
+     * @brief Remove a seed from the jar
+     * @param[in] address Address of the seed to remove
+     * @return Result true on success
+     */
+    ots_result_t* ots_seed_jar_purge_seed_for_address(const char* address);
 
     /**
      * @brief Move the seed from the handle to the jar
@@ -2084,6 +2466,34 @@ extern "C" {
     ots_result_t* ots_seed_jar_transfer_seed_out(ots_handle_t** seed);
 
     /**
+     * @brief Move the seed from the jar to a new handle
+     * @param[in] index Index of the seed to move
+     * @return Result with handle to seed before in jar
+     */
+    ots_result_t* ots_seed_jar_transfer_seed_out_for_index(size_t index);
+
+    /**
+     * @brief Move the seed from the jar to a new handle
+     * @param[in] name Name of the seed to move
+     * @return Result with handle to seed before in jar
+     */
+    ots_result_t* ots_seed_jar_transfer_seed_out_for_name(const char* name);
+
+    /**
+     * @brief Move the seed from the jar to a new handle
+     * @param[in] fingerprint Fingerprint of the seed to move
+     * @return Result with handle to seed before in jar
+     */
+    ots_result_t* ots_seed_jar_transfer_seed_out_for_fingerprint(const char* fingerprint);
+
+    /**
+     * @brief Move the seed from the jar to a new handle
+     * @param[in] address Address of the seed to move
+     * @return Result with handle to seed before in jar
+     */
+    ots_result_t* ots_seed_jar_transfer_seed_out_for_address(const char* address);
+
+    /**
      * @brief Clear and free all seeds from the seed jar
      * @return Result true on success
      */
@@ -2100,6 +2510,13 @@ extern "C" {
      * @return Result containing seed count
      */
     ots_result_t* ots_seed_jar_seed_count(void);
+
+    /**
+     * @brief Get seed with the given index
+     * @param[in] index Index of the seed to get
+     * @return Result containing seed handle
+     */
+    ots_result_t* ots_seed_jar_seed_for_index(size_t index);
 
     /**
      * @brief Get seed with the given fingerprint
@@ -2139,6 +2556,90 @@ extern "C" {
         const ots_handle_t* seed,
         const char* name
     );
+
+    /**
+     * @brief Get seed jar item name
+     * @param[in] index Index of the seed jar item
+     * @return Result containing seed jar item name
+     */
+    ots_result_t* ots_seed_jar_item_name(size_t index);
+
+    /**
+     * @brief Get seed jar item fingerprint
+     * @param[in] index Index of the seed jar item
+     * @return Result containing seed jar item fingerprint
+     */
+    ots_result_t* ots_seed_jar_item_fingerprint(size_t index);
+
+    /**
+     * @brief Get seed jar item address
+     * @param[in] index Index of the seed jar item
+     * @return Result containing seed jar item address
+     */
+    ots_result_t* ots_seed_jar_item_address(size_t index);
+
+    /**
+     * @brief Get seed jar item address string
+     * @param[in] index Index of the seed jar item
+     * @return Result containing seed jar item address string
+     */
+    ots_result_t* ots_seed_jar_item_address_string(size_t index);
+
+    /**
+     * @brief Get seed jar item type
+     * @param[in] index Index of the seed jar item
+     * @return Result containing seed jar item type
+     */
+    ots_result_t* ots_seed_jar_item_seed_type(size_t index);
+
+    /**
+     * @brief Get seed jar item type string
+     * @param[in] index Index of the seed jar item
+     * @return Result containing seed jar item type string
+     */
+    ots_result_t* ots_seed_jar_item_seed_type_string(size_t index);
+
+    /**
+     * @brief Get seed jar item network
+     * @param[in] index Index of the seed jar item
+     * @return Result containing seed jar item network
+     */
+    ots_result_t* ots_seed_jar_item_is_legacy(size_t index);
+
+    /**
+     * @brief Get seed jar item network
+     * @param[in] index Index of the seed jar item
+     * @return Result containing seed jar item network
+     */
+    ots_result_t* ots_seed_jar_item_network(size_t index);
+
+    /**
+     * @brief Get seed jar item network string
+     * @param[in] index Index of the seed jar item
+     * @return Result containing seed jar item network string
+     */
+    ots_result_t* ots_seed_jar_item_network_string(size_t index);
+
+    /**
+     * @brief Get seed jar item height
+     * @param[in] index Index of the seed jar item
+     * @return Result containing seed jar item height
+     */
+    ots_result_t* ots_seed_jar_item_height(size_t index);
+
+    /**
+     * @brief Get seed jar item timestamp
+     * @param[in] index Index of the seed jar item
+     * @return Result containing seed jar item timestamp
+     */
+    ots_result_t* ots_seed_jar_item_timestamp(size_t index);
+
+    /**
+     * @brief Get seed jar item wallet
+     * @param[in] index Index of the seed jar item
+     * @return Result containing seed jar item wallet handle
+     */
+    ots_result_t* ots_seed_jar_item_wallet(size_t index);
 
     /*******************************************************************************
      * OTS Utility Functions
