@@ -1050,6 +1050,7 @@ END_TEST
 
 START_TEST(test_ots_wallet_sign_transaction)
 {
+    ots_set_max_depth(10, 100);
     for(
         size_t wallet_idx = 0;
         wallet_idx < get_wallet_test_cases_count();
@@ -1063,8 +1064,13 @@ START_TEST(test_ots_wallet_sign_transaction)
             unsigned_tx < get_wallet_test_case_unsigned_transactions_count(wallet_idx);
             unsigned_tx++
         ) {
-            if(unsigned_tx != 3) // TODO: second call of `std::pair<signed_tx_set, std::vector<pending_tx>> Account::signTransaction(unsigned_tx_set &exported_txs)` will crash!? In gtest it works without issues - strange thing
+            if(unsigned_tx != 0) // TODO: second call of `std::pair<signed_tx_set, std::vector<pending_tx>> Account::signTransaction(unsigned_tx_set &exported_txs)` will crash!? In gtest it works without issues - strange thing
                 continue;
+            /*
+             * WTF, so this issue disapreares also if dynamically linked,
+             * but causes then a issue where I get the error:
+             * -9007 Unable to get output public key from output
+             */
             ots_result_t* result = ots_monero_seed_decode(
                 get_monero_seed_test_case_phrase(seed_idx),
                 get_monero_seed_test_case_height(seed_idx),
@@ -1090,6 +1096,9 @@ START_TEST(test_ots_wallet_sign_transaction)
                 ots_result_number(result, 0),
                 get_wallet_test_case_outputs_count(wallet_idx, outputs_idx)
             );
+            ots_free_result(&result);
+            result = ots_wallet_export_key_images(wallet);
+            ck_assert(ots_result_is_string(result));
             ots_free_result(&result);
             // TODO: second call will crash, issue seems to be in Account::signTransaction, although only if used by C, not with C++, see comment above
             result = ots_wallet_sign_transaction(
