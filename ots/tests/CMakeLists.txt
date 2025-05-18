@@ -5,6 +5,15 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(C_STANDARD 11)
 set(C_STANDARD_REQUIRED ON)
 
+if(BUILD_SHARED_LIBS)
+	set(LIB_TYPE SHARED)
+	set(CMAKE_ASM_CREATE_SHARED_LIBRARY ON)
+else()
+	set(LIB_TYPE STATIC)
+	set(SWITCH_STATIC "-static")
+	set(SWITCH_STATIC_LIB "STATICLIB")
+endif()
+
 # Use Monero's GTest from parent directory
 # TODO: will move to external/gtest: https://github.com/monero-project/monero/pull/9715
 set(GTEST_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../tests/gtest)
@@ -86,7 +95,7 @@ target_include_directories(rapidjson
 
 add_library(
 	json-tx-description
-	STATIC
+	${LIB_TYPE}
 	${CMAKE_CURRENT_SOURCE_DIR}/json-tx-description.cpp
 )
 target_include_directories(
@@ -121,6 +130,7 @@ target_link_libraries(gtest_ots.cpp
 	json-tx-description
 	gtest
 	gtest_main
+	${CMAKE_DL_LIBS}
 )
 
 # Include Monero's GTest directories

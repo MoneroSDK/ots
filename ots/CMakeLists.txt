@@ -39,6 +39,22 @@ option(BUILD_V1SIGN "Build v1sign tool" OFF)
 option(RUN_TESTS "Run tests after build" OFF)
 option(BUILD_SHARED_LIBS "Build shared library" OFF)  # Default to static
 
+# Set library type based on BUILD_SHARED_LIBS
+if(BUILD_SHARED_LIBS)
+    set(LIB_TYPE SHARED)
+    set(CMAKE_ASM_CREATE_SHARED_LIBRARY ON)
+    set(SWITCH_STATIC "")
+    # When building shared libraries, ensure PIC is enabled globally
+    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+    # Adjust linker flags for shared libraries
+    #string(REPLACE "-static" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
+    #string(REPLACE "-static" "" CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS}")
+    #set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-as-needed")
+else()
+    set(LIB_TYPE STATIC)
+    set(SWITCH_STATIC "-static")
+endif()
+
 # TODO: should restructure all this helper tools into a separate folder
 #       and make naming more consistent
 # gen-ots-error-header tool
@@ -63,25 +79,27 @@ endif()
 
 # Monero dependencies
 
-# TODO: need to be fixed
-# lot of warnings we suppress for now
-# set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++")
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++ -Wl,--no-warn-search-mismatch")
+if(!BUILD_SHARED_LIBS)
+	# TODO: need to be fixed
+	# lot of warnings we suppress for now
+	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libgcc -static-libstdc++ -Wl,--no-warn-search-mismatch")
+endif()
 
 # Static linking setup
 # TODO: maybe in the end I will change my mind about all on static standalone library, so check again later
-set(Boost_USE_STATIC_LIBS ON)
+if(NOT BUILD_SHARED_LIBS)
+	set(Boost_USE_STATIC_LIBS ON)
 
-set(OPENSSL_USE_STATIC_LIBS TRUE)
-set(OPENSSL_CRYPTO_LIBRARY "/usr/lib/x86_64-linux-gnu/libcrypto.a")
-set(OPENSSL_SSL_LIBRARY "/usr/lib/x86_64-linux-gnu/libssl.a")
+	set(OPENSSL_USE_STATIC_LIBS TRUE)
+	set(OPENSSL_CRYPTO_LIBRARY "/usr/lib/x86_64-linux-gnu/libcrypto.a")
+	set(OPENSSL_SSL_LIBRARY "/usr/lib/x86_64-linux-gnu/libssl.a")
+else()
+	set(Boost_USE_STATIC_LIBS OFF)
+	set(OPENSSL_USE_STATIC_LIBS FALSE)
+endif()
 
-find_package(Boost REQUIRED COMPONENTS filesystem thread system chrono serialization) # TODO: serialization needed for monero-ots, can we get rid of it?
+find_package(Boost REQUIRED COMPONENTS filesystem thread system chrono serialization)
 find_package(OpenSSL REQUIRED)
-
-# No Unbound, no extra dependencies
-
-# End Monero dependencies
 
 # Require Monero source directory
 if(NOT MONERO_SOURCE_DIR)
@@ -145,12 +163,7 @@ add_custom_target(generate_ots_error_header ALL DEPENDS ${C_ERROR_HEADER_FILE})
 # Create a stubs library for now, hate this cluster coitus, we sort this out later
 add_library(monero-stubs STATIC
 	stubs/src/unbound.cpp
-	# src/stub/logging.cpp
-	# src/stub/div128.c is in epee int-util.cpp
-	# src/stub/epee.cpp makes no sense because we seem still to need epee, let's check later again
-	## src/stub/cryptonote.cpp # check later again if this makes sense, I made it to compile without dragging even more dependencies in
 	stubs/src/dns_utils.cpp
-	# src/stub/hw_device.cpp
 )
 
 target_include_directories(monero-stubs
@@ -159,6 +172,8 @@ target_include_directories(monero-stubs
 	${EPEE_INCLUDE_DIR_BASE}
 	${EASYLOGGING_INCLUDE_DIR_BASE}
 )
+
+set_target_properties(monero-stubs PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 # EASYLOGGING dependencies
 find_package(Threads)
@@ -184,6 +199,8 @@ target_compile_definitions(easylogging
 	ELPP_NO_DEFAULT_LOG_FILE
 	ELPP_NO_LOG_TO_FILE
 )
+
+set_target_properties(easylogging PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 # TODO: this will drag more and more dependencies inside
 #	check how to include boost into the lib
@@ -247,8 +264,9 @@ target_link_libraries(epee
 	Boost::system
 	${OPENSSL_SSL_LIBRARY}
 	${OPENSSL_CRYPTO_LIBRARY}
-	-static
 )
+
+set_target_properties(epee PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 set_property(SOURCE ${EPEE_SOURCE_DIR}/memwipe.c PROPERTY C_STANDARD 11)
 
@@ -263,6 +281,8 @@ add_library(cryptonight_asm STATIC
 target_include_directories(cryptonight_asm PRIVATE
 	${MONERO_SOURCE_DIR}/src
 )
+
+set_target_properties(cryptonight_asm PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 add_library(monero-crypto STATIC
 	${CMAKE_CURRENT_BINARY_DIR}/version.cpp
@@ -323,6 +343,8 @@ target_link_libraries(monero-crypto
 	${OPENSSL_CRYPTO_LIBRARY} # same as above
 )
 
+set_target_properties(monero-crypto PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 # we need the MONERO_VERSION from the version.cpp
 set(VERSION_IS_RELEASE true)
 set(VERSIONTAG "OTS")
@@ -366,12 +388,10 @@ set_target_properties(monero-minimal PROPERTIES
 	CXX_VISIBILITY_PRESET hidden
 	VISIBILITY_INLINES_HIDDEN ON
 	POSITION_INDEPENDENT_CODE ON
-	LINK_FLAGS "$<$<NOT:$<BOOL:${DEBUG}>>:-s>"
 )
 
 target_include_directories(monero-minimal
 	PUBLIC
-	# ${MONERO_STUBS_INCLUDE_DIR}
 	${MONERO_SOURCE_DIR}/src
 	${EPEE_INCLUDE_DIR_BASE}
 	${EASYLOGGING_INCLUDE_DIR_BASE}
@@ -394,8 +414,9 @@ target_link_libraries(monero-minimal
 	${OPENSSL_CRYPTO_LIBRARY}
 	${CMAKE_THREAD_LIBS_INIT}
 	${Backtrace_LIBRARIES}
-	-static
 )
+
+set_target_properties(monero-minimal PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 # TODO: what to do about polyseed? I don't like it, but I also shouldn't rework the whole thing, but how it is it forces me also to ugly code duplication
 # Polyseed library
@@ -446,10 +467,12 @@ target_compile_definitions(polyseed
 # Force C compilation for .c files
 set_source_files_properties(${POLYSEED_SOURCES} PROPERTIES LANGUAGE C)
 
+set_target_properties(polyseed PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 # Create utf8proc library
 set(UTF8PROC_INSTALL OFF)
 set(UTF8PROC_ENABLE_TESTING OFF)
-set(BUILD_SHARED_LIBS OFF)
+# set(BUILD_SHARED_LIBS OFF) # what did I thought? TODO: fix if needed, probably is needed for shared libs
 
 add_library(utf8proc STATIC
 	${CMAKE_CURRENT_SOURCE_DIR}/external/utf8proc/utf8proc.c
@@ -480,7 +503,7 @@ set_target_properties(utf8proc PROPERTIES
 )
 
 # Main library
-add_library(monero-ots
+add_library(monero-ots ${LIB_TYPE}
 	${MONERO_SOURCE_DIR}/src/version.cpp
 	src/ots.cpp
 	src/wipeable-string.cpp
@@ -520,7 +543,7 @@ target_link_libraries(monero-ots
 	polyseed
 	monero-minimal
 	Boost::serialization # TODO: needed at the moment for account.cpp, possibe to get rid of it?
-	-static
+	${SWITCH_STATIC}
 )
 
 # Add version definitions
@@ -556,11 +579,10 @@ target_include_directories(monero-ots
 set_target_properties(monero-ots PROPERTIES
 	VERSION ${PROJECT_VERSION}
 	SOVERSION ${PROJECT_VERSION_MAJOR}
-	C_VISIBILITY_PRESET hidden
-	CXX_VISIBILITY_PRESET hidden
+	C_VISIBILITY_PRESET default
+	CXX_VISIBILITY_PRESET default
 	VISIBILITY_INLINES_HIDDEN ON
 	POSITION_INDEPENDENT_CODE ON
-	LINK_FLAGS "$<$<NOT:$<BOOL:${DEBUG}>>:-s>"
 )
 
 # Installation rules
@@ -660,7 +682,7 @@ if(BUILD_V1SIGN)
 		PRIVATE
 		monero-minimal
 		${CMAKE_THREAD_LIBS_INIT}
-		-static
+		${SWITCH_STATIC}
 	)
 	target_include_directories(v1sign
 		PRIVATE
