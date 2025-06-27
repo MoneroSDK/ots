@@ -911,24 +911,6 @@ extern "C" {
         OTS_SEED_TYPE type
     );
 
-    /**
-     * @brief Check if handle is of a specific type
-     * @param[in] handle Handle to check
-     * @param[in] type Type to check for
-     * @return true if handle is the specified type
-     */
-    bool ots_handle_is_type(
-        const ots_handle_t* handle,
-        ots_handle_type type
-    );
-
-    /**
-     * @brief Check if handle is a reference
-     * @param[in] handle Handle to check
-     * @return true if handle is a reference
-     */
-    bool ots_handle_is_reference(const ots_handle_t* handle);
-
     /*******************************************************************************
      * Memory Management Functions
      ******************************************************************************/
