@@ -167,4 +167,24 @@ extern "C" {
         }
         return result;
     }
+
+    ots_result_t* ots_polyseed_convert_to_monero_seed(
+            const ots_handle_t* polyseed
+            ) {
+        ots_result_t* result = new ots_result_t();
+        try {
+            if(polyseed->type != OTS_HANDLE_SEED)
+                throw ots::exception::InvalidArgument("Invalid handle type");
+            set_handle(
+                result,
+                OTS_HANDLE_SEED,
+                new ots::MoneroSeed(
+                    static_cast<const ots::Polyseed*>(polyseed->ptr)->moneroSeed()
+                )
+            );
+        } catch(const ots::exception::Exception& e) {
+            set_error(result, e);
+        }
+        return result;
+    }
 }
