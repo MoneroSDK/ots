@@ -831,6 +831,13 @@ extern "C" {
     bool ots_result_is_address_type(const ots_result_t* result);
 
     /**
+     * @brief Get the address type from result
+     * @param[in] result Result to check
+     * @return Address type
+     */
+    OTS_ADDRESS_TYPE ots_result_address_type(const ots_result_t* result);
+
+    /**
      * @brief Check if result is a specific address type
      * @param[in] result Result to check
      * @param[in] type Address type to check for
@@ -1585,6 +1592,16 @@ extern "C" {
         const char* passphrase
     );
 
+    /*
+     * @brief Convert Polyseed to MoneroSeed
+     * @param[in] polyseed Polyseed handle
+     *
+     * @return Result containing MoneroSeed handle
+     */
+    ots_result_t* ots_polyseed_convert_to_monero_seed(
+        const ots_handle_t* polyseed
+    );
+
     /*******************************************************************************
      * Address Management Functions
      ******************************************************************************/
@@ -2205,6 +2222,34 @@ extern "C" {
         const ots_handle_t* tx_description,
         size_t index
     );
+
+    /**
+     * @brief Check if the transaction has change
+     * @param[in] tx_description Transaction description handle
+     * @return True if the transaction has change, false otherwise
+     */
+    bool ots_tx_description_has_change(
+        const ots_handle_t* tx_description
+    );
+
+    /**
+     * @brief Get the change address of the transaction
+     * @return Change address of the transaction
+     */
+    const char* ots_tx_description_change_address(
+        const ots_handle_t* tx_description
+    );
+
+    /**
+     * @brief Get the change amount of the transaction
+     * @param[in] tx_description Transaction description handle
+     * @return Change amount of the transaction
+     */
+    uint64_t ots_tx_description_change_amount(
+        const ots_handle_t* tx_description
+    );
+
+
 
     /**
      * @brief Get the total fee of the transaction
