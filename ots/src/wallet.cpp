@@ -142,7 +142,16 @@ namespace ots {
             const std::string& signature,
             bool legacyFallback
             ) {
-        return Account::verifyData(data, address, signature) || (legacyFallback && Account::verifyDataLegacy(data, address, signature));
+        return
+            Account::verifyData(data, address, signature)
+            || (
+                legacyFallback
+                && Account::verifyDataLegacy(
+                    data,
+                    address,
+                    signature
+                )
+            );
     }
 
     bool Wallet::verifyData(
@@ -155,21 +164,34 @@ namespace ots {
     }
 
     bool Wallet::verifyData(
-            const std::string& data,
-            const std::pair<uint32_t, uint32_t>& index,
-            const std::string& signature,
-            bool legacyFallback
-            ) const {
+        const std::string& data,
+        const std::pair<uint32_t, uint32_t>& index,
+        const std::string& signature,
+        bool legacyFallback
+    ) const {
         const Address& address = m_account->address(index.first, index.second);
         return m_account->verifyData(data, address, signature) || (legacyFallback && m_account->verifyDataLegacy(data, address, signature));
     }
 
     bool Wallet::verifyData(
-            const std::string& data,
-            const std::string& signature,
-            bool legacyFallback
-            ) const {
-        return m_account->verifyData(data, m_account->address(), signature) || (legacyFallback && m_account->verifyDataLegacy(data, m_account->address(), signature));
+        const std::string& data,
+        const std::string& signature,
+        bool legacyFallback
+    ) const {
+        return
+            m_account->verifyData(
+                data,
+                m_account->address(),
+                signature
+            )
+            || (
+                legacyFallback
+                && m_account->verifyDataLegacy(
+                    data,
+                    m_account->address(),
+                    signature
+                )
+            );
     }
 
     Wallet::Wallet(const std::array<unsigned char, 32>& key, uint64_t height, const Network network) noexcept :
