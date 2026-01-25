@@ -67,6 +67,7 @@
  * - [x] Export of key images
  * - [x] inspect unsigned transaction
  * - [x] sign a unsigned transaction
+ * - [ ] check unit tests for ots_tx_description_* functions
  */
 namespace ots {
 
