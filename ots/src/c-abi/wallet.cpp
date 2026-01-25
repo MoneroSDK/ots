@@ -76,7 +76,7 @@ extern "C" {
         return result;
     }
 
-    ots_result_t* ots_wallet_accounts(
+    ots_result_t* ots_wallet_accounts( // TODO: BUG: after calling this function, the wallet disappears in the python wrapper
             const ots_handle_t* wallet,
             uint32_t max,
             uint32_t offset
@@ -104,7 +104,7 @@ extern "C" {
         return result;
     }
 
-    ots_result_t* ots_wallet_subaddresses(
+    ots_result_t* ots_wallet_subaddresses( // TODO: BUG: after calling this function, the wallet disappears in the python wrapper
             const ots_handle_t* wallet,
             uint32_t account,
             uint32_t max,
@@ -427,13 +427,14 @@ extern "C" {
 
     ots_result_t* ots_wallet_sign_data(
             const ots_handle_t* wallet,
-            const char* data
+            const char* data,
+            size_t data_size
             ) {
         ots_result_t* result = new ots_result_t();
         try {
             if(wallet->type != OTS_HANDLE_WALLET)
                 throw ots::exception::InvalidArgument("Invalid handle type");
-            const std::string& signed_data = static_cast<ots::Wallet*>(wallet->ptr)->signData(data);
+            const std::string& signed_data = static_cast<ots::Wallet*>(wallet->ptr)->signData(std::string(data, data_size));
             set_binary_string(
                 result,
                 signed_data,
@@ -448,6 +449,7 @@ extern "C" {
     ots_result_t* ots_wallet_sign_data_with_index(
             const ots_handle_t* wallet,
             const char* data,
+            size_t data_size,
             uint32_t account,
             uint32_t index
             ) {
@@ -455,7 +457,10 @@ extern "C" {
         try {
             if(wallet->type != OTS_HANDLE_WALLET)
                 throw ots::exception::InvalidArgument("Invalid handle type");
-            const std::string& signed_data = static_cast<ots::Wallet*>(wallet->ptr)->signData(data, std::pair(account, index));
+            const std::string& signed_data = static_cast<ots::Wallet*>(wallet->ptr)->signData(
+                    std::string(data, data_size),
+                    std::pair(account, index)
+                    );
             set_binary_string(
                 result,
                 signed_data,
@@ -470,6 +475,7 @@ extern "C" {
     ots_result_t* ots_wallet_sign_data_with_address(
             const ots_handle_t* wallet,
             const char* data,
+            size_t data_size,
             const ots_handle_t* address
             ) {
         ots_result_t* result = new ots_result_t();
@@ -477,7 +483,7 @@ extern "C" {
             if(wallet->type != OTS_HANDLE_WALLET || address->type != OTS_HANDLE_ADDRESS)
                 throw ots::exception::InvalidArgument("Invalid handle type");
             const std::string& signed_data = static_cast<ots::Wallet*>(wallet->ptr)->signData(
-                data,
+                std::string(data, data_size),
                 *static_cast<ots::Address*>(address->ptr)
             );
             set_binary_string(
@@ -494,6 +500,7 @@ extern "C" {
     ots_result_t* ots_wallet_sign_data_with_address_string(
             const ots_handle_t* wallet,
             const char* data,
+            size_t data_size,
             const char* address
             ) {
         ots_result_t* result = new ots_result_t();
@@ -501,7 +508,7 @@ extern "C" {
             if(wallet->type != OTS_HANDLE_WALLET)
                 throw ots::exception::InvalidArgument("Invalid handle type");
             const std::string& signed_data = static_cast<ots::Wallet*>(wallet->ptr)->signData(
-                data,
+                std::string(data, data_size),
                 address
             );
             set_binary_string(
@@ -518,6 +525,7 @@ extern "C" {
     ots_result_t* ots_wallet_verify_data(
             const ots_handle_t* wallet,
             const char* data,
+            size_t data_size,
             const char* signature,
             bool legacy_fallback
             ) {
@@ -528,7 +536,7 @@ extern "C" {
             set_boolean(
                 result,
                 static_cast<ots::Wallet*>(wallet->ptr)->verifyData(
-                    data,
+                    std::string(data, data_size),
                     signature,
                     legacy_fallback
                 )
@@ -542,6 +550,7 @@ extern "C" {
     ots_result_t* ots_wallet_verify_data_with_index(
             const ots_handle_t* wallet,
             const char* data,
+            size_t data_size,
             uint32_t account,
             uint32_t index,
             const char* signature,
@@ -554,7 +563,7 @@ extern "C" {
             set_boolean(
                 result,
                 static_cast<ots::Wallet*>(wallet->ptr)->verifyData(
-                    data,
+                    std::string(data, data_size),
                     std::pair(account, index),
                     signature,
                     legacy_fallback
@@ -569,6 +578,7 @@ extern "C" {
     ots_result_t* ots_wallet_verify_data_with_address(
             const ots_handle_t* wallet,
             const char* data,
+            size_t data_size,
             const ots_handle_t* address,
             const char* signature,
             bool legacy_fallback
@@ -580,7 +590,7 @@ extern "C" {
             set_boolean(
                 result,
                 ots::Wallet::verifyData(
-                    data,
+                    std::string(data, data_size),
                     *static_cast<ots::Address*>(address->ptr),
                     signature,
                     legacy_fallback
@@ -595,6 +605,7 @@ extern "C" {
     ots_result_t* ots_wallet_verify_data_with_address_string(
             const ots_handle_t* wallet,
             const char* data,
+            size_t data_size,
             const char* address,
             const char* signature,
             bool legacy_fallback
@@ -605,7 +616,12 @@ extern "C" {
                 throw ots::exception::InvalidArgument("Invalid handle type");
             set_boolean(
                 result,
-                ots::Wallet::verifyData(data, address, signature, legacy_fallback)
+                ots::Wallet::verifyData(
+                    std::string(data, data_size),
+                    address,
+                    signature,
+                    legacy_fallback
+                )
             );
         } catch(const ots::exception::Exception& e) {
             set_error(result, e);
