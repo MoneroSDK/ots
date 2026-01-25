@@ -55,14 +55,14 @@ START_TEST(test_ots_seed_indices_create_from_hex)
     uint16_t indices[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
     char* separator[] = { ",", " ", ";", "" };
     for(size_t s = 0; s < 4; s++) {
-        size_t buffer_size = 16 * 4 + (s<3?15 * strlen(separator[s]):0);
+        size_t buffer_size = 16 * 3 + (s<3?15 * strlen(separator[s]):0);
         char str[buffer_size + 1];
         str[0] = '\0';
         for(size_t i = 0; i < 16; i++) {
             if(s < 3 && i > 0)
                 strncat(str, separator[s], buffer_size - strlen(str));
-            char number[5];
-            snprintf(number, sizeof(number), "%04X", indices[i]);
+            char number[4];
+            snprintf(number, sizeof(number), "%03X", indices[i]);
             strncat(str, number, buffer_size - strlen(str));
         }
         ots_result_t* result = ots_seed_indices_create_from_hex(str, separator[s]);
