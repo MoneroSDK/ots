@@ -91,8 +91,8 @@ if(NOT BUILD_SHARED_LIBS)
 	set(Boost_USE_STATIC_LIBS ON)
 
 	set(OPENSSL_USE_STATIC_LIBS TRUE)
-	set(OPENSSL_CRYPTO_LIBRARY "/usr/lib/x86_64-linux-gnu/libcrypto.a")
-	set(OPENSSL_SSL_LIBRARY "/usr/lib/x86_64-linux-gnu/libssl.a")
+	set(OPENSSL_CRYPTO_LIBRARY "/usr/lib/x86_64-linux-gnu/libcrypto.a") # TODO: must not be a fixed path!
+	set(OPENSSL_SSL_LIBRARY "/usr/lib/x86_64-linux-gnu/libssl.a") # TODO: must not be a fixed path!
 else()
 	set(Boost_USE_STATIC_LIBS OFF)
 	set(OPENSSL_USE_STATIC_LIBS FALSE)
@@ -534,7 +534,7 @@ add_library(monero-ots ${LIB_TYPE}
 	src/c-abi/wallet.cpp
 	src/c-abi/seed-jar.cpp
 	src/c-abi/transaction.cpp
-	${EASYLOGGING} # WTF! All this chingadera makes me desires to rewrite the whole thing :@ But need to calm my horses because it will probably take a eternity to get it done
+	${EASYLOGGING} # TODO: WTF! All this chingadera makes me desires to rewrite the whole thing :@ But need to calm my horses because it will probably take a eternity to get it done
 )
 
 target_link_libraries(monero-ots
