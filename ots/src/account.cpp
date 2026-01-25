@@ -223,7 +223,7 @@ namespace ots {
     }
 
     size_t Account::importOutputs(const std::tuple<uint64_t, uint64_t, std::vector<exported_transfer_details>> &outputs) {
-        // TODO: dislike the silent uint64_t to size_t conversion
+        // TODO: dislike the silent uint64_t to size_t conversion. What is the solution, or why is it like that?
         const size_t offset = std::get<0>(outputs);
         const size_t num_outputs = std::get<1>(outputs);
         const std::vector<exported_transfer_details> &output_array = std::get<2>(outputs);
@@ -297,7 +297,7 @@ namespace ots {
 
     size_t Account::importOutputs(const std::tuple<uint64_t, uint64_t, std::vector<transfer_details>> &outputs) {
         // TODO: seems to be a deprecated format, remove as soon as we are sure it's not needed anymore
-        // TODO: dislike the silent uint64_t to size_t conversion
+        // TODO: dislike the silent uint64_t to size_t conversion. What is the solution, or why is it like that?
         const size_t offset = std::get<0>(outputs);
         const size_t num_outputs = std::get<1>(outputs);
         const std::vector<transfer_details> &output_array = std::get<2>(outputs);
@@ -356,7 +356,15 @@ process:
     }
 
     std::string Account::exportKeyImages() const {
-        std::pair<uint64_t, std::vector<std::pair<crypto::key_image, crypto::signature>>> ski = exportKeyImages(true); // TODO: see if we want to trigger that automatically to false after transfers, or if we want to keep it true. I prefer personally always true, but the tradeoff is that e.g. the UR codes are bigger, so it takes longer to scan them. But how there is no state exchange other then outputs and keyimages, how to know if the user suddenly tries another view only wallet, and then the key images are not there? This is my reasoning for always true.
+        std::pair<uint64_t, std::vector<std::pair<crypto::key_image, crypto::signature>>> ski = exportKeyImages(true); /*
+            TODO: see if we want to trigger that automatically to false after transfers,
+                  or if we want to keep it true. I prefer personally always true,
+                  but the tradeoff is that e.g. the UR codes are bigger,
+                  so it takes longer to scan them. But how there is no state exchange
+                  other then outputs and keyimages, how to know if the user suddenly
+                  tries another view only wallet, and then the key images are not there?
+                  This is my reasoning for always true.
+            */
         const cryptonote::account_public_address &keys = m_account.get_keys().m_account_address;
         const uint32_t offset = ski.first;
         std::string data;
@@ -378,7 +386,7 @@ process:
     std::pair<uint64_t, std::vector<std::pair<crypto::key_image, crypto::signature>>> Account::exportKeyImages(bool all) const {
         std::vector<std::pair<crypto::key_image, crypto::signature>> ski;
         size_t offset = 0;
-        if(!all) // TODO: in case all usecases are all == true, we can remove this if statement
+        if(!all) // TODO: in case all usecases are "all == true", we can remove this if statement
             while(offset < m_transfers.size() && !m_transfers[offset].m_key_image_request)
                 ++offset;
         ski.reserve(m_transfers.size() - offset);
@@ -782,7 +790,7 @@ process:
         std::vector<TxWarning> warnings;
         for(const auto &transfer: txDescription.transfers) {
             if(transfer.unlockTime > 0) {
-                // TODO: implement actual TxWarning's
+                // TODO: implement actual TxWarning's. Has this still relevance how unlocktime was removed already?
                 // warnings.emplace_back();
                 break;
             }
@@ -815,7 +823,7 @@ process:
 
     crypto::public_key Account::get_tx_pub_key_from_received_outs(const transfer_details &td) const {
         std::vector<cryptonote::tx_extra_field> tx_extra_fields;
-        if(!parse_tx_extra(td.m_tx.extra, tx_extra_fields)) // THOR: WTF is that construct?????
+        if(!parse_tx_extra(td.m_tx.extra, tx_extra_fields)) // THOR: WTF is that construct????? TODO: check if simply remove, does not bring more clarity, better investigate an write proper documentation what's going on.
         {
             // Extra may only be partially parsed, it's OK if tx_extra_fields contains public key
         }
