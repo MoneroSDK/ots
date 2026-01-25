@@ -1175,11 +1175,20 @@ START_TEST(test_ots_wallet_sign_data)
     ck_assert(ots_result_is_wallet(result));
     ots_handle_t* wallet = ots_result_handle(result);
     ots_free_result(&result);
-    result = ots_wallet_sign_data(wallet, data);
+    result = ots_wallet_sign_data(
+        wallet,
+        data,
+        strlen(data)
+    );
     ck_assert(ots_result_is_string(result));
     char* signature = ots_result_string_copy(result);
     ots_free_result(&result);
-    result = ots_wallet_verify_data(wallet, data, signature, false);
+    result = ots_wallet_verify_data(
+        wallet,
+        data, strlen(data),
+        signature,
+        false
+    );
     ck_assert(ots_result_is_boolean(result));
     ck_assert(ots_result_boolean(result, true));
     ots_free_result(&result);
@@ -1201,13 +1210,17 @@ START_TEST(test_ots_wallet_sign_data_with_index)
     ots_handle_t* wallet = ots_result_handle(result);
     ots_free_result(&result);
     result = ots_wallet_sign_data_with_index(
-        wallet, data, 1, 2
+        wallet, data, strlen(data), 1, 2
     );
     ck_assert(ots_result_is_string(result));
     char* signature = ots_result_string_copy(result);
     ots_free_result(&result);
     result = ots_wallet_verify_data_with_index(
-        wallet, data, 1, 2, signature, false
+        wallet,
+        data, strlen(data),
+        1, 2,
+        signature,
+        false
     );
     ck_assert(ots_result_is_boolean(result));
     ck_assert(ots_result_boolean(result, true));
@@ -1236,13 +1249,19 @@ START_TEST(test_ots_wallet_sign_data_with_address)
     ots_handle_t* address = ots_result_handle(result);
     ots_free_result(&result);
     result = ots_wallet_sign_data_with_address(
-        wallet, data, address
+        wallet,
+        data, strlen(data),
+        address
     );
     ck_assert(ots_result_is_string(result));
     char* signature = ots_result_string_copy(result);
     ots_free_result(&result);
     result = ots_wallet_verify_data_with_address(
-        wallet, data, address, signature, false
+        wallet,
+        data, strlen(data),
+        address,
+        signature,
+        false
     );
     ck_assert(ots_result_is_boolean(result));
     ck_assert(ots_result_boolean(result, true));
@@ -1275,13 +1294,17 @@ START_TEST(test_ots_wallet_sign_data_with_address_string)
     char* address_string = ots_result_string_copy(result);
     ots_free_result(&result);
     result = ots_wallet_sign_data_with_address_string(
-        wallet, data, address_string
+        wallet, data, strlen(data), address_string
     );
     ck_assert(ots_result_is_string(result));
     char* signature = ots_result_string_copy(result);
     ots_free_result(&result);
     result = ots_wallet_verify_data_with_address_string(
-        wallet, data, address_string, signature, false
+        wallet,
+        data, strlen(data),
+        address_string,
+        signature,
+        false
     );
     ck_assert(ots_result_is_boolean(result));
     ck_assert(ots_result_boolean(result, true));
@@ -1303,15 +1326,26 @@ START_TEST(test_ots_wallet_verify_data)
     ck_assert(ots_result_is_wallet(result));
     ots_handle_t* wallet = ots_result_handle(result);
     ots_free_result(&result);
-    result = ots_wallet_sign_data(wallet, data);
+    result = ots_wallet_sign_data(wallet, data, strlen(data));
     ck_assert(ots_result_is_string(result));
     char* signature = ots_result_string_copy(result);
     ots_free_result(&result);
-    result = ots_wallet_verify_data(wallet, data, signature, false);
+    result = ots_wallet_verify_data(
+        wallet,
+        data, strlen(data),
+        signature,
+        false
+    );
     ck_assert(ots_result_is_boolean(result));
     ck_assert(ots_result_boolean(result, false));
     ots_free_result(&result);
-    result = ots_wallet_verify_data(wallet, "tampered data", signature, false);
+    const char* tampered_data = "tampered data";
+    result = ots_wallet_verify_data(
+        wallet,
+        tampered_data, strlen(tampered_data),
+        signature,
+        false
+    );
     ck_assert(ots_result_is_boolean(result));
     ck_assert(!ots_result_boolean(result, true));
     ots_free_result(&result);
@@ -1333,19 +1367,28 @@ START_TEST(test_ots_wallet_verify_data_with_index)
     ots_handle_t* wallet = ots_result_handle(result);
     ots_free_result(&result);
     result = ots_wallet_sign_data_with_index(
-        wallet, data, 1, 2
+        wallet, data, strlen(data), 1, 2
     );
     ck_assert(ots_result_is_string(result));
     char* signature = ots_result_string_copy(result);
     ots_free_result(&result);
     result = ots_wallet_verify_data_with_index(
-        wallet, data, 1, 2, signature, false
+        wallet,
+        data, strlen(data),
+        1, 2,
+        signature,
+        false
     );
     ck_assert(ots_result_is_boolean(result));
     ck_assert(ots_result_boolean(result, false));
     ots_free_result(&result);
+    const char* tampered_data = "tampered data";
     result = ots_wallet_verify_data_with_index(
-        wallet, "tampered data", 1, 2, signature, false
+        wallet,
+        tampered_data, strlen(tampered_data),
+        1, 2,
+        signature,
+        false
     );
     ck_assert(ots_result_is_boolean(result));
     ck_assert(!ots_result_boolean(result, true));
@@ -1374,19 +1417,28 @@ START_TEST(test_ots_wallet_verify_data_with_address)
     ots_handle_t* address = ots_result_handle(result);
     ots_free_result(&result);
     result = ots_wallet_sign_data_with_address(
-        wallet, data, address
+        wallet, data, strlen(data), address
     );
     ck_assert(ots_result_is_string(result));
     char* signature = ots_result_string_copy(result);
     ots_free_result(&result);
     result = ots_wallet_verify_data_with_address(
-        wallet, data, address, signature, false
+        wallet,
+        data, strlen(data),
+        address,
+        signature,
+        false
     );
     ck_assert(ots_result_is_boolean(result));
     ck_assert(ots_result_boolean(result, false));
     ots_free_result(&result);
+    const char* tampered_data = "tampered data";
     result = ots_wallet_verify_data_with_address(
-        wallet, "tampered data", address, signature, false
+        wallet,
+        tampered_data, strlen(tampered_data),
+        address,
+        signature,
+        false
     );
     ck_assert(ots_result_is_boolean(result));
     ck_assert(!ots_result_boolean(result, true));
@@ -1419,19 +1471,28 @@ START_TEST(test_ots_wallet_verify_data_with_address_string)
     char* address_string = ots_result_string_copy(result);
     ots_free_result(&result);
     result = ots_wallet_sign_data_with_address_string(
-        wallet, data, address_string
+        wallet, data, strlen(data), address_string
     );
     ck_assert(ots_result_is_string(result));
     char* signature = ots_result_string_copy(result);
     ots_free_result(&result);
     result = ots_wallet_verify_data_with_address_string(
-        wallet, data, address_string, signature, false
+        wallet,
+        data, strlen(data),
+        address_string,
+        signature,
+        false
     );
     ck_assert(ots_result_is_boolean(result));
     ck_assert(ots_result_boolean(result, false));
     ots_free_result(&result);
+    const char* tampered_data = "tampered data";
     result = ots_wallet_verify_data_with_address_string(
-        wallet, "tampered data", address_string, signature, false
+        wallet,
+        tampered_data, strlen(tampered_data),
+        address_string,
+        signature,
+        false
     );
     ck_assert(ots_result_is_boolean(result));
     ck_assert(!ots_result_boolean(result, true));
