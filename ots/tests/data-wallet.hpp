@@ -73,7 +73,7 @@ const std::vector<WalletTestCase> wallet_test_cases = {
             {
                 std::string(WALLET_092F1B_UNSIGNED_TX),
                 std::string(WALLET_092F1B_UNSIGNED_TX_JSON),
-                1, 100000000000
+                2, 100000000000
             },
             {
                 std::string(WALLET_092F1B_01_UNSIGNED_TX),
