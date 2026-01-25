@@ -607,8 +607,9 @@ install(
 install(FILES
 	include/ots.h
 	include/ots.hpp
-	${CMAKE_CURRENT_BINARY_DIR}/include/version.h
-	DESTINATION include/monero-ots
+	${CMAKE_CURRENT_BINARY_DIR}/include/ots-version.h
+	${CMAKE_CURRENT_BINARY_DIR}/include/ots-errors.h
+	DESTINATION include
 )
 
 install(EXPORT monero-ots-targets
