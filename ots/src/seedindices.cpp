@@ -91,7 +91,7 @@ namespace ots {
     const std::string SeedIndices::hex(const std::string& separator) const noexcept {
         std::ostringstream strStream;
         for(size_t i = 0; i < m_vec.size(); i++) {
-            strStream << std::hex << std::setw(4) << std::setfill('0') << m_vec[i];
+            strStream << std::hex << std::setw(3) << std::setfill('0') << m_vec[i];
             if(!separator.empty() && i < m_vec.size() - 1)
                 strStream << separator;
         }
@@ -136,7 +136,7 @@ namespace ots {
 
     SeedIndices SeedIndices::fromHex(const std::string& hex, const std::string& separator) {
         SeedIndices indices;
-        std::vector<std::string> hexParts = ots::splitString(hex, separator, 4);
+        std::vector<std::string> hexParts = ots::splitString(hex, separator, 3);
         for(const auto& part : hexParts)
             if(!part.empty())
                 indices.emplace_back(std::stoi(part, nullptr, 16));
