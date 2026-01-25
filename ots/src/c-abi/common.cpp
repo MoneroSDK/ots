@@ -30,13 +30,19 @@ extern "C" {
         return result && result->error.code == 0;
     }
 
-    bool ots_result_is_type(const ots_result_t* result, ots_result_type type) {
+    bool ots_result_is_type(
+        const ots_result_t* result,
+        ots_result_type type
+    ) {
         if(result == nullptr)
             return false;
         return result->type == type;
     }
 
-    bool ots_result_data_is_type(const ots_result_t* result, ots_data_type type) {
+    bool ots_result_data_is_type(
+        const ots_result_t* result,
+        ots_data_type type
+    ) {
         if(!result)
             return false;
         switch(result->type) {
@@ -148,7 +154,9 @@ extern "C" {
         return ots_result_data_handle_is_type(result, OTS_HANDLE_TX_DESCRIPTION);
     }
 
-    bool ots_result_data_handle_is_transaction_warning(const ots_result_t* result) {
+    bool ots_result_data_handle_is_transaction_warning(
+        const ots_result_t* result
+    ) {
         if(!ots_result_data_is_handle(result))
             return false;
         // we assume an empty arry, so we can't figure out the type
@@ -157,7 +165,10 @@ extern "C" {
         // with last monero changes (unlock time) and also the inabilitiy to
         // check if if tx fees are insane...
         // So, probably the right thing to do would be to remove TxWarning completely
-        if(result->result.data.size == 0 && result->result.data.type == OTS_DATA_HANDLE)
+        if(
+            result->result.data.size == 0
+            && result->result.data.type == OTS_DATA_HANDLE
+        )
             return true;
         return ots_result_data_handle_is_type(result, OTS_HANDLE_TX_WARNING);
     }
@@ -169,7 +180,9 @@ extern "C" {
             return static_cast<char*>(result->result.data.ptr);
         if(ots_result_is_wipeable_string(result))
             try {
-                return static_cast<ots::WipeableString*>(result->result.handle.ptr)->c_str();
+                return static_cast<ots::WipeableString*>(
+                    result->result.handle.ptr
+                )->c_str();
             } catch(const ots::exception::Exception& e) {}
         return nullptr;
     }
@@ -188,7 +201,13 @@ extern "C" {
     }
 
     int64_t ots_result_number(const ots_result_t* result, int64_t default_value) {
-        if(!ots_result_is_number(result))
+        if(!(
+            ots_result_is_number(result)
+            || ots_result_is_network(result)
+            || ots_result_is_seed_type(result)
+            || ots_result_is_address_type(result)
+            )
+        )
             return default_value;
         return result->result.number;
     }
@@ -291,7 +310,10 @@ extern "C" {
     }
 
     char* ots_result_char_array(const ots_result_t* result) {
-        if(!ots_result_data_is_char(result))
+        if(
+            !ots_result_data_is_char(result)
+            && !ots_result_data_is_uint8(result)
+        )
             return nullptr;
         char* arr = new char[result->result.data.size];
         memcpy(arr, result->result.data.ptr, result->result.data.size * sizeof(char));
@@ -299,7 +321,10 @@ extern "C" {
     }
 
     uint8_t* ots_result_uint8_array(const ots_result_t* result) {
-        if(!ots_result_data_is_uint8(result))
+        if(
+            !ots_result_data_is_uint8(result)
+            && !ots_result_data_is_char(result)
+        )
             return nullptr;
         uint8_t* arr = new uint8_t[result->result.data.size];
         memcpy(arr, result->result.data.ptr, result->result.data.size * sizeof(uint8_t));
@@ -407,10 +432,26 @@ extern "C" {
         return ots_result_is_type(result, OTS_RESULT_ADDRESS_TYPE);
     }
 
+    OTS_ADDRESS_TYPE ots_result_address_type(const ots_result_t* result) {
+        if(!result || !ots_result_is_address_type(result))
+            return OTS_ADDRESS_TYPE_STANDARD;
+        return static_cast<OTS_ADDRESS_TYPE>(result->result.number);
+    }
+
+    bool ots_result_address_type_is_type(const ots_result_t* result, OTS_ADDRESS_TYPE type) {
+        if(!ots_result_is_address_type(result))
+            return false;
+        return result->result.number == static_cast<int64_t>(type);
+    }
+
     bool ots_result_is_address_index(const ots_result_t* result) {
-        return ots_result_is_type(result, OTS_RESULT_ADDRESS_INDEX) &&
-            result->result.data.type == OTS_DATA_UINT32 &&
-            result->result.data.size == 2;
+        return
+            ots_result_is_type(
+                result,
+                OTS_RESULT_ADDRESS_INDEX
+            )
+            && result->result.data.type == OTS_DATA_UINT32
+            && result->result.data.size == 2;
     }
 
     uint32_t ots_result_address_index_account(const ots_result_t* result) {
@@ -423,12 +464,6 @@ extern "C" {
         if(!ots_result_is_address_index(result))
             return 0;
         return static_cast<uint32_t*>(result->result.data.ptr)[1];
-    }
-
-    bool ots_result_address_type_is_type(const ots_result_t* result, OTS_ADDRESS_TYPE type) {
-        if(!ots_result_is_address_type(result))
-            return false;
-        return result->result.number == static_cast<int64_t>(type);
     }
 
     bool ots_result_is_handle(const ots_result_t* result) {
