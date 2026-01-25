@@ -154,6 +154,7 @@ extern "C" {
 
     ots_result_t* ots_verify_data(
             const char* data,
+            size_t data_size,
             const char* address,
             const char* signature
             ) {
@@ -162,7 +163,12 @@ extern "C" {
             set_boolean(
                 result,
                 // TODO: should probably be a static method of ots::OTS, but not sure yet, what to do.
-                ots::Wallet::verifyData(data, address, signature, false)
+                ots::Wallet::verifyData(
+                    std::string(data, data_size),
+                    address,
+                    signature,
+                    false
+                )
             );
         } catch(const ots::exception::Exception& e) {
             set_error(result, e);
