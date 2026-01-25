@@ -85,6 +85,9 @@ namespace ots {
         Polyseed ps;
         ps.m_network = network;
         polyseed_data* pd = new polyseed_data();
+        if(time_ == 0)
+            time_ = time(nullptr); // use current time if not set
+        pd->birthday = birthday_encode(time_); // encode birthday
         pd->features = make_features(0); // no features, so no need to check if features valid neither
         memwipe(&(pd->secret), sizeof(pd->secret)); // cleanup to wipe memory
         memcpy(pd->secret, random.data(), random.size()); // pd->secret[SECRET_SIZE], SECRET_SIZE is 19 bytes
@@ -104,6 +107,7 @@ namespace ots {
             secret_spend_key = cryptonote::encrypt_key(secret_spend_key, passphrase_wipeable);
         }
         ps.m_key->set(secret_spend_key);
+        ps.m_timestamp = birthday_decode(pd->birthday);
         ps.m_seed->transfer(pd); // move secret seed into keystore and end session
         cryptonote::account_base account;
         account.generate(secret_spend_key, true, false);
@@ -161,6 +165,7 @@ namespace ots {
             secret_spend_key = cryptonote::encrypt_key(secret_spend_key, passphrase_wipeable);
         }
         ps.m_key->set(secret_spend_key);
+        ps.m_timestamp = birthday_decode(pd->birthday);
         ps.m_seed->transfer(pd);
         cryptonote::account_base account;
         account.generate(secret_spend_key, true, false);
@@ -198,6 +203,7 @@ namespace ots {
             secret_spend_key = cryptonote::encrypt_key(secret_spend_key, passphrase_wipeable);
         }
         ps.m_key->set(secret_spend_key);
+        ps.m_timestamp = birthday_decode(pd->birthday);
         ps.m_seed->transfer(pd);
         cryptonote::account_base account;
         account.generate(secret_spend_key, true, false);
@@ -255,6 +261,7 @@ namespace ots {
             secret_spend_key = cryptonote::encrypt_key(secret_spend_key, passphrase_wipeable);
         }
         ps.m_key->set(secret_spend_key);
+        ps.m_timestamp = birthday_decode(pd->birthday);
         ps.m_seed->transfer(pd);
         cryptonote::account_base account;
         account.generate(secret_spend_key, true, false);
