@@ -138,9 +138,11 @@ extern "C" {
         )
             return 0;
         return static_cast<const std::string>(
-                UnsignedTxSet::from(*static_cast<ots::TxDescription*>(tx_description->ptr))
-                ).size();
-    }
+            UnsignedTxSet::from(
+                *static_cast<ots::TxDescription*>(tx_description->ptr)
+            )
+        ).size();
+}
 
     uint64_t ots_tx_description_amount_in(
         const ots_handle_t* tx_description
@@ -205,6 +207,47 @@ extern "C" {
         )
             return 0;
         return static_cast<ots::TxDescription*>(tx_description->ptr)->flows[index].amount;
+    }
+
+    bool ots_tx_description_has_change(
+        const ots_handle_t* tx_description
+    ) {
+        if(
+            tx_description == nullptr
+            || tx_description->type != OTS_HANDLE_TX_DESCRIPTION
+        )
+            return false;
+        return static_cast<ots::TxDescription*>(tx_description->ptr)->change.has_value();
+    }
+
+    const char* ots_tx_description_change_address(
+        const ots_handle_t* tx_description
+    ) {
+        if(
+            tx_description == nullptr
+            || tx_description->type != OTS_HANDLE_TX_DESCRIPTION
+            || !static_cast<ots::TxDescription*>(tx_description->ptr)->change.has_value()
+        )
+            return nullptr;
+        return strdup(
+            static_cast<const std::string&>(
+                static_cast<ots::TxDescription*>(
+                    tx_description->ptr
+                )->change.value().address
+            ).c_str()
+        );
+    }
+
+    uint64_t ots_tx_description_change_amount(
+        const ots_handle_t* tx_description
+    ) {
+        if(
+            tx_description == nullptr
+            || tx_description->type != OTS_HANDLE_TX_DESCRIPTION
+            || !static_cast<ots::TxDescription*>(tx_description->ptr)->change.has_value()
+        )
+            return 0;
+        return static_cast<ots::TxDescription*>(tx_description->ptr)->change.value().amount;
     }
 
     uint64_t ots_tx_description_fee(
