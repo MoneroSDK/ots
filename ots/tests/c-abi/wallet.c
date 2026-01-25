@@ -21,6 +21,7 @@ ots_tx_description_t* tx_description_from_data(
     handle->ptr = txd;
     handle->reference = false;
     ots_tx_description_t* result = ots_tx_description(handle);
+    ots_free_handle(&handle);
     return result;
 }
 
