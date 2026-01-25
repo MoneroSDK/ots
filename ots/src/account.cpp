@@ -981,7 +981,11 @@ process:
         return signData(data, Address(address), maxAccountDepth, maxIndexDepth);
     }
 
-    bool Account::verifyData(const std::string& data, const Address& address, const std::string& signature) {
+    bool Account::verifyData(
+        const std::string& data,
+        const Address& address,
+        const std::string& signature
+    ) {
         if(data.empty())
             throw ots::exception::sign::EmptyMessage();
         static const std::string& header("SigV2");
@@ -998,8 +1002,16 @@ process:
         if(sizeof(s) != decoded.size())
             throw ots::exception::sign::InvalidSignature();
         memcpy(&s, decoded.data(), sizeof(s));
-        crypto::hash hash = hashData(data, info.address.m_spend_public_key, info.address.m_view_public_key);
-        return crypto::check_signature(hash, info.address.m_spend_public_key, s);
+        crypto::hash hash = hashData(
+            data,
+            info.address.m_spend_public_key,
+            info.address.m_view_public_key
+        );
+        return crypto::check_signature(
+            hash,
+            info.address.m_spend_public_key,
+            s
+        );
     }
 
     bool Account::verifyData(const std::string& data, const std::string& address, const std::string& signature) {
