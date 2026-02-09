@@ -41,18 +41,18 @@ option(BUILD_SHARED_LIBS "Build shared library" OFF)  # Default to static
 
 # Set library type based on BUILD_SHARED_LIBS
 if(BUILD_SHARED_LIBS)
-    set(LIB_TYPE SHARED)
-    set(CMAKE_ASM_CREATE_SHARED_LIBRARY ON)
-    set(SWITCH_STATIC "")
-    # When building shared libraries, ensure PIC is enabled globally
-    set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-    # Adjust linker flags for shared libraries
-    #string(REPLACE "-static" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
-    #string(REPLACE "-static" "" CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS}")
-    #set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-as-needed")
+	set(LIB_TYPE SHARED)
+	set(CMAKE_ASM_CREATE_SHARED_LIBRARY ON)
+	set(SWITCH_STATIC "")
+	# When building shared libraries, ensure PIC is enabled globally
+	set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+	# Adjust linker flags for shared libraries
+	#string(REPLACE "-static" "" CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
+	#string(REPLACE "-static" "" CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS}")
+	#set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--no-as-needed")
 else()
-    set(LIB_TYPE STATIC)
-    set(SWITCH_STATIC "-static")
+	set(LIB_TYPE STATIC)
+	set(SWITCH_STATIC "-static")
 endif()
 
 # TODO: should restructure all this helper tools into a separate folder
@@ -216,7 +216,7 @@ set(EPEE_SOURCES
 	${EPEE_SOURCE_DIR}/memwipe.c
 	${EPEE_SOURCE_DIR}/wipeable_string.cpp
 	${EPEE_SOURCE_DIR}/net_utils_base.cpp
-	${EPEE_SOURCE_DIR}/http_auth.cpp 
+	${EPEE_SOURCE_DIR}/http_auth.cpp
 	${EPEE_SOURCE_DIR}/net_utils_base.cpp
 	${EPEE_SOURCE_DIR}/net_parse_helpers.cpp
 	${EPEE_SOURCE_DIR}/mlog.cpp
@@ -348,7 +348,7 @@ set_target_properties(monero-crypto PROPERTIES POSITION_INDEPENDENT_CODE ON)
 # we need the MONERO_VERSION from the version.cpp
 set(VERSION_IS_RELEASE true)
 set(VERSIONTAG "OTS")
-# TODO: should figure out how to use the current version how this seems to be a bit trickyto get. Like there is still 0.18.1.0 where the master is in reality 0.18.3.4
+# TODO: should figure out how to use the current version how this seems to be a bit tricky to get. Like there is still 0.18.1.0 where the master is in reality 0.18.3.4
 configure_file(
 	${MONERO_SOURCE_DIR}/src/version.cpp.in
 	${CMAKE_CURRENT_BINARY_DIR}/version.cpp
@@ -456,8 +456,8 @@ target_include_directories(polyseed
 	# ${POLYSEED_SOURCE_DIR}
 )
 
-target_compile_definitions(polyseed 
-	PRIVATE 
+target_compile_definitions(polyseed
+	PRIVATE
 	POLYSEED_STATIC
 	_DEFAULT_SOURCE
 	_BSD_SOURCE
@@ -484,8 +484,8 @@ target_include_directories(utf8proc
 	$<INSTALL_INTERFACE:include>
 )
 
-target_compile_definitions(utf8proc 
-	PUBLIC 
+target_compile_definitions(utf8proc
+	PUBLIC
 	UTF8PROC_STATIC
 	PRIVATE
 	UTF8PROC_EXPORTS
@@ -640,7 +640,7 @@ install(FILES
 
 # tools to move binary files into header macros
 if (BUILD_TESTS OR BUILD_BIN_HEADER_MACRO)
-  add_subdirectory(binheadermacro)
+	add_subdirectory(binheadermacro)
 endif()
 
 # Tests configuration
