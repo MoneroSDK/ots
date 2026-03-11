@@ -37,8 +37,8 @@ endforeach()
 if(OUTPUTS_MACROS)
 	add_custom_command(
 	    OUTPUT ${OUTPUTS_HEADER_FILE}
-	    COMMAND ${CMAKE_BINARY_DIR}/binheadermacro/bin2hppmacro ${OUTPUTS_HEADER_FILE} ${OUTPUTS_MACROS}
-	    DEPENDS ${OUTPUTS_FILES} binheadermacro/bin2hppmacro
+	    COMMAND ${CMAKE_BINARY_DIR}/tools/binheadermacro/bin2hppmacro ${OUTPUTS_HEADER_FILE} ${OUTPUTS_MACROS}
+	    DEPENDS ${OUTPUTS_FILES} tools/binheadermacro/bin2hppmacro
 	    COMMENT "Generating header macros for ${OUTPUTS_HEADER_FILE}"
 	    VERBATIM
 	)
@@ -56,8 +56,8 @@ endforeach()
 if(UNSIGNED_TX_MACROS)
 	add_custom_command(
 	    OUTPUT ${UNSIGNED_TX_HEADER_FILE}
-	    COMMAND ${CMAKE_BINARY_DIR}/binheadermacro/bin2hppmacro ${UNSIGNED_TX_HEADER_FILE} ${UNSIGNED_TX_MACROS}
-	    DEPENDS ${UNSIGNED_TX_FILES} binheadermacro/bin2hppmacro
+	    COMMAND ${CMAKE_BINARY_DIR}/tools/binheadermacro/bin2hppmacro ${UNSIGNED_TX_HEADER_FILE} ${UNSIGNED_TX_MACROS}
+	    DEPENDS ${UNSIGNED_TX_FILES} tools/binheadermacro/bin2hppmacro
 	    COMMENT "Generating header macros for ${UNSIGNED_TX_HEADER_FILE}"
 	    VERBATIM
 	)
@@ -75,8 +75,8 @@ endforeach()
 if(UNSIGNED_TX_JSON_MACROS)
 	add_custom_command(
 	    OUTPUT ${UNSIGNED_TX_JSON_HEADER_FILE}
-	    COMMAND ${CMAKE_BINARY_DIR}/binheadermacro/bin2hppmacro ${UNSIGNED_TX_JSON_HEADER_FILE} ${UNSIGNED_TX_JSON_MACROS}
-	    DEPENDS ${UNSIGNED_TX_JSON_FILES} binheadermacro/bin2hppmacro
+	    COMMAND ${CMAKE_BINARY_DIR}/tools/binheadermacro/bin2hppmacro ${UNSIGNED_TX_JSON_HEADER_FILE} ${UNSIGNED_TX_JSON_MACROS}
+	    DEPENDS ${UNSIGNED_TX_JSON_FILES} tools/binheadermacro/bin2hppmacro
 	    COMMENT "Generating header macros for ${UNSIGNED_TX_JSON_HEADER_FILE}"
 	    VERBATIM
 	)
