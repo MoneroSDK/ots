@@ -607,7 +607,7 @@ install(FILES
 
 # tools to move binary files into header macros
 if (BUILD_TESTS OR BUILD_BIN_HEADER_MACRO)
-	add_subdirectory(binheadermacro)
+	add_subdirectory(tools/binheadermacro)
 endif()
 
 # tool to generate ots-error.h from ots-exceptions.hpp
