@@ -82,8 +82,8 @@ find_package(OpenSSL REQUIRED)
 # Require Monero source directory
 if(NOT MONERO_SOURCE_DIR)
 	if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../src/crypto/crypto.cpp")
-		get_filename_component(MONERO_STUBS_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/stubs/include" ABSOLUTE)
 		get_filename_component(MONERO_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
+		get_filename_component(MONERO_STUBS_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/stubs/include" ABSOLUTE)
 		get_filename_component(MONERO_CRYPTO_SOURCE_DIR "${MONERO_SOURCE_DIR}/src/crypto" ABSOLUTE)
 		get_filename_component(MONERO_COMMON_SOURCE_DIR "${MONERO_SOURCE_DIR}/src/common" ABSOLUTE)
 		get_filename_component(MONERO_MNEMONICS_SOURCE_DIR "${MONERO_SOURCE_DIR}/src/mnemonics" ABSOLUTE)
@@ -610,10 +610,16 @@ if (BUILD_TESTS OR BUILD_BIN_HEADER_MACRO)
 	add_subdirectory(binheadermacro)
 endif()
 
-# tools to move binary files into header macros
-if (BUILD_GEN_OTS_ERROR_HEADER )
+# tool to generate ots-error.h from ots-exceptions.hpp
+if (BUILD_GEN_OTS_ERROR_HEADER)
 	add_subdirectory(tools/gen-ots-error-header)
 endif()
+
+# v1 sign tool for testing purpose
+if (BUILD_V1SIGN)
+	add_subdirectory(tools/v1sign)
+endif()
+
 
 # Tests configuration
 if(BUILD_TESTS)
@@ -644,27 +650,4 @@ if(BUILD_DOCS)
 			VERBATIM
 		)
 	endif()
-endif()
-
-# V1 Sign tool
-if(BUILD_V1SIGN)
-	add_executable(v1sign
-		v1sign/src/v1sign.cpp
-	)
-	target_link_libraries(v1sign
-		PRIVATE
-		monero-minimal
-		${CMAKE_THREAD_LIBS_INIT}
-		${SWITCH_STATIC}
-	)
-	target_include_directories(v1sign
-		PRIVATE
-		${MONERO_SOURCE_DIR}/src
-		${EPEE_INCLUDE_DIR_BASE}
-		${EASYLOGGING_INCLUDE_DIR_BASE}
-		${MONERO_SOURCE_DIR}/external/boost/archive
-	)
-	install(TARGETS v1sign
-		RUNTIME DESTINATION bin
-	)
 endif()
