@@ -13,7 +13,7 @@ if(CCACHE_PROGRAM)
 endif()
 
 # TODO: should think about a version strategy
-project(monero-ots VERSION 0.1.0)
+project(monero-ots VERSION 0.2.0)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
