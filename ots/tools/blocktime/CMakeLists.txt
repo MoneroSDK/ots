@@ -3,13 +3,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Require Monero source directory
 if(NOT MONERO_SOURCE_DIR)
-	if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../../../src/crypto/crypto.cpp")
-		get_filename_component(MONERO_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../.." ABSOLUTE)
-		get_filename_component(EPEE_INCLUDE_DIR_BASE "${MONERO_SOURCE_DIR}/contrib/epee/include" ABSOLUTE)
-		get_filename_component(EASYLOGGING_SOURCE_DIR "${MONERO_SOURCE_DIR}/external/easylogging++" ABSOLUTE)
-	else()
-		message(FATAL_ERROR "Please specify MONERO_SOURCE_DIR pointing to Monero source")
-	endif()
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../../../src/crypto/crypto.cpp")
+        get_filename_component(MONERO_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../.." ABSOLUTE)
+        get_filename_component(EPEE_INCLUDE_DIR_BASE "${MONERO_SOURCE_DIR}/contrib/epee/include" ABSOLUTE)
+        get_filename_component(EASYLOGGING_SOURCE_DIR "${MONERO_SOURCE_DIR}/external/easylogging++" ABSOLUTE)
+    else()
+        message(FATAL_ERROR "Please specify MONERO_SOURCE_DIR pointing to Monero source")
+    endif()
 endif()
 
 # LMDB setup
@@ -29,11 +29,11 @@ add_library(blocktime STATIC
 
 target_include_directories(blocktime
     PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
     PRIVATE
-        ${MONERO_SOURCE_DIR}/src
-		# ${EPEE_INCLUDE_DIR_BASE}
-        ${MONERO_SOURCE_DIR}/external/db_drivers/liblmdb
+    ${MONERO_SOURCE_DIR}/src
+    # ${EPEE_INCLUDE_DIR_BASE}
+    ${MONERO_SOURCE_DIR}/external/db_drivers/liblmdb
 )
 
 if(BUILD_BLOCKTIME)
@@ -44,17 +44,17 @@ if(BUILD_BLOCKTIME)
 
     target_include_directories(blocktime_extractor
         PUBLIC
-            ${CMAKE_CURRENT_SOURCE_DIR}/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
         PRIVATE
-            ${MONERO_SOURCE_DIR}/src
+        ${MONERO_SOURCE_DIR}/src
         # ${EPEE_INCLUDE_DIR_BASE}
-            ${MONERO_SOURCE_DIR}/external/db_drivers/liblmdb
+        ${MONERO_SOURCE_DIR}/external/db_drivers/liblmdb
     )
 
     target_link_libraries(blocktime_extractor
         PRIVATE
-            blocktime
-            lmdb
+        blocktime
+        lmdb
         -static
     )
 
@@ -65,7 +65,7 @@ if(BUILD_BLOCKTIME)
 
     target_link_libraries(blocktime_cli
         PRIVATE
-            blocktime
+        blocktime
         -static
     )
 
