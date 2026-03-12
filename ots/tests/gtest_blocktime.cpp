@@ -56,7 +56,7 @@ TEST_F(BlockTimeDataTest, BlocktimeEstimation) {
             EXPECT_LE(estimated_timestamp, timestamp) << "Timestamp should be less or equal to the current timestamp";
             if(height % 1000 == 0)
                 printProgressBar(height, highest);
-        } 
+        }
         printProgressBar(highest, highest);
         std::cout << std::endl;
         network_index++;
