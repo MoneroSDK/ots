@@ -106,19 +106,7 @@ if(NOT MONERO_SOURCE_DIR)
 endif()
 
 if(BUILD_BLOCKTIME OR (BUILD_TESTS AND BUILD_BLOCKTIME_TESTS))
-	# LMDB setup
-	set(LMDB_SOURCES
-		${MONERO_SOURCE_DIR}/external/db_drivers/liblmdb/mdb.c
-		${MONERO_SOURCE_DIR}/external/db_drivers/liblmdb/midl.c
-	)
-	add_library(lmdb STATIC ${LMDB_SOURCES})
-	target_include_directories(lmdb PUBLIC
-		${MONERO_SOURCE_DIR}/external/db_drivers/liblmdb
-	)
-endif()
-
-if(BUILD_BLOCKTIME OR (BUILD_TESTS AND BUILD_BLOCKTIME_TESTS))
-	add_subdirectory(blocktime)
+	add_subdirectory(tools/blocktime)
 endif()
 
 # Version configuration

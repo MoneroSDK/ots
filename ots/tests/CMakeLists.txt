@@ -30,17 +30,17 @@ file(GLOB OUTPUTS_FILES "${CMAKE_CURRENT_SOURCE_DIR}/*.outputs")
 set(OUTPUTS_HEADER_FILE "${GENERATED_HEADERS_DIR}/data-wallet-outputs.hpp")
 set(OUTPUTS_MACROS "")
 foreach(OUTPUTS_FILE ${OUTPUTS_FILES})
-    get_filename_component(HASH_ID ${OUTPUTS_FILE} NAME_WE)
-    set(MACRO_NAME "WALLET_${HASH_ID}_OUTPUTS")
-    list(APPEND OUTPUTS_MACROS "${OUTPUTS_FILE}:${MACRO_NAME}")
+	get_filename_component(HASH_ID ${OUTPUTS_FILE} NAME_WE)
+	set(MACRO_NAME "WALLET_${HASH_ID}_OUTPUTS")
+	list(APPEND OUTPUTS_MACROS "${OUTPUTS_FILE}:${MACRO_NAME}")
 endforeach()
 if(OUTPUTS_MACROS)
 	add_custom_command(
-	    OUTPUT ${OUTPUTS_HEADER_FILE}
-	    COMMAND ${CMAKE_BINARY_DIR}/tools/binheadermacro/bin2hppmacro ${OUTPUTS_HEADER_FILE} ${OUTPUTS_MACROS}
-	    DEPENDS ${OUTPUTS_FILES} tools/binheadermacro/bin2hppmacro
-	    COMMENT "Generating header macros for ${OUTPUTS_HEADER_FILE}"
-	    VERBATIM
+		OUTPUT ${OUTPUTS_HEADER_FILE}
+		COMMAND ${CMAKE_BINARY_DIR}/tools/binheadermacro/bin2hppmacro ${OUTPUTS_HEADER_FILE} ${OUTPUTS_MACROS}
+		DEPENDS ${OUTPUTS_FILES} tools/binheadermacro/bin2hppmacro
+		COMMENT "Generating header macros for ${OUTPUTS_HEADER_FILE}"
+		VERBATIM
 	)
 	list(APPEND GENERATED_HEADERS ${OUTPUTS_HEADER_FILE})
 endif()
@@ -49,17 +49,17 @@ file(GLOB UNSIGNED_TX_FILES "${CMAKE_CURRENT_SOURCE_DIR}/*.unsigned_tx")
 set(UNSIGNED_TX_HEADER_FILE "${GENERATED_HEADERS_DIR}/data-wallet-unsigned-tx.hpp")
 set(UNSIGNED_TX_MACROS "")
 foreach(UNSIGNED_TX_FILE ${UNSIGNED_TX_FILES})
-    get_filename_component(HASH_ID ${UNSIGNED_TX_FILE} NAME_WE)
-    set(MACRO_NAME "WALLET_${HASH_ID}_UNSIGNED_TX")
-    list(APPEND UNSIGNED_TX_MACROS "${UNSIGNED_TX_FILE}:${MACRO_NAME}")
+	get_filename_component(HASH_ID ${UNSIGNED_TX_FILE} NAME_WE)
+	set(MACRO_NAME "WALLET_${HASH_ID}_UNSIGNED_TX")
+	list(APPEND UNSIGNED_TX_MACROS "${UNSIGNED_TX_FILE}:${MACRO_NAME}")
 endforeach()
 if(UNSIGNED_TX_MACROS)
 	add_custom_command(
-	    OUTPUT ${UNSIGNED_TX_HEADER_FILE}
-	    COMMAND ${CMAKE_BINARY_DIR}/tools/binheadermacro/bin2hppmacro ${UNSIGNED_TX_HEADER_FILE} ${UNSIGNED_TX_MACROS}
-	    DEPENDS ${UNSIGNED_TX_FILES} tools/binheadermacro/bin2hppmacro
-	    COMMENT "Generating header macros for ${UNSIGNED_TX_HEADER_FILE}"
-	    VERBATIM
+		OUTPUT ${UNSIGNED_TX_HEADER_FILE}
+		COMMAND ${CMAKE_BINARY_DIR}/tools/binheadermacro/bin2hppmacro ${UNSIGNED_TX_HEADER_FILE} ${UNSIGNED_TX_MACROS}
+		DEPENDS ${UNSIGNED_TX_FILES} tools/binheadermacro/bin2hppmacro
+		COMMENT "Generating header macros for ${UNSIGNED_TX_HEADER_FILE}"
+		VERBATIM
 	)
 	list(APPEND GENERATED_HEADERS ${UNSIGNED_TX_HEADER_FILE})
 endif()
@@ -68,17 +68,17 @@ file(GLOB UNSIGNED_TX_JSON_FILES "${CMAKE_CURRENT_SOURCE_DIR}/*.unsigned_tx_json
 set(UNSIGNED_TX_JSON_HEADER_FILE "${GENERATED_HEADERS_DIR}/data-wallet-unsigned-tx-json.hpp")
 set(UNSIGNED_TX_JSON_MACROS "")
 foreach(UNSIGNED_TX_JSON_FILE ${UNSIGNED_TX_JSON_FILES})
-    get_filename_component(HASH_ID ${UNSIGNED_TX_JSON_FILE} NAME_WE)
-    set(MACRO_NAME "WALLET_${HASH_ID}_UNSIGNED_TX_JSON")
-    list(APPEND UNSIGNED_TX_JSON_MACROS "${UNSIGNED_TX_JSON_FILE}:${MACRO_NAME}")
+	get_filename_component(HASH_ID ${UNSIGNED_TX_JSON_FILE} NAME_WE)
+	set(MACRO_NAME "WALLET_${HASH_ID}_UNSIGNED_TX_JSON")
+	list(APPEND UNSIGNED_TX_JSON_MACROS "${UNSIGNED_TX_JSON_FILE}:${MACRO_NAME}")
 endforeach()
 if(UNSIGNED_TX_JSON_MACROS)
 	add_custom_command(
-	    OUTPUT ${UNSIGNED_TX_JSON_HEADER_FILE}
-	    COMMAND ${CMAKE_BINARY_DIR}/tools/binheadermacro/bin2hppmacro ${UNSIGNED_TX_JSON_HEADER_FILE} ${UNSIGNED_TX_JSON_MACROS}
-	    DEPENDS ${UNSIGNED_TX_JSON_FILES} tools/binheadermacro/bin2hppmacro
-	    COMMENT "Generating header macros for ${UNSIGNED_TX_JSON_HEADER_FILE}"
-	    VERBATIM
+		OUTPUT ${UNSIGNED_TX_JSON_HEADER_FILE}
+		COMMAND ${CMAKE_BINARY_DIR}/tools/binheadermacro/bin2hppmacro ${UNSIGNED_TX_JSON_HEADER_FILE} ${UNSIGNED_TX_JSON_MACROS}
+		DEPENDS ${UNSIGNED_TX_JSON_FILES} tools/binheadermacro/bin2hppmacro
+		COMMENT "Generating header macros for ${UNSIGNED_TX_JSON_HEADER_FILE}"
+		VERBATIM
 	)
 	list(APPEND GENERATED_HEADERS ${UNSIGNED_TX_JSON_HEADER_FILE})
 endif()
@@ -89,8 +89,8 @@ include_directories(${GENERATED_HEADERS_DIR})
 add_library(rapidjson INTERFACE)
 
 target_include_directories(rapidjson
-    INTERFACE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../external/rapidjson/include
+	INTERFACE
+	${CMAKE_CURRENT_SOURCE_DIR}/../../external/rapidjson/include
 )
 
 add_library(
@@ -134,7 +134,7 @@ target_link_libraries(gtest_ots.cpp
 )
 
 # Include Monero's GTest directories
-target_include_directories(gtest_ots.cpp PRIVATE 
+target_include_directories(gtest_ots.cpp PRIVATE
 	${GTEST_ROOT}/include
 	${GENERATED_HEADERS_DIR}
 	${CMAKE_CURRENT_SOURCE_DIR}/../../external/rapidjson/include
@@ -153,7 +153,7 @@ target_link_libraries(gtest_cpp_c_sync.cpp
 )
 
 # Include Monero's GTest directories
-target_include_directories(gtest_cpp_c_sync.cpp PRIVATE 
+target_include_directories(gtest_cpp_c_sync.cpp PRIVATE
 	${GTEST_ROOT}/include
 	${GTEST_ROOT}/../../src
 	${GTEST_ROOT}/../../contrib/epee/include
@@ -162,10 +162,64 @@ target_include_directories(gtest_cpp_c_sync.cpp PRIVATE
 
 # Blocktime test executable (only if BUILD_BLOCKTIME_TESTS is enabled)
 if(BUILD_BLOCKTIME_TESTS)
-	add_executable(gtest_blocktime
-		gtest_blocktime.cpp
+	set(MONERO_MAINNET_TIMESTAMPS "${CMAKE_BINARY_DIR}/tests/mainnet.timestamps")
+	set(MONERO_TESTNET_TIMESTAMPS "${CMAKE_BINARY_DIR}/tests/testnet.timestamps")
+	set(MONERO_STAGENET_TIMESTAMPS "${CMAKE_BINARY_DIR}/tests/stagenet.timestamps")
+	if(NOT EXISTS ${MONERO_MAINNET_TIMESTAMPS})
+		if(NOT MONERO_MAINNET_BLOCKS OR NOT EXISTS ${MONERO_MAINNET_BLOCKS})
+			message(FATAL_ERROR "Blocktime tests require mainnet.timestamps file")
+		else()
+			add_custom_command(
+				OUTPUT ${MONERO_MAINNET_TIMESTAMPS}
+				COMMAND ${CMAKE_BINARY_DIR}/tools/blocktime/blocktime_extractor
+				${MONERO_MAINNET_BLOCKS}
+				${MONERO_MAINNET_TIMESTAMPS}
+				DEPENDS ${MONERO_MAINNET_BLOCKS} tools/blocktime/blocktime_extractor
+				COMMENT "Extracting timestamps from mainnet blocks"
+				VERBATIM
+			)
+		endif()
+	endif()
+	if(NOT EXISTS ${MONERO_TESTNET_TIMESTAMPS})
+		if(NOT MONERO_TESTNET_BLOCKS OR NOT EXISTS ${MONERO_TESTNET_BLOCKS})
+			message(FATAL_ERROR "Blocktime tests require testnet.timestamps file")
+		else()
+			add_custom_command(
+				OUTPUT ${MONERO_TESTNET_TIMESTAMPS}
+				COMMAND ${CMAKE_BINARY_DIR}/tools/blocktime/blocktime_extractor
+				${MONERO_TESTNET_BLOCKS}
+				${MONERO_TESTNET_TIMESTAMPS}
+				DEPENDS ${MONERO_TESTNET_BLOCKS} tools/blocktime/blocktime_extractor
+				COMMENT "Extracting timestamps from testnet blocks"
+				VERBATIM
+			)
+		endif()
+	endif()
+	if(NOT EXISTS ${MONERO_STAGENET_TIMESTAMPS})
+		if(NOT MONERO_STAGENET_BLOCKS OR NOT EXISTS ${MONERO_STAGENET_BLOCKS})
+			message(FATAL_ERROR "Blocktime tests require stagenet.timestamps file")
+		else()
+			add_custom_command(
+				OUTPUT ${MONERO_STAGENET_TIMESTAMPS}
+				COMMAND ${CMAKE_BINARY_DIR}/tools/blocktime/blocktime_extractor
+				${MONERO_STAGENET_BLOCKS}
+				${MONERO_STAGENET_TIMESTAMPS}
+				DEPENDS ${MONERO_STAGENET_BLOCKS} tools/blocktime/blocktime_extractor
+				COMMENT "Extracting timestamps from stagenet blocks"
+				VERBATIM
+			)
+		endif()
+	endif()
+	add_custom_target(generate_blocktime_timestamps ALL
+		DEPENDS
+		${MONERO_MAINNET_TIMESTAMPS}
+		${MONERO_TESTNET_TIMESTAMPS}
+		${MONERO_STAGENET_TIMESTAMPS}
 	)
+	# Add the blocktime test executable
+	add_executable(gtest_blocktime gtest_blocktime.cpp)
 
+	add_dependencies(gtest_blocktime generate_blocktime_timestamps)
 	target_link_libraries(gtest_blocktime
 		PRIVATE
 		monero-ots
@@ -174,10 +228,11 @@ if(BUILD_BLOCKTIME_TESTS)
 		gtest_main
 	)
 
-	target_include_directories(gtest_blocktime PRIVATE 
+	target_include_directories(gtest_blocktime PRIVATE
 		${GTEST_ROOT}/include
 		${CMAKE_SOURCE_DIR}/../blocktime/include
 	)
+	# Register the test
 endif()
 
 # Use local Check framework
@@ -197,14 +252,14 @@ set(SUITE_HEADER "${CMAKE_BINARY_DIR}/generated_suites.h")
 # Write includes and declarations to the header
 file(WRITE ${SUITE_HEADER} "// Automatically generated Suite declarations\n\n")
 foreach(TEST_FILE ${MODULE_TEST_SOURCES})
-    get_filename_component(TEST_BASENAME ${TEST_FILE} NAME_WE)
-    file(APPEND ${SUITE_HEADER} "Suite* ${TEST_BASENAME}_suite(void);\n")
+	get_filename_component(TEST_BASENAME ${TEST_FILE} NAME_WE)
+	file(APPEND ${SUITE_HEADER} "Suite* ${TEST_BASENAME}_suite(void);\n")
 endforeach()
 # Write macro for including all suites
 file(APPEND ${SUITE_HEADER} "\n#define INCLUDED_SUITES \\\n")
 foreach(TEST_FILE ${MODULE_TEST_SOURCES})
-    get_filename_component(TEST_BASENAME ${TEST_FILE} NAME_WE)
-    file(APPEND ${SUITE_HEADER} "    srunner_add_suite(sr, ${TEST_BASENAME}_suite()); \\\n")
+	get_filename_component(TEST_BASENAME ${TEST_FILE} NAME_WE)
+	file(APPEND ${SUITE_HEADER} "    srunner_add_suite(sr, ${TEST_BASENAME}_suite()); \\\n")
 endforeach()
 file(APPEND ${SUITE_HEADER} "// do not edit manually\n")
 
