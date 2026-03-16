@@ -76,7 +76,7 @@ else()
 	set(OPENSSL_USE_STATIC_LIBS FALSE)
 endif()
 
-find_package(Boost REQUIRED COMPONENTS filesystem thread system chrono serialization)
+find_package(Boost_CONFIG REQUIRED COMPONENTS filesystem thread system chrono serialization)
 find_package(OpenSSL REQUIRED)
 
 # Require Monero source directory
