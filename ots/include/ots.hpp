@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ots-exceptions.hpp"
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -79,13 +80,13 @@ namespace ots {
      * - TEST: development and testing network
      * - STAGE: pre-production testing
      */
-	enum class Network {
-		MAIN,
-		TEST,
-		STAGE,
+    enum class Network {
+        MAIN,
+        TEST,
+        STAGE,
         // WARNING: On extending the network types, the cryptonoteNetwork function in ots-internal.hpp needs to be updated, or at least reviewed.
         // WARNING: keep OTS_NETWORK in sync with this enum, too!
-	};
+    };
 
     /**
      * @enum AddressType
@@ -110,16 +111,16 @@ namespace ots {
      * - Monero: Languages for Monero Seeds (@see LegacySeed, @see MoneroSeed)
      * - Polyseed: Languages for @see Polyseed
      */
-	enum class SeedType {
-		Monero,
-		Polyseed
+    enum class SeedType {
+        Monero,
+        Polyseed
         // WARNING: Keep OTS_SEED_TYPE in sync with this enum!
-	};
+    };
 
-	// Forward declarations
-	class Seed;
+    // Forward declarations
+    class Seed;
     class Address;
-	class Wallet;
+    class Wallet;
     class Account;
     class KeyStore;
     class PolyseedKeyStore;
@@ -142,52 +143,52 @@ namespace ots {
             void operator()(Account* p) const;
     };
     class PolyseedKeyStore;
-	class TxDescription;
-	class TxWarning;
+    class TxDescription;
+    class TxWarning;
 
-	// Type aliases
-	using key_handle_t = size_t;
-	using seed_handle_t = size_t;
+    // Type aliases
+    using key_handle_t = size_t;
+    using seed_handle_t = size_t;
 
     /**
      * @class SeedLanguage
      * @brief Manages seed phrase languages and their properties
-     * 
+     *
      * Provides methods to retrieve, validate, and manage seed phrase languages
      */
-	class SeedLanguage {
-		public:
+    class SeedLanguage {
+        public:
             /**
              * @brief Retrieves the native name of the seed language
              * @return std::string Language native name
              */
-			[[nodiscard]] const std::string& name() const;
+            [[nodiscard]] const std::string& name() const;
 
             /**
              * @brief Retrieves the English name of the seed language
              * @return std::string Language name in English
              */
-			[[nodiscard]] const std::string& englishName() const;
+            [[nodiscard]] const std::string& englishName() const;
 
             /**
              * @brief Retrieves the two-letter language code, which could be extended by a dash with a variation
              * @return std::string language code
              */
-			[[nodiscard]] const std::string& code() const;
+            [[nodiscard]] const std::string& code() const;
 
             /**
              * @brief Checks if the language is supported for a specific seed type
              * @param type SeedType to check support for (default: Monero), alternative Polyseed
              * @return bool True if the language is supported, false otherwise
              */
-			[[nodiscard]] bool supported(SeedType type = SeedType::Monero) const;
+            [[nodiscard]] bool supported(SeedType type = SeedType::Monero) const;
 
             /**
              * @brief Checks if this is the default language for a given seed type
              * @param type SeedType to check (default: Monero), alternative Polyseed
              * @return True if this is the default language, false otherwise
              */
-			[[nodiscard]] bool isDefault(SeedType type = SeedType::Monero) const;
+            [[nodiscard]] bool isDefault(SeedType type = SeedType::Monero) const;
 
             /**
              * @brief The native language index
@@ -195,28 +196,28 @@ namespace ots {
              * @return index for the SeedType or -1 on unkown
              * @internal
              */
-			[[nodiscard]] int index(SeedType type = SeedType::Monero) const noexcept;
+            [[nodiscard]] int index(SeedType type = SeedType::Monero) const noexcept;
 
             /**
              * @brief Compares two SeedLanguage objects for equality
              * @param other SeedLanguage to compare against
              * @return bool True if languages are the same, false otherwise
              */
-			bool operator==(const SeedLanguage& other) const;
+            bool operator==(const SeedLanguage& other) const;
 
             /**
              * @brief Compares two SeedLanguage objects for equality
              * @param other SeedLanguage to compare against
              * @return bool True if languages are the same, false otherwise
              */
-			bool operator==(SeedLanguage& other) const;
+            bool operator==(SeedLanguage& other) const;
 
             /**
              * @brief Compares SeedLanguage to a language code
              * @param code language code to compare against
              * @return bool True if language codes are the same, false otherwise
              */
-			bool operator==(const std::string& code) const;
+            bool operator==(const std::string& code) const;
 
             /**
              * @brief returns the english name as string
@@ -230,7 +231,7 @@ namespace ots {
              * @return const SeedLanguage Found language object
              * @throws std::runtime_error If language not found
              */
-			static const SeedLanguage& fromName(const std::string& name);
+            static const SeedLanguage& fromName(const std::string& name);
 
             /**
              * @brief Retrieves a SeedLanguage by its English name
@@ -238,7 +239,7 @@ namespace ots {
              * @return const SeedLanguage Found language object
              * @throws std::runtime_error if language not found
              */
-			static const SeedLanguage& fromEnglishName(const std::string& name);
+            static const SeedLanguage& fromEnglishName(const std::string& name);
 
             /**
              * @brief Retrieves a SeedLanguage by its language code
@@ -246,28 +247,28 @@ namespace ots {
              * @return const SeedLanguage Found language object
              * @throws std::runtime_error If language not found
              */
-			static const SeedLanguage& fromCode(const std::string& code);
+            static const SeedLanguage& fromCode(const std::string& code);
 
 
             /**
              * @brief Retrieves the complete list of available seed languages
              * @return const std::vector<SeedLanguage>& List of all supported languages
              */
-			static const std::vector<std::reference_wrapper<const SeedLanguage>> list();
+            static const std::vector<std::reference_wrapper<const SeedLanguage>> list();
 
             /**
              * @brief Retrieves languages supported for a specific seed type
              * @param type SeedType to filter languages: (default: Monero), alternative Polyseed
              * @return const std::vector<SeedLanguage> Languages supporting the seed type
              */
-			static const std::vector<std::reference_wrapper<const SeedLanguage>> listFor(SeedType type);
+            static const std::vector<std::reference_wrapper<const SeedLanguage>> listFor(SeedType type);
 
             /**
              * @brief Gets the default language for a given seed type
              * @param type SeedType to find default language (default: Monero), alternative Polyseed
              * @return const SeedLanguage& Default language for the seed type
              */
-			static const SeedLanguage& defaultLanguage(SeedType type = SeedType::Monero);
+            static const SeedLanguage& defaultLanguage(SeedType type = SeedType::Monero);
 
             /**
              * @brief Sets the default language for a given seed type
@@ -277,28 +278,28 @@ namespace ots {
              */
             static void setDefaultLanguage(SeedType type, const SeedLanguage& language);
 
-		private:
-			static std::vector<SeedLanguage> s_list;
-			static std::map<SeedType, std::reference_wrapper<const SeedLanguage>> s_default;
-			std::string m_code;
-			std::string m_name;
-			std::string m_englishName;
-			std::map<SeedType, bool> m_supported;
-			std::map<SeedType, int> m_index;
-	};
+        private:
+            static std::vector<SeedLanguage> s_list;
+            static std::map<SeedType, std::reference_wrapper<const SeedLanguage>> s_default;
+            std::string m_code;
+            std::string m_name;
+            std::string m_englishName;
+            std::map<SeedType, bool> m_supported;
+            std::map<SeedType, int> m_index;
+    };
 
     /**
      * @class Seed
      * @brief Abstract base class for cryptographic seed management
-     * 
+     *
      * Provides core functionality for managing seeds
      */
-	class Seed {
-		public:
+    class Seed {
+        public:
             /**
              * @brief Virtual destructor to ensure proper cleanup of derived classes
              */
-			virtual ~Seed() = default;
+            virtual ~Seed() = default;
 
             /**
              * @brief Retrieves the type of the seed
@@ -318,13 +319,13 @@ namespace ots {
              * @return Seed phrase
              * @throws ots::exception::seed::UnsupportedLanguage If the language is not supported
              */
-			virtual const WipeableString phrase(const SeedLanguage& language, const std::string& password = "") const = 0;
+            virtual const WipeableString phrase(const SeedLanguage& language, const std::string& password = "") const = 0;
 
             /**
              * @brief Gets the raw numeric values representing the seed (indices)
              * @return Seed numeric representation
              */
-			virtual const SeedIndices indices(const std::string& password = "") const = 0;
+            virtual const SeedIndices indices(const std::string& password = "") const = 0;
 
             /**
              * @brief Provides a unique fingerprint for the seed
@@ -333,7 +334,7 @@ namespace ots {
              * @note Fingerprint is the last 6 digits of sha256(address) as uppercase hex
              * @note Can't thow exception, because on constructing a seed address must be valid or throw and exception. And with valid address the fingerprint is also valid.
              */
-			virtual const std::string& fingerprint() const noexcept;
+            virtual const std::string& fingerprint() const noexcept;
 
             /**
              * @brief Address of the seed
@@ -341,7 +342,7 @@ namespace ots {
              *
              * @note Can't thow exception, because on constructing a seed address must be valid or throw and exception.
              */
-			virtual const Address& address() const noexcept;
+            virtual const Address& address() const noexcept;
 
             /**
              * @brief Gets the seed's creation timestamp
@@ -353,7 +354,7 @@ namespace ots {
              *  case the block height on creation was provide this is also
              *  only a rough estimation
              */
-			virtual const uint64_t timestamp() const noexcept;
+            virtual const uint64_t timestamp() const noexcept;
 
             /**
              * @brief Gets the blockchain height associated with the seed
@@ -363,7 +364,7 @@ namespace ots {
              * For Monero seeds it will be the same if the user provided a date, otherwise
              *  it will be the height the user provided, can be 0 also.
              */
-			virtual const uint64_t height() const noexcept;
+            virtual const uint64_t height() const noexcept;
 
             /**
              * @brief Gets the network associated with the seed
@@ -372,7 +373,7 @@ namespace ots {
              * Main importance is that the addresses are based on the key
              * and the network - other network different keys
              */
-			virtual inline const Network& network() const noexcept { return m_network; };
+            virtual inline const Network& network() const noexcept { return m_network; };
 
             /**
              * @brief Creates a wallet from the seed
@@ -496,24 +497,24 @@ namespace ots {
                 bool del = true
             );
 
-		protected:
+        protected:
             Seed();
             std::unique_ptr<Address> m_address;
             std::shared_ptr<Wallet> m_wallet;
-			uint64_t m_timestamp = 0;
-			uint64_t m_height = 0;
+            uint64_t m_timestamp = 0;
+            uint64_t m_height = 0;
             std::unique_ptr<KeyStore, KeyStoreDeleter> m_key;
-			Network m_network;
-	};
+            Network m_network;
+    };
 
     /**
      * @class LegacySeed
      * @brief Represents a monero 13-words seed type for backward compatibility
-     * 
+     *
      * Provides only decoding
      */
-	class LegacySeed: public Seed {
-		public:
+    class LegacySeed: public Seed {
+        public:
 
             /**
              * @brief Always returns the Monero as seed type
@@ -530,13 +531,13 @@ namespace ots {
              * @param language SeedLanguage to use
              * @return std::string Seed phrase
              */
-			const WipeableString phrase(const SeedLanguage& language, const std::string& password = "") const override;
+            const WipeableString phrase(const SeedLanguage& language, const std::string& password = "") const override;
 
             /**
              * @brief Gets the raw numeric values representing the seed (indices)
              * @return Seed numeric representation
              */
-			const SeedIndices indices(const std::string& password = "") const override;
+            const SeedIndices indices(const std::string& password = "") const override;
 
             /**
              * @brief Decodes a seed from a phrase
@@ -548,12 +549,12 @@ namespace ots {
              * @throws ots::exception::seed::SeedDecodingFailed If decoding fails
              * @throws ots::exception::legacyseed::InvalidSeedFormat If the seed phrase is not in the expected format
              */
-			static LegacySeed decode(
-					const std::string& phrase,
-					uint64_t height = 0,
-					uint64_t time = 0, 
-					Network network = Network::MAIN
-					);
+            static LegacySeed decode(
+                    const std::string& phrase,
+                    uint64_t height = 0,
+                    uint64_t time = 0,
+                    Network network = Network::MAIN
+                    );
 
             /**
              * @brief Decodes a seed from numeric values
@@ -563,12 +564,12 @@ namespace ots {
              * @param network Network type (default: MAIN)
              * @return LegacySeed Decoded seed
              */
-			static LegacySeed decode(
-					const SeedIndices& indices,
-					uint64_t height = 0,
-					uint64_t time = 0, 
-					Network network = Network::MAIN
-					);
+            static LegacySeed decode(
+                    const SeedIndices& indices,
+                    uint64_t height = 0,
+                    uint64_t time = 0,
+                    Network network = Network::MAIN
+                    );
 
             /**
              * @brief Decodes a seed from numeric values
@@ -578,17 +579,17 @@ namespace ots {
              * @param network Network type (default: MAIN)
              * @return LegacySeed Decoded seed
              */
-			static LegacySeed decode(
-					const std::vector<uint16_t>& values, 
-					uint64_t height = 0,
-					uint64_t time = 0, 
-					Network network = Network::MAIN
-					);
+            static LegacySeed decode(
+                    const std::vector<uint16_t>& values,
+                    uint64_t height = 0,
+                    uint64_t time = 0,
+                    Network network = Network::MAIN
+                    );
 
             protected:
                 explicit LegacySeed();
                 std::unique_ptr<KeyStore, KeyStoreDeleter> m_seed;
-	};
+    };
 
     /**
      * @class MoneroSeed
@@ -596,11 +597,11 @@ namespace ots {
      * @note if you provide to the user seed offset by passphrase I suggest asking the user
      *       for the fingerprint of the seed and compare it with the fingerprint of the Seed
      *       if not it doesn't match the passphrase is wrong.
-     * 
+     *
      * Provides Monero seed generation and decoding
      */
-	class MoneroSeed: public Seed {
-		public:
+    class MoneroSeed: public Seed {
+        public:
 
             /**
              * @brief Always returns the Monero as seed type
@@ -623,7 +624,7 @@ namespace ots {
              *       There is no feedback if the passphrase is wrong, you can only
              *       see it on the public address, if it is not the same as expected.
              */
-			const WipeableString phrase(const SeedLanguage& language, const std::string& passphrase = "") const override;
+            const WipeableString phrase(const SeedLanguage& language, const std::string& passphrase = "") const override;
 
             /**
              * @brief Gets the raw numeric values representing the seed (indices)
@@ -635,7 +636,7 @@ namespace ots {
              *       There is no feedback if the passphrase is wrong, you can only
              *       see it on the public address, if it is not the same as expected.
              */
-			const SeedIndices indices(const std::string& passphrase = "") const override;
+            const SeedIndices indices(const std::string& passphrase = "") const override;
 
             /**
              * @brief Decodes a Monero seed from a phrase
@@ -651,13 +652,13 @@ namespace ots {
              * @note passphrase decrypts the seed with a seed before encrypted by that passphrase
              *
              */
-			static MoneroSeed decode(
-					const std::string& phrase,
-					uint64_t height = 0,
-					uint64_t time = 0, 
-					Network network = Network::MAIN,
+            static MoneroSeed decode(
+                    const std::string& phrase,
+                    uint64_t height = 0,
+                    uint64_t time = 0,
+                    Network network = Network::MAIN,
                     const std::string& passphrase = ""
-					);
+                    );
 
             /**
              * @brief Decodes a Monero seed from numeric values
@@ -669,13 +670,13 @@ namespace ots {
              * @return MoneroSeed Decoded seed
              * @throws ots::exception::seed::SeedDecodingFailed If decoding fails
              */
-			static MoneroSeed decode(
-					const SeedIndices& indices,
-					uint64_t height = 0,
-					uint64_t time = 0, 
-					Network network = Network::MAIN,
+            static MoneroSeed decode(
+                    const SeedIndices& indices,
+                    uint64_t height = 0,
+                    uint64_t time = 0,
+                    Network network = Network::MAIN,
                     const std::string& passphrase = ""
-					);
+                    );
 
             /**
              * @brief Decodes a Monero seed from numeric values
@@ -687,13 +688,13 @@ namespace ots {
              * @return MoneroSeed Decoded seed
              * @throws ots::exception::seed::SeedDecodingFailed If decoding fails
              */
-			static MoneroSeed decode(
-					const std::vector<uint16_t>& values, 
-					uint64_t height = 0,
-					uint64_t time = 0, 
-					Network network = Network::MAIN,
+            static MoneroSeed decode(
+                    const std::vector<uint16_t>& values,
+                    uint64_t height = 0,
+                    uint64_t time = 0,
+                    Network network = Network::MAIN,
                     const std::string& password = ""
-					);
+                    );
 
             /**
              * @brief Creates a Monero seed from a random source
@@ -707,12 +708,12 @@ namespace ots {
              * - recover a seed
              * - generate from external entropy
              */
-			static MoneroSeed create(
+            static MoneroSeed create(
                     const std::array<unsigned char, 32>& random,
-					uint64_t height = 0,
-					uint64_t time = 0, 
-					const Network network = Network::MAIN
-					);
+                    uint64_t height = 0,
+                    uint64_t time = 0,
+                    const Network network = Network::MAIN
+                    );
 
             /**
              * @brief Generates a new Monero seed
@@ -725,19 +726,19 @@ namespace ots {
              *          Use with caution if the device can't provide good
              *          enough entropy!
              */
-			static MoneroSeed generate(
-					uint64_t height = 0,
-					uint64_t time = 0, 
-					const Network network = Network::MAIN
-					);
+            static MoneroSeed generate(
+                    uint64_t height = 0,
+                    uint64_t time = 0,
+                    const Network network = Network::MAIN
+                    );
         protected:
             MoneroSeed() = default;
-	};
+    };
 
     /**
      * @class Polyseed
      * @brief Represents a Polyseed type
-     * 
+     *
      * Provides Polyseed generation, encoding, and management
      *
      * @note Password and Passphrase is somehow unfortunate.
@@ -758,8 +759,8 @@ namespace ots {
      *       the fingerprint of the Seeed and if not it doesn't match the passphrase
      *       or password are wrong.
      */
-	class Polyseed: public Seed {
-		public:
+    class Polyseed: public Seed {
+        public:
 
             /**
              * @brief Always returns the Polyseed as seed type
@@ -771,8 +772,8 @@ namespace ots {
              */
             inline bool isLegacy() const override { return false; };
 
-			const WipeableString phrase(const SeedLanguage& language, const std::string& password = "") const override;
-			const SeedIndices indices(const std::string& password = "") const override;
+            const WipeableString phrase(const SeedLanguage& language, const std::string& password = "") const override;
+            const SeedIndices indices(const std::string& password = "") const override;
 
             /**
              * @brief Gets the Monero seed from the Polyseed
@@ -788,12 +789,12 @@ namespace ots {
              * @param passphrase for seed offset (like in monero seed), default empty string
              * @return Polyseed Created seed
              */
-			static Polyseed create(
+            static Polyseed create(
                     const std::array<unsigned char, 19>& random,
-					Network network = Network::MAIN,
-					uint64_t time = 0,
+                    Network network = Network::MAIN,
+                    uint64_t time = 0,
                     const std::string& passphrase = ""
-					);
+                    );
 
             /**
              * @brief Convinience function to create a Polyseed from random 32 bytes like sha256 or pbkdf2
@@ -803,12 +804,12 @@ namespace ots {
              * @param passphrase for seed offset (like in monero seed), default empty string
              * @return Polyseed Created seed
              */
-			static Polyseed create(
+            static Polyseed create(
                     const std::array<unsigned char, 32>& random,
-					Network network = Network::MAIN,
-					uint64_t time = 0,
+                    Network network = Network::MAIN,
+                    uint64_t time = 0,
                     const std::string& passphrase = ""
-					);
+                    );
 
             /**
              * @brief Generates a Polyseed with specific parameters
@@ -817,11 +818,11 @@ namespace ots {
              * @param passphrase for seed offset (like in monero seed), default empty string
              * @return Polyseed Created seed
              */
-			static Polyseed generate(
-					Network network = Network::MAIN,
-					uint64_t time = 0,
+            static Polyseed generate(
+                    Network network = Network::MAIN,
+                    uint64_t time = 0,
                     const std::string& passphrase = ""
-					);
+                    );
 
             /**
              * @brief Decodes a Polyseed from a phrase
@@ -835,12 +836,12 @@ namespace ots {
              *
              * @note autodetect language
              */
-			static Polyseed decode(
-					const std::string& phrase, 
-					const Network network = Network::MAIN,
+            static Polyseed decode(
+                    const std::string& phrase,
+                    const Network network = Network::MAIN,
                     const std::string& password = "",
                     const std::string& passphrase = ""
-					);
+                    );
 
             /**
              * @brief Decodes a Polyseed from a phrase
@@ -853,13 +854,13 @@ namespace ots {
              * @throws ots::exception::seed::SeedDecodingFailed If decoding fails
              * @throws ots::exception::polyseed::NoPasswordProvided If a password is needed but not provided
              */
-			static Polyseed decode(
-					const std::string& phrase, 
-					const SeedLanguage& language, 
-					const Network network = Network::MAIN,
+            static Polyseed decode(
+                    const std::string& phrase,
+                    const SeedLanguage& language,
+                    const Network network = Network::MAIN,
                     const std::string& password = "",
                     const std::string& passphrase = ""
-					);
+                    );
 
             /**
              * @brief Decodes a Polyseed from indexes of the words
@@ -873,12 +874,12 @@ namespace ots {
              *
              * @note Language not needed because the index is the same in all languages
              */
-			static Polyseed decode(
-					const SeedIndices& indices,
-					const Network network = Network::MAIN,
+            static Polyseed decode(
+                    const SeedIndices& indices,
+                    const Network network = Network::MAIN,
                     const std::string& password = "",
                     const std::string& passphrase = ""
-					);
+                    );
 
             /**
              * @brief Decodes a Polyseed from indexes of the words
@@ -892,16 +893,16 @@ namespace ots {
              *
              * @note Language not needed because the index is the same in all languages
              */
-			static Polyseed decode(
-					const std::vector<uint16_t>& values, 
-					const Network network = Network::MAIN,
+            static Polyseed decode(
+                    const std::vector<uint16_t>& values,
+                    const Network network = Network::MAIN,
                     const std::string& password = "",
                     const std::string& passphrase = ""
-					);
+                    );
         protected:
             Polyseed();
             std::unique_ptr<PolyseedKeyStore, PolyseedKeyStoreDeleter> m_seed;
-	};
+    };
 
     /** todo: TODO: maybe implement later feather 14 words seed, too */
 
@@ -911,33 +912,33 @@ namespace ots {
      *
      * Ensures valid Monero address and some insight of the address
      */
-	class Address {
-		public:
+    class Address {
+        public:
             /**
              * @brief create and check and monero address
              * @param address the base58 encoded address
              * @throws ots::exception::address::Invalid if not a valid monero address
              */
-			explicit Address(const std::string& address);
+            explicit Address(const std::string& address);
 
             /**
              * @brief Get the network of the address
              * @return the network type of the address
              */
-			[[nodiscard]] const Network network() const noexcept;
+            [[nodiscard]] const Network network() const noexcept;
 
             /**
              * @brief Get the type of the address
              * @return the type of the address
              */
-			[[nodiscard]] const AddressType type() const noexcept;
+            [[nodiscard]] const AddressType type() const noexcept;
 
             /**
              * @brief Generates a unique fingerprint for the Address
              * @return std::string Address fingerprint
              * @note Fingerprint is the last 6 digits of sha256(address) as upper case hex
              */
-			virtual const std::string& fingerprint() const noexcept;
+            virtual const std::string& fingerprint() const noexcept;
 
             /**
              * @brief Is it an integrated address
@@ -963,25 +964,25 @@ namespace ots {
              * @brief character length of the base58 address
              * @return size_t length of the address
              */
-			[[nodiscard]] const size_t length() const noexcept;
+            [[nodiscard]] const size_t length() const noexcept;
 
             /**
              * @brief let you use the Address like it would be a std::string
              * @return base58 address as std::string
              */
-			explicit operator std::string() const noexcept;
+            explicit operator std::string() const noexcept;
 
             /**
              * @brief let you use the Address like it would be a const std::string&
              * @return base58 address as std::string
              */
-			operator const std::string&() const noexcept;
+            operator const std::string&() const noexcept;
 
             /**
              * @brief let you use the Address like it would be a uit8_t*
              * @return base58 address as uint8_t*
              */
-			operator const uint8_t*() const noexcept;
+            operator const uint8_t*() const noexcept;
 
             /**
              * @brief Compare Address with another Address
@@ -1013,7 +1014,7 @@ namespace ots {
              * @param network the network the address should be valid for
              * @return base58 address as std::string
              */
-			[[nodiscard]] static bool isValid(const std::string& address, const Network network = Network::MAIN) noexcept;
+            [[nodiscard]] static bool isValid(const std::string& address, const Network network = Network::MAIN) noexcept;
 
             /**
              * @brief check if a given string is a valid monero address
@@ -1022,7 +1023,7 @@ namespace ots {
              *
              * @return the network the address should be valid for
              */
-			[[nodiscard]] static Network network(const std::string& address);
+            [[nodiscard]] static Network network(const std::string& address);
 
             /**
              * @brief Get the type of the address
@@ -1030,7 +1031,7 @@ namespace ots {
              * @return the type of the address
              * @throws ots::exception::address::Invalid if not a valid monero address
              */
-			[[nodiscard]] static AddressType type(const std::string& address);
+            [[nodiscard]] static AddressType type(const std::string& address);
 
             /**
              * @brief Generates a unique fingerprint for the Address
@@ -1038,7 +1039,7 @@ namespace ots {
              * @return std::string Address fingerprint
              * @throws ots::exception::address::Invalid if not a valid monero address
              */
-			[[nodiscard]] static std::string fingerprint(const std::string& address);
+            [[nodiscard]] static std::string fingerprint(const std::string& address);
 
             /**
              * @brief check if a given string is a valid monero address, and and integrated address
@@ -1067,32 +1068,32 @@ namespace ots {
              */
             [[nodiscard]] static std::string integratedAddress(const std::string& address, Network network = Network::MAIN);
 
-		protected:
+        protected:
             explicit Address(const std::string& address, Network network);
             static Address validAddress(const std::string& address);
-			std::string m_address;
+            std::string m_address;
             Network m_network;
             AddressType m_type;
-			mutable std::string m_fingerprint;
-	};
+            mutable std::string m_fingerprint;
+    };
 
     /**
      * @class OTS
      * @brief General functionality
      */
-	class OTS {
-		public:
-			explicit OTS();
+    class OTS {
+        public:
+            explicit OTS();
 
             /**
              * @return the version liker major.minor.patch
              */
-			static const std::string version() noexcept;
+            static const std::string version() noexcept;
 
             /**
              * @return {major, minor, patch}
              */
-			static std::array<int, 3> versionComponents() noexcept;
+            static std::array<int, 3> versionComponents() noexcept;
 
             /**
              * @brief Estimates the block height of a given timestamp
@@ -1102,7 +1103,7 @@ namespace ots {
              * @note The estimation automatically substracts 10 days, how test have show a
              *       difference up to 8 days with data until 2025-01-23
              */
-			static uint64_t heightFromTimestamp(uint64_t timestamp, Network network = Network::MAIN);
+            static uint64_t heightFromTimestamp(uint64_t timestamp, Network network = Network::MAIN);
 
             /**
              * @brief Estimates the timestamp for a given block height on a network
@@ -1110,7 +1111,7 @@ namespace ots {
              * @param network estimation is network related
              * @return timestamp unix timestamp (epoch, seconds since 1970-01-01 00:00:00 UTC)
              */
-			static uint64_t timestampFromHeight(uint64_t height, Network network = Network::MAIN);
+            static uint64_t timestampFromHeight(uint64_t height, Network network = Network::MAIN);
 
             /**
              * @brief Random 32 bytes
@@ -1208,12 +1209,12 @@ namespace ots {
              *
              * @note is an alias for Wallet::verifyData(data, address, signature, false)
              */
-			static bool verifyData(
-					const std::string& data, 
-					const std::string& address, 
-					const std::string& signature,
+            static bool verifyData(
+                    const std::string& data,
+                    const std::string& address,
+                    const std::string& signature,
                     bool legacyFallback = false
-					);
+                    );
 
         protected:
             /**
@@ -1230,14 +1231,14 @@ namespace ots {
             static double sEnforceEntropyMinLevel;
             static uint32_t sMaxAccountDepth;
             static uint32_t sMaxIndexDepth;
-	};
+    };
 
     /**
      * @class Wallet
      * @brief provides all offline wallet functionality
      */
-	class Wallet {
-		public:
+    class Wallet {
+        public:
 
             /**
              * @brief The block height on creation of the wallet
@@ -1255,7 +1256,7 @@ namespace ots {
              * @param index starting from 0 is the index of the subaddress in the account
              * @return Standard address for account 0 and index 0 else the subaddress
              */
-			Address address(uint32_t account = 0, uint32_t index = 0) const noexcept;
+            Address address(uint32_t account = 0, uint32_t index = 0) const noexcept;
 
             /**
              * @brief Gives a list of accounts (e.g. for a address browser)
@@ -1264,7 +1265,7 @@ namespace ots {
              * @return the list of the addresses which represent the account (subaddress index 0)
              * @see https://docs.getmonero.org/public-address/subaddress
              */
-			std::vector<Address> accounts(uint32_t max = 10, uint32_t offset = 0) const noexcept;
+            std::vector<Address> accounts(uint32_t max = 10, uint32_t offset = 0) const noexcept;
 
             /**
              * @brief Gives a list of subaddresses for a given account
@@ -1273,21 +1274,21 @@ namespace ots {
              * @param offset first subindex to return
              * @return the list of the addresses which represent subaddresses of the account (subaddress index 0 is the account itself)
              */
-			std::vector<Address> subAddresses(uint32_t account = 0, uint32_t max = 10, uint32_t offset = 0) const noexcept;
+            std::vector<Address> subAddresses(uint32_t account = 0, uint32_t max = 10, uint32_t offset = 0) const noexcept;
 
             /**
              * @brief check if the address string is a valid monero address and then if the address belongs to the wallet
              * @param address the string containing supposingly a monero address
              * @return false if the address is not valid or not belong to the wallet, otherwise true
              */
-			bool hasAddress(const std::string& address, uint32_t maxAccountDepth = 0, uint32_t maxIndexDepth = 0) const noexcept;
+            bool hasAddress(const std::string& address, uint32_t maxAccountDepth = 0, uint32_t maxIndexDepth = 0) const noexcept;
 
             /**
              * @brief check if the address belongs to the wallet
              * @param address the monero address
              * @return true if the address belongs to the wallet
              */
-			bool hasAddress(const Address& address, uint32_t maxAccountDepth = 0, uint32_t maxIndexDepth = 0) const noexcept;
+            bool hasAddress(const Address& address, uint32_t maxAccountDepth = 0, uint32_t maxIndexDepth = 0) const noexcept;
 
             /**
              * @brief check if the address string is a valid monero address and give the account and subindex
@@ -1296,7 +1297,7 @@ namespace ots {
              * @throws ots::exception::wallet::AddressNotFound if the address is not in the wallet
              * @return first number is the account, second number the index
              */
-			std::pair<uint32_t, uint32_t> addressIndex(const std::string& address, uint32_t maxAccountDepth = 0, uint32_t maxIndexDepth = 0) const;
+            std::pair<uint32_t, uint32_t> addressIndex(const std::string& address, uint32_t maxAccountDepth = 0, uint32_t maxIndexDepth = 0) const;
 
             /**
              * @brief get the account and subindex of a address in the wallet
@@ -1305,7 +1306,7 @@ namespace ots {
              * @throws ots::exception::wallet::AddressNotFound if the address is not in the wallet
              * @return first number is the account, second number the index
              */
-			std::pair<uint32_t, uint32_t> addressIndex(const Address& address, uint32_t maxAccountDepth = 0, uint32_t maxIndexDepth = 0) const;
+            std::pair<uint32_t, uint32_t> addressIndex(const Address& address, uint32_t maxAccountDepth = 0, uint32_t maxIndexDepth = 0) const;
 
             /**
              * @brief The Secret View Key
@@ -1337,7 +1338,7 @@ namespace ots {
              * @throws ots::exception::wallet::ImportOutputs if provides outputs are not valid
              * @note the outputs are needed to export the key images @see Wallet::importOutputs()
              */
-			uint64_t importOutputs(const std::string& outputs);
+            uint64_t importOutputs(const std::string& outputs);
 
             /**
              * @brief export key images after outputs are imported
@@ -1353,7 +1354,7 @@ namespace ots {
              * @throws ots::exception::tx::Invalid if the provided transaction is invalid
              * @return a Transaction Description
              */
-			TxDescription describeTransaction(const std::string& unsignedTransaction) const;
+            TxDescription describeTransaction(const std::string& unsignedTransaction) const;
 
             /**
              * @brief Gives a warnings if any for the unsigned transaction
@@ -1361,14 +1362,14 @@ namespace ots {
              * @throws ots::exception::tx::Invalid if the provided transaction is invalid
              * @return a list of warnings
              */
-			std::vector<TxWarning> checkTransaction(const std::string& unsignedTransaction) const;
+            std::vector<TxWarning> checkTransaction(const std::string& unsignedTransaction) const;
 
             /**
              * @brief Gives a warnings if any for the unsigned transaction
              * @param description Transaction Description object
              * @return a list of warnings
              */
-			std::vector<TxWarning> checkTransaction(const TxDescription& description) const noexcept;
+            std::vector<TxWarning> checkTransaction(const TxDescription& description) const noexcept;
 
             /**
              * @brief Sign a provided unsigned transaction
@@ -1376,14 +1377,14 @@ namespace ots {
              * @throws ots::exception::tx::Invalid if the provided transaction is invalid
              * @return a signed transaction
              */
-			std::string signTransaction(const std::string& unsignedTransaction) const;
+            std::string signTransaction(const std::string& unsignedTransaction) const;
 
             /**
              * @brief Sign a provided string
              * @param data String of the message to sign
              * @return signature of the message
              */
-			std::string signData(const std::string& data) const noexcept;
+            std::string signData(const std::string& data) const noexcept;
 
             /**
              * @brief sign a message with subindex address of the wallet
@@ -1422,12 +1423,12 @@ namespace ots {
              * @throws ots::exception::address::Invalid if the address is not valid
              * @return true if the signature is valid
              */
-			static bool verifyData(
-					const std::string& data, 
-					const std::string& address, 
-					const std::string& signature,
+            static bool verifyData(
+                    const std::string& data,
+                    const std::string& address,
+                    const std::string& signature,
                     bool legacyFallback = false
-					);
+                    );
 
             /**
              * @brief Verify a signed message
@@ -1438,12 +1439,12 @@ namespace ots {
              * @throws ots::exception::address::Invalid if the address is not valid
              * @return true if the signature is valid
              */
-			static bool verifyData(
-					const std::string& data, 
-					const Address& address, 
-					const std::string& signature,
+            static bool verifyData(
+                    const std::string& data,
+                    const Address& address,
+                    const std::string& signature,
                     bool legacyFallback = false
-					);
+                    );
 
             /**
              * @brief Verify a signed message
@@ -1454,12 +1455,12 @@ namespace ots {
              * @throws ots::exception::address::Invalid if the address is not valid
              * @return true if the signature is valid
              */
-			bool verifyData(
-					const std::string& data, 
-					const std::pair<uint32_t, uint32_t>& index,
-					const std::string& signature,
+            bool verifyData(
+                    const std::string& data,
+                    const std::pair<uint32_t, uint32_t>& index,
+                    const std::string& signature,
                     bool legacyFallback = false
-					) const;
+                    ) const;
 
             /**
              * @brief Verify a signed message, for the wallet address
@@ -1469,11 +1470,11 @@ namespace ots {
              * @throws ots::exception::address::Invalid if the address is not valid
              * @return true if the signature is valid
              */
-			bool verifyData(
-					const std::string& data, 
-					const std::string& signature,
+            bool verifyData(
+                    const std::string& data,
+                    const std::string& signature,
                     bool legacyFallback = false
-					) const;
+                    ) const;
 
             /**
              * @brief Create a offline Wallet from a secret key
@@ -1507,7 +1508,7 @@ namespace ots {
             std::unique_ptr<Account, AccountDeleter> m_account;
             Network m_network;
             uint64_t m_height = 0;
-	};
+    };
 
     struct FlowVector {
         Address address;
@@ -1561,7 +1562,7 @@ namespace ots {
      * @todo TODO: Figure out how to best offer this kind of warnings (i18n?)
      *             > Think this should be external or a optional addon
      */
-	class TxWarning {};
+    class TxWarning {};
 
     // set this on the end because there will be a lot of bloat in the documentation.
     /**
@@ -1586,13 +1587,13 @@ namespace ots {
 
             /** @brief Copy constructor */
             WipeableString(const WipeableString& other);
-            
+
             /** @brief Move constructor */
             WipeableString(WipeableString&& other) noexcept;
-            
+
             /** @brief Copy assignment operator */
             WipeableString& operator=(const WipeableString& other);
-            
+
             /** @brief Move assignment operator */
             WipeableString& operator=(WipeableString&& other) noexcept;
 
@@ -1636,7 +1637,7 @@ namespace ots {
 
             /** @brief Find substring */
             size_t find(const WipeableString& str, size_t pos = 0) const noexcept;
-            
+
             /** @brief Find C-string */
             size_t find(const char* s, size_t pos = 0) const noexcept;
 
