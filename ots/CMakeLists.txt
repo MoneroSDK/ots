@@ -1,19 +1,13 @@
-cmake_minimum_required(VERSION 3.10)
-# Silence policy warnings from anthropic... TODO: I think it is fucked up, but need to see how to get rid of the dependencies like boost and OpenSSL to make the lib fully standalone
+cmake_minimum_required(VERSION 3.30)
+# TODO: dependencies like boost and OpenSSL to make the lib fully standalone should be removed
 cmake_policy(SET CMP0148 OLD)  # For Python modules warning
+if (POLICY CMP0148)
+	cmake_policy(SET CMP0148 OLD) # https://cmake.org/cmake/help/latest/policy/CMP0148.html
+endif()
 cmake_policy(SET CMP0076 NEW)  # For target_sources relative paths
 # cmake_policy(SET CMP0115 NEW)  # For source file extensions
 
-# speed up turnarounds
-find_program(CCACHE_PROGRAM ccache)
-if(CCACHE_PROGRAM)
-	set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
-	set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
-	message(STATUS "Using ccache: ${CCACHE_PROGRAM}")
-endif()
-
-# TODO: should think about a version strategy
-project(monero-ots VERSION 0.2.0)
+project(monero-ots VERSION 0.3.0)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -25,6 +19,7 @@ set(C_STANDARD 11)
 set(C_STANDARD_REQUIRED ON)
 
 # Options
+option (USE_CCACHE "Use ccache if a usable instance is found" ON)
 option(DEBUG "Build with debug symbols" OFF)
 if(DEBUG)
 	add_compile_definitions(DEBUG=1)
@@ -38,6 +33,14 @@ option(BUILD_DOCS "Build documentation" OFF)
 option(BUILD_V1SIGN "Build v1sign tool" OFF)
 option(RUN_TESTS "Run tests after build" OFF)
 option(BUILD_SHARED_LIBS "Build shared library" OFF)  # Default to static
+
+# speed up turnarounds
+find_program(CCACHE_PROGRAM ccache)
+if(CCACHE_PROGRAM)
+	set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+	set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+	message(STATUS "Using ccache: ${CCACHE_PROGRAM}")
+endif()
 
 # Set library type based on BUILD_SHARED_LIBS
 if(BUILD_SHARED_LIBS)
@@ -64,19 +67,18 @@ if(!BUILD_SHARED_LIBS)
 endif()
 
 # Static linking setup
-# TODO: maybe in the end I will change my mind about all on static standalone library, so check again later
 if(NOT BUILD_SHARED_LIBS)
 	set(Boost_USE_STATIC_LIBS ON)
 
 	set(OPENSSL_USE_STATIC_LIBS TRUE)
-	set(OPENSSL_CRYPTO_LIBRARY "/usr/lib/x86_64-linux-gnu/libcrypto.a") # TODO: must not be a fixed path!
-	set(OPENSSL_SSL_LIBRARY "/usr/lib/x86_64-linux-gnu/libssl.a") # TODO: must not be a fixed path!
+	# set(OPENSSL_CRYPTO_LIBRARY "/usr/lib/x86_64-linux-gnu/libcrypto.a") # TODO: must not be a fixed path!
+	# set(OPENSSL_SSL_LIBRARY "/usr/lib/x86_64-linux-gnu/libssl.a") # TODO: must not be a fixed path!
 else()
 	set(Boost_USE_STATIC_LIBS OFF)
 	set(OPENSSL_USE_STATIC_LIBS FALSE)
 endif()
 
-find_package(Boost_CONFIG REQUIRED COMPONENTS filesystem thread system chrono serialization)
+find_package(Boost REQUIRED COMPONENTS filesystem thread system chrono serialization)
 find_package(OpenSSL REQUIRED)
 
 # Require Monero source directory
@@ -111,11 +113,11 @@ endif()
 
 # Version configuration
 configure_file(
-	${CMAKE_CURRENT_SOURCE_DIR}/src/version.h.in # maybe that should also be changed to ots-version.h.in TODO: check later
+	${CMAKE_CURRENT_SOURCE_DIR}/src/ots-version.h.in
 	${CMAKE_CURRENT_BINARY_DIR}/include/ots-version.h # changed version.h to ots-version.h to avoid conflicts with monero
 )
 
-# Create a stubs library for now, hate this cluster coitus, we sort this out later
+# Create a stubs library to avoid dependencies
 add_library(monero-stubs STATIC
 	stubs/src/unbound.cpp
 	stubs/src/dns_utils.cpp
@@ -149,7 +151,7 @@ target_include_directories(easylogging
 
 target_compile_definitions(easylogging
 	PRIVATE
-	# disable easylogging complete, another cluster coitus
+	# disable easylogging complete
 	ELPP_DISABLE_LOGS
 	ELPP_NO_DEFAULT_LOG_FILE
 	ELPP_NO_LOG_TO_FILE
@@ -373,7 +375,6 @@ target_link_libraries(monero-minimal
 
 set_target_properties(monero-minimal PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-# TODO: what to do about polyseed? I don't like it, but I also shouldn't rework the whole thing, but how it is it forces me also to ugly code duplication
 # Polyseed library
 set(POLYSEED_SOURCES
 	${POLYSEED_SOURCE_DIR}/dependency.c
@@ -427,7 +428,6 @@ set_target_properties(polyseed PROPERTIES POSITION_INDEPENDENT_CODE ON)
 # Create utf8proc library
 set(UTF8PROC_INSTALL OFF)
 set(UTF8PROC_ENABLE_TESTING OFF)
-# set(BUILD_SHARED_LIBS OFF) # what did I thought? TODO: fix if needed, probably is needed for shared libs
 
 add_library(utf8proc STATIC
 	${CMAKE_CURRENT_SOURCE_DIR}/external/utf8proc/utf8proc.c
@@ -459,7 +459,7 @@ set_target_properties(utf8proc PROPERTIES
 
 # Main library
 add_library(monero-ots ${LIB_TYPE}
-	${MONERO_SOURCE_DIR}/src/version.cpp
+	${CMAKE_CURRENT_BINARY_DIR}/version.cpp
 	src/ots.cpp
 	src/wipeable-string.cpp
 	src/seedindices.cpp
@@ -489,7 +489,7 @@ add_library(monero-ots ${LIB_TYPE}
 	src/c-abi/wallet.cpp
 	src/c-abi/seed-jar.cpp
 	src/c-abi/transaction.cpp
-	${EASYLOGGING} # TODO: WTF! All this chingadera makes me desires to rewrite the whole thing :@ But need to calm my horses because it will probably take a eternity to get it done
+	${EASYLOGGING}
 )
 
 target_link_libraries(monero-ots
@@ -497,7 +497,7 @@ target_link_libraries(monero-ots
 	utf8proc
 	polyseed
 	monero-minimal
-	Boost::serialization # TODO: needed at the moment for account.cpp, possibe to get rid of it?
+	Boost::serialization # needed at the moment for account.cpp
 	${SWITCH_STATIC}
 )
 
@@ -505,7 +505,7 @@ target_link_libraries(monero-ots
 target_compile_definitions(monero-ots
 	PRIVATE
 	OTS_VERSION="${PROJECT_VERSION}"
-	# disable easylogging complete, another cluster coitus
+	# disable easylogging complete
 	ELPP_DISABLE_LOGS
 	ELPP_NO_DEFAULT_LOG_FILE
 	ELPP_NO_LOG_TO_FILE
@@ -563,6 +563,7 @@ install(FILES
 	include/ots.h
 	include/ots.hpp
 	include/ots-errors.h
+	include/ots-exceptions.hpp
 	${CMAKE_CURRENT_BINARY_DIR}/include/ots-version.h
 	DESTINATION include
 )
@@ -607,7 +608,6 @@ endif()
 if (BUILD_V1SIGN)
 	add_subdirectory(tools/v1sign)
 endif()
-
 
 # Tests configuration
 if(BUILD_TESTS)
