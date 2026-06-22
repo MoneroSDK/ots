@@ -33,7 +33,7 @@ namespace ots {
      *
      * @note in the REGISTER_EXCEPTION statement in the classes,
      *       the C error codes are defined which is the second parameter
-     *       
+     *
      */
     namespace exception {
         /**

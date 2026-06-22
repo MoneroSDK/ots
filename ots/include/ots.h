@@ -2079,7 +2079,7 @@ extern "C" {
      * @param[in] wallet Wallet handle
      * @param[in] data Original data
      * @param[in] data_size Size of data to sign
-     * @param[in] account Account index  
+     * @param[in] account Account index
      * @param[in] subaddr Subaddress index
      * @param[in] signature Signature to verify
      * @param[in] legacy_fallback Try legacy verification if modern fails
