@@ -1,165 +1,313 @@
-# Copyright (c) 2014-2024, The Monero Project
-# 
-# All rights reserved.
-# 
-# Redistribution and use in source and binary forms, with or without modification, are
-# permitted provided that the following conditions are met:
-# 
-# 1. Redistributions of source code must retain the above copyright notice, this list of
-#    conditions and the following disclaimer.
-# 
-# 2. Redistributions in binary form must reproduce the above copyright notice, this list
-#    of conditions and the following disclaimer in the documentation and/or other
-#    materials provided with the distribution.
-# 
-# 3. Neither the name of the copyright holder nor the names of its contributors may be
-#    used to endorse or promote products derived from this software without specific
-#    prior written permission.
-# 
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY
-# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-# MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
-# THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
-# STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
-# THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-# 
-# Parts of this file are originally copyright (c) 2012-2013 The Cryptonote developers
+# Require C++17
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+# Require C 11
+set(C_STANDARD 11)
+set(C_STANDARD_REQUIRED ON)
 
-set(MONERO_WALLET_CRYPTO_BENCH "auto" CACHE STRING "Select wallet crypto libraries for benchmarking")
-
-# The docs say this only affects grouping in IDEs
-set(folder "tests")
-set(TEST_DATA_DIR "${CMAKE_CURRENT_BINARY_DIR}/data")
-
-if (WIN32 AND STATIC)
-  add_definitions(-DSTATICLIB)
-  # miniupnp changed their static define
-  add_definitions(-DMINIUPNP_STATICLIB)
-endif ()
-
-find_package(GTest)
-
-if (GTest_FOUND)
-  include_directories(SYSTEM ${GTEST_INCLUDE_DIRS})
-else ()
-  message(STATUS "GTest not found on the system: will use GTest bundled with this source")
-
-  include(ExternalProject)
-  ExternalProject_Add(googletest
-    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/gtest
-    BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/gtest
-    DOWNLOAD_COMMAND ""
-    UPDATE_COMMAND ""
-    INSTALL_COMMAND ""
-  )
-  add_library(gtest      UNKNOWN IMPORTED)
-  add_library(gtest_main UNKNOWN IMPORTED)
-  set_target_properties(gtest PROPERTIES
-    IMPORTED_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/gtest/${CMAKE_STATIC_LIBRARY_PREFIX}gtest${CMAKE_STATIC_LIBRARY_SUFFIX}"
-  )
-  set_target_properties(gtest_main PROPERTIES
-    IMPORTED_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/gtest/${CMAKE_STATIC_LIBRARY_PREFIX}gtest_main${CMAKE_STATIC_LIBRARY_SUFFIX}"
-  )
-  add_dependencies(gtest      googletest)
-  add_dependencies(gtest_main googletest)
-
-  # Emulate the FindGTest module's variable.
-  set(GTEST_LIBRARIES gtest gtest_main)
-  set(GTEST_BOTH_LIBRARIES gtest gtest_main)
-  include_directories(SYSTEM "${CMAKE_CURRENT_SOURCE_DIR}/gtest/include")
-endif (GTest_FOUND)
-
-message(STATUS "Copying test data directory...")
-file(COPY data DESTINATION .) # Copy data directory from source root to build root
-
-if (CMAKE_BUILD_TYPE STREQUAL "fuzz" OR OSSFUZZ)
-  add_subdirectory(fuzz)
-else ()
-  add_subdirectory(core_tests)
-  add_subdirectory(fuzz)
-  add_subdirectory(crypto)
-  add_subdirectory(functional_tests)
-  add_subdirectory(performance_tests)
-  add_subdirectory(unit_tests)
-  add_subdirectory(difficulty)
-  add_subdirectory(block_weight)
-  add_subdirectory(hash)
-  add_subdirectory(net_load_tests)
+if(BUILD_SHARED_LIBS)
+	set(LIB_TYPE SHARED)
+	set(CMAKE_ASM_CREATE_SHARED_LIBRARY ON)
+else()
+	set(LIB_TYPE STATIC)
+	set(SWITCH_STATIC "-static")
+	set(SWITCH_STATIC_LIB "STATICLIB")
 endif()
 
-if (BUILD_GUI_DEPS)
-  add_subdirectory(libwallet_api_tests)
+# Use Monero's GTest from parent directory
+# TODO: will move to external/gtest: https://github.com/monero-project/monero/pull/9715
+set(GTEST_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../../tests/gtest)
+set(GTEST_INCLUDE_DIRS ${GTEST_ROOT}/include)
+
+# Add GTest as a subdirectory
+add_subdirectory(${GTEST_ROOT} gtest)
+
+# Auto-generate header file from *.{outputs,unsigned_tx} files
+set(GENERATED_HEADERS_DIR "${CMAKE_BINARY_DIR}/tests/include")
+file(MAKE_DIRECTORY ${GENERATED_HEADERS_DIR})
+# outputs
+file(GLOB OUTPUTS_FILES "${CMAKE_CURRENT_SOURCE_DIR}/*.outputs")
+set(OUTPUTS_HEADER_FILE "${GENERATED_HEADERS_DIR}/data-wallet-outputs.hpp")
+set(OUTPUTS_MACROS "")
+foreach(OUTPUTS_FILE ${OUTPUTS_FILES})
+	get_filename_component(HASH_ID ${OUTPUTS_FILE} NAME_WE)
+	set(MACRO_NAME "WALLET_${HASH_ID}_OUTPUTS")
+	list(APPEND OUTPUTS_MACROS "${OUTPUTS_FILE}:${MACRO_NAME}")
+endforeach()
+if(OUTPUTS_MACROS)
+	add_custom_command(
+		OUTPUT ${OUTPUTS_HEADER_FILE}
+		COMMAND ${CMAKE_BINARY_DIR}/tools/binheadermacro/bin2hppmacro ${OUTPUTS_HEADER_FILE} ${OUTPUTS_MACROS}
+		DEPENDS ${OUTPUTS_FILES} tools/binheadermacro/bin2hppmacro
+		COMMENT "Generating header macros for ${OUTPUTS_HEADER_FILE}"
+		VERBATIM
+	)
+	list(APPEND GENERATED_HEADERS ${OUTPUTS_HEADER_FILE})
+endif()
+# unsigned_tx
+file(GLOB UNSIGNED_TX_FILES "${CMAKE_CURRENT_SOURCE_DIR}/*.unsigned_tx")
+set(UNSIGNED_TX_HEADER_FILE "${GENERATED_HEADERS_DIR}/data-wallet-unsigned-tx.hpp")
+set(UNSIGNED_TX_MACROS "")
+foreach(UNSIGNED_TX_FILE ${UNSIGNED_TX_FILES})
+	get_filename_component(HASH_ID ${UNSIGNED_TX_FILE} NAME_WE)
+	set(MACRO_NAME "WALLET_${HASH_ID}_UNSIGNED_TX")
+	list(APPEND UNSIGNED_TX_MACROS "${UNSIGNED_TX_FILE}:${MACRO_NAME}")
+endforeach()
+if(UNSIGNED_TX_MACROS)
+	add_custom_command(
+		OUTPUT ${UNSIGNED_TX_HEADER_FILE}
+		COMMAND ${CMAKE_BINARY_DIR}/tools/binheadermacro/bin2hppmacro ${UNSIGNED_TX_HEADER_FILE} ${UNSIGNED_TX_MACROS}
+		DEPENDS ${UNSIGNED_TX_FILES} tools/binheadermacro/bin2hppmacro
+		COMMENT "Generating header macros for ${UNSIGNED_TX_HEADER_FILE}"
+		VERBATIM
+	)
+	list(APPEND GENERATED_HEADERS ${UNSIGNED_TX_HEADER_FILE})
+endif()
+# unsigned_tx_json
+file(GLOB UNSIGNED_TX_JSON_FILES "${CMAKE_CURRENT_SOURCE_DIR}/*.unsigned_tx_json")
+set(UNSIGNED_TX_JSON_HEADER_FILE "${GENERATED_HEADERS_DIR}/data-wallet-unsigned-tx-json.hpp")
+set(UNSIGNED_TX_JSON_MACROS "")
+foreach(UNSIGNED_TX_JSON_FILE ${UNSIGNED_TX_JSON_FILES})
+	get_filename_component(HASH_ID ${UNSIGNED_TX_JSON_FILE} NAME_WE)
+	set(MACRO_NAME "WALLET_${HASH_ID}_UNSIGNED_TX_JSON")
+	list(APPEND UNSIGNED_TX_JSON_MACROS "${UNSIGNED_TX_JSON_FILE}:${MACRO_NAME}")
+endforeach()
+if(UNSIGNED_TX_JSON_MACROS)
+	add_custom_command(
+		OUTPUT ${UNSIGNED_TX_JSON_HEADER_FILE}
+		COMMAND ${CMAKE_BINARY_DIR}/tools/binheadermacro/bin2hppmacro ${UNSIGNED_TX_JSON_HEADER_FILE} ${UNSIGNED_TX_JSON_MACROS}
+		DEPENDS ${UNSIGNED_TX_JSON_FILES} tools/binheadermacro/bin2hppmacro
+		COMMENT "Generating header macros for ${UNSIGNED_TX_JSON_HEADER_FILE}"
+		VERBATIM
+	)
+	list(APPEND GENERATED_HEADERS ${UNSIGNED_TX_JSON_HEADER_FILE})
+endif()
+# common
+add_custom_target(generate_wallet_headers ALL DEPENDS ${GENERATED_HEADERS})
+include_directories(${GENERATED_HEADERS_DIR})
+
+add_library(rapidjson INTERFACE)
+
+target_include_directories(rapidjson
+	INTERFACE
+	${CMAKE_CURRENT_SOURCE_DIR}/../../external/rapidjson/include
+)
+
+add_library(
+	json-tx-description
+	${LIB_TYPE}
+	${CMAKE_CURRENT_SOURCE_DIR}/json-tx-description.cpp
+)
+target_include_directories(
+	json-tx-description
+	PUBLIC
+	${CMAKE_CURRENT_SOURCE_DIR}/../../external/rapidjson/include
+)
+target_link_libraries(
+	json-tx-description
+	PRIVATE
+	monero-ots
+	rapidjson
+)
+
+
+# C++ test executable, to check the OTS C++ library
+add_executable(gtest_ots.cpp
+	gtest_ots.cpp
+	# json-tx-description.cpp
+	test-tx-description.cpp
+)
+
+add_dependencies(gtest_ots.cpp
+	generate_wallet_headers
+)
+
+target_link_libraries(gtest_ots.cpp
+	PRIVATE
+	utf8proc
+	monero-ots
+	rapidjson
+	json-tx-description
+	gtest
+	gtest_main
+	${CMAKE_DL_LIBS}
+)
+
+# Include Monero's GTest directories
+target_include_directories(gtest_ots.cpp PRIVATE
+	${GTEST_ROOT}/include
+	${GENERATED_HEADERS_DIR}
+	${CMAKE_CURRENT_SOURCE_DIR}/../../external/rapidjson/include
+)
+
+# C++/C sync test executable, to check if the C++ and C libraries are in sync
+add_executable(gtest_cpp_c_sync.cpp
+	gtest_cpp_c_sync.cpp
+)
+
+target_link_libraries(gtest_cpp_c_sync.cpp
+	PRIVATE
+	monero-ots
+	gtest
+	gtest_main
+)
+
+# Include Monero's GTest directories
+target_include_directories(gtest_cpp_c_sync.cpp PRIVATE
+	${GTEST_ROOT}/include
+	${GTEST_ROOT}/../../src
+	${GTEST_ROOT}/../../contrib/epee/include
+	${GTEST_ROOT}/../../external/easylogging++
+)
+
+# Blocktime test executable (only if BUILD_BLOCKTIME_TESTS is enabled)
+if(BUILD_BLOCKTIME_TESTS)
+	set(MONERO_MAINNET_TIMESTAMPS "${CMAKE_BINARY_DIR}/tests/mainnet.timestamps")
+	set(MONERO_TESTNET_TIMESTAMPS "${CMAKE_BINARY_DIR}/tests/testnet.timestamps")
+	set(MONERO_STAGENET_TIMESTAMPS "${CMAKE_BINARY_DIR}/tests/stagenet.timestamps")
+	if(NOT EXISTS ${MONERO_MAINNET_TIMESTAMPS})
+		if(NOT MONERO_MAINNET_BLOCKS OR NOT EXISTS ${MONERO_MAINNET_BLOCKS})
+			message(FATAL_ERROR "Blocktime tests require mainnet.timestamps file")
+		else()
+			add_custom_command(
+				OUTPUT ${MONERO_MAINNET_TIMESTAMPS}
+				COMMAND ${CMAKE_BINARY_DIR}/tools/blocktime/blocktime_extractor
+				${MONERO_MAINNET_BLOCKS}
+				${MONERO_MAINNET_TIMESTAMPS}
+				DEPENDS ${MONERO_MAINNET_BLOCKS} tools/blocktime/blocktime_extractor
+				COMMENT "Extracting timestamps from mainnet blocks"
+				VERBATIM
+			)
+		endif()
+	endif()
+	if(NOT EXISTS ${MONERO_TESTNET_TIMESTAMPS})
+		if(NOT MONERO_TESTNET_BLOCKS OR NOT EXISTS ${MONERO_TESTNET_BLOCKS})
+			message(FATAL_ERROR "Blocktime tests require testnet.timestamps file")
+		else()
+			add_custom_command(
+				OUTPUT ${MONERO_TESTNET_TIMESTAMPS}
+				COMMAND ${CMAKE_BINARY_DIR}/tools/blocktime/blocktime_extractor
+				${MONERO_TESTNET_BLOCKS}
+				${MONERO_TESTNET_TIMESTAMPS}
+				DEPENDS ${MONERO_TESTNET_BLOCKS} tools/blocktime/blocktime_extractor
+				COMMENT "Extracting timestamps from testnet blocks"
+				VERBATIM
+			)
+		endif()
+	endif()
+	if(NOT EXISTS ${MONERO_STAGENET_TIMESTAMPS})
+		if(NOT MONERO_STAGENET_BLOCKS OR NOT EXISTS ${MONERO_STAGENET_BLOCKS})
+			message(FATAL_ERROR "Blocktime tests require stagenet.timestamps file")
+		else()
+			add_custom_command(
+				OUTPUT ${MONERO_STAGENET_TIMESTAMPS}
+				COMMAND ${CMAKE_BINARY_DIR}/tools/blocktime/blocktime_extractor
+				${MONERO_STAGENET_BLOCKS}
+				${MONERO_STAGENET_TIMESTAMPS}
+				DEPENDS ${MONERO_STAGENET_BLOCKS} tools/blocktime/blocktime_extractor
+				COMMENT "Extracting timestamps from stagenet blocks"
+				VERBATIM
+			)
+		endif()
+	endif()
+	add_custom_target(generate_blocktime_timestamps ALL
+		DEPENDS
+		${MONERO_MAINNET_TIMESTAMPS}
+		${MONERO_TESTNET_TIMESTAMPS}
+		${MONERO_STAGENET_TIMESTAMPS}
+	)
+	# Add the blocktime test executable
+	add_executable(gtest_blocktime gtest_blocktime.cpp)
+
+	add_dependencies(gtest_blocktime generate_blocktime_timestamps)
+	target_link_libraries(gtest_blocktime
+		PRIVATE
+		monero-ots
+		blocktime
+		gtest
+		gtest_main
+	)
+
+	target_include_directories(gtest_blocktime PRIVATE
+		${GTEST_ROOT}/include
+		${CMAKE_SOURCE_DIR}/../blocktime/include
+	)
+	# Register the test
 endif()
 
-if (TREZOR_DEBUG)
-  add_subdirectory(trezor)
+# Use local Check framework
+set(CHECK_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/check)
+set(CHECK_INCLUDE_DIRS
+	${CHECK_ROOT}/src
+	${CHECK_ROOT}/../include
+)
+
+# Add Check as a subdirectory
+add_subdirectory(${CHECK_ROOT} check)
+
+# C ABI modules tests (check_otc_c)
+file(GLOB MODULE_TEST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/c-abi/*.c")
+# Create the file for suite declarations
+set(SUITE_HEADER "${CMAKE_BINARY_DIR}/generated_suites.h")
+# Write includes and declarations to the header
+file(WRITE ${SUITE_HEADER} "// Automatically generated Suite declarations\n\n")
+foreach(TEST_FILE ${MODULE_TEST_SOURCES})
+	get_filename_component(TEST_BASENAME ${TEST_FILE} NAME_WE)
+	file(APPEND ${SUITE_HEADER} "Suite* ${TEST_BASENAME}_suite(void);\n")
+endforeach()
+# Write macro for including all suites
+file(APPEND ${SUITE_HEADER} "\n#define INCLUDED_SUITES \\\n")
+foreach(TEST_FILE ${MODULE_TEST_SOURCES})
+	get_filename_component(TEST_BASENAME ${TEST_FILE} NAME_WE)
+	file(APPEND ${SUITE_HEADER} "    srunner_add_suite(sr, ${TEST_BASENAME}_suite()); \\\n")
+endforeach()
+file(APPEND ${SUITE_HEADER} "// do not edit manually\n")
+
+# C test executable, to check the OTS C ABI library
+add_executable(check_ots_c
+	check_ots.c
+	data.cpp
+	${MODULE_TEST_SOURCES}
+)
+
+add_dependencies(check_ots_c generate_wallet_headers)
+
+target_include_directories(check_ots_c
+	PRIVATE
+	${CMAKE_BINARY_DIR}
+	${CHECK_INCLUDE_DIRS}
+	${GENERATED_HEADERS_DIR}
+)
+
+target_link_libraries(check_ots_c
+	PRIVATE
+	check
+	monero-ots
+	json-tx-description
+	pthread
+	stdc++
+)
+
+# Register tests
+add_test(NAME cpp_tests COMMAND gtest_ots.cpp)
+add_test(NAME sync_tests COMMAND gtest_cpp_c_sync.cpp)
+add_test(NAME c_tests COMMAND check_ots_c)
+
+# Set test properties
+set_tests_properties(c_tests PROPERTIES
+	ENVIRONMENT "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}"
+)
+set_tests_properties(cpp_tests PROPERTIES
+	ENVIRONMENT "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}"
+)
+set_tests_properties(sync_tests PROPERTIES
+	ENVIRONMENT "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}"
+)
+
+# Register blocktime tests if enabled
+if(BUILD_TESTS AND BUILD_BLOCKTIME_TESTS)
+	add_test(NAME blocktime_tests COMMAND gtest_blocktime)
+	set_tests_properties(blocktime_tests PROPERTIES
+		ENVIRONMENT "LD_LIBRARY_PATH=${CMAKE_BINARY_DIR}"
+	)
 endif()
-
-set(hash_targets_sources
-  hash-target.cpp)
-
-set(hash_targets_headers)
-
-monero_add_minimal_executable(hash-target-tests
-  ${hash_targets_sources}
-  ${hash_targets_headers})
-target_link_libraries(hash-target-tests
-  PRIVATE
-    cryptonote_core)
-set_property(TARGET hash-target-tests
-  PROPERTY
-    FOLDER "${folder}")
-
-add_test(
-  NAME    hash-target
-  COMMAND hash-target-tests)
-
-#
-# Configure wallet crypto benchmark
-#
-if (${MONERO_WALLET_CRYPTO_BENCH} STREQUAL "auto")
-  set(MONERO_WALLET_CRYPTO_BENCH "cn")
-  monero_crypto_autodetect(AVAILABLE BEST)
-  if (DEFINED AVAILABLE)
-    list(APPEND MONERO_WALLET_CRYPTO_BENCH ${AVAILABLE})
-  endif ()
-  message("Wallet crypto bench is using ${MONERO_WALLET_CRYPTO_BENCH}")
-endif ()
-
-list(REMOVE_DUPLICATES MONERO_WALLET_CRYPTO_BENCH)
-list(REMOVE_ITEM MONERO_WALLET_CRYPTO_BENCH "cn") # always used for comparison
-set(MONERO_WALLET_CRYPTO_BENCH_NAMES "(cn)")
-foreach(BENCH IN LISTS MONERO_WALLET_CRYPTO_BENCH)
-  monero_crypto_valid(${BENCH} VALID)
-  if (NOT VALID)
-    message(FATAL_ERROR "Invalid MONERO_WALLET_CRYPTO_BENCH option ${BENCH}")
-  endif ()
-
-  monero_crypto_get_target(${BENCH} BENCH_LIBRARY)
-  list(APPEND BENCH_OBJECTS $<TARGET_OBJECTS:${BENCH_LIBRARY}>)
-
-  monero_crypto_get_namespace(${BENCH} BENCH_NAMESPACE)
-  set(MONERO_WALLET_CRYPTO_BENCH_NAMES "${MONERO_WALLET_CRYPTO_BENCH_NAMES}(${BENCH_NAMESPACE})")
-endforeach ()
-
-configure_file("${CMAKE_CURRENT_SOURCE_DIR}/benchmark.h.in" "${MONERO_GENERATED_HEADERS_DIR}/tests/benchmark.h")
-monero_add_minimal_executable(monero-wallet-crypto-bench benchmark.cpp ${BENCH_OBJECTS})
-target_link_libraries(monero-wallet-crypto-bench cncrypto)
-
-add_test(NAME wallet-crypto-bench COMMAND monero-wallet-crypto-bench)
-
-
-set(enabled_tests
-    core_tests
-    difficulty
-    block_weight
-    hash
-    performance_tests
-    fuzz
-    unit_tests)
-
-add_custom_target(tests DEPENDS enabled_tests)
-set_property(TARGET tests PROPERTY FOLDER "${folder}")
