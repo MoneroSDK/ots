@@ -7,7 +7,7 @@ endif()
 cmake_policy(SET CMP0076 NEW)  # For target_sources relative paths
 # cmake_policy(SET CMP0115 NEW)  # For source file extensions
 
-project(monero-ots VERSION 0.4.0)
+project(monero-ots VERSION 0.4.1)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
