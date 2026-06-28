@@ -32,7 +32,7 @@ option(BUILD_BIN_HEADER_MACRO "Build tools to move binary files into header macr
 option(BUILD_DOCS "Build documentation" OFF)
 option(BUILD_V1SIGN "Build v1sign tool" OFF)
 option(RUN_TESTS "Run tests after build" OFF)
-option(BUILD_SHARED_LIBS "Build shared library" OFF)  # Default to static
+option(BUILD_SHARED_LIBS "Build shared library" ON)  # Default to static
 
 # speed up turnarounds
 find_program(CCACHE_PROGRAM ccache)
@@ -69,10 +69,7 @@ endif()
 # Static linking setup
 if(NOT BUILD_SHARED_LIBS)
 	set(Boost_USE_STATIC_LIBS ON)
-
 	set(OPENSSL_USE_STATIC_LIBS TRUE)
-	# set(OPENSSL_CRYPTO_LIBRARY "/usr/lib/x86_64-linux-gnu/libcrypto.a") # TODO: must not be a fixed path!
-	# set(OPENSSL_SSL_LIBRARY "/usr/lib/x86_64-linux-gnu/libssl.a") # TODO: must not be a fixed path!
 else()
 	set(Boost_USE_STATIC_LIBS OFF)
 	set(OPENSSL_USE_STATIC_LIBS FALSE)
@@ -231,16 +228,6 @@ set(RANDOMX_JIT ON CACHE BOOL "Enable RandomX JIT compilation" FORCE)
 set(RANDOMX_LARGE_PAGES OFF CACHE BOOL "Enable RandomX large pages support" FORCE)
 add_subdirectory(${RANDOMX_DIR} ${CMAKE_BINARY_DIR}/randomx)
 
-enable_language(ASM)
-add_library(cryptonight_asm STATIC
-	${MONERO_CRYPTO_SOURCE_DIR}/CryptonightR_template.S
-)
-target_include_directories(cryptonight_asm PRIVATE
-	${MONERO_SOURCE_DIR}/src
-)
-
-set_target_properties(cryptonight_asm PROPERTIES POSITION_INDEPENDENT_CODE ON)
-
 add_library(monero-crypto STATIC
 	${CMAKE_CURRENT_BINARY_DIR}/version.cpp
 	${MONERO_CRYPTO_SOURCE_DIR}/crypto.cpp
@@ -292,7 +279,6 @@ target_compile_definitions(monero-crypto
 
 target_link_libraries(monero-crypto
 	PRIVATE
-	cryptonight_asm
 	randomx
 	epee
 	easylogging
@@ -550,7 +536,6 @@ install(
 	epee
 	easylogging
 	randomx
-	cryptonight_asm
 	monero-crypto
 	EXPORT monero-ots-targets
 	LIBRARY DESTINATION lib
