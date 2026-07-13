@@ -747,7 +747,6 @@ process:
                 crypto::public_key output_public_key;
                 if(
                     !get_output_public_key(tx.vout[i], output_public_key)
-                
                     || !is_out_to_acc_precomp(
                         m_subaddresses,
                         output_public_key,
@@ -798,7 +797,12 @@ process:
         return warnings;
     }
 
-    std::string Account::encrypt(const char *plaintext, size_t len, const crypto::secret_key &skey, bool authenticated) const {
+    std::string Account::encrypt(
+        const char *plaintext,
+        size_t len,
+        const crypto::secret_key &skey,
+        bool authenticated
+    ) const {
         crypto::chacha_key key;
         crypto::generate_chacha_key(&skey, sizeof(skey), key, mKdfRounds);
         std::string ciphertext;
@@ -808,17 +812,28 @@ process:
         memcpy(&ciphertext[0], &iv, sizeof(iv));
         if(authenticated) {
             crypto::hash hash;
-            crypto::cn_fast_hash(ciphertext.data(), ciphertext.size() - sizeof(crypto::signature), hash);
+            crypto::cn_fast_hash(
+                ciphertext.data(),
+                ciphertext.size() - sizeof(crypto::signature),
+                hash
+            );
             crypto::public_key pkey;
             crypto::secret_key_to_public_key(skey, pkey);
             crypto::signature &signature = *(crypto::signature*)&ciphertext[ciphertext.size() - sizeof(crypto::signature)];
             crypto::generate_signature(hash, pkey, skey, signature);
+            if(!crypto::check_signature(hash, pkey, signature))
+                throw ots::exception::wallet::CiphertextAuthenticationFailed();
         }
         return ciphertext;
     }
 
     std::string Account::encryptWithViewSecretKey(const std::string &plaintext) const {
-        return encrypt(plaintext.c_str(), plaintext.size(), m_account.get_keys().m_view_secret_key, true);
+        return encrypt(
+            plaintext.c_str(),
+            plaintext.size(),
+            m_account.get_keys().m_view_secret_key,
+            true
+        );
     }
 
     crypto::public_key Account::get_tx_pub_key_from_received_outs(const transfer_details &td) const {
@@ -862,12 +877,12 @@ process:
     }
 
     void Account::check_acc_out_precomp(
-            const cryptonote::tx_out &o,
-            const crypto::key_derivation &derivation,
-            const std::vector<crypto::key_derivation> &additional_derivations,
-            size_t i,
-            tx_scan_info_t &tx_scan_info
-            ) const {
+        const cryptonote::tx_out &o,
+        const crypto::key_derivation &derivation,
+        const std::vector<crypto::key_derivation> &additional_derivations,
+        size_t i,
+        tx_scan_info_t &tx_scan_info
+    ) const {
         hw::device &hwdev = m_account.get_device();
         boost::unique_lock<hw::device> hwdev_lock(hwdev);
         hwdev.set_mode(hw::device::TRANSACTION_PARSE);
@@ -877,19 +892,27 @@ process:
             LOG_ERROR("wrong type id in transaction out");
             return;
         }
-        tx_scan_info.received = is_out_to_acc_precomp(m_subaddresses, output_public_key, derivation, additional_derivations, i, hwdev, get_output_view_tag(o));
+        tx_scan_info.received = is_out_to_acc_precomp(
+            m_subaddresses,
+            output_public_key,
+            derivation,
+            additional_derivations,
+            i,
+            hwdev,
+            get_output_view_tag(o)
+        );
         tx_scan_info.money_transfered = tx_scan_info.received ? o.amount : 0; // o.amount may be 0 for ringct outputs
         tx_scan_info.error = false;
     }
 
     void Account::check_acc_out_precomp(
-            const cryptonote::tx_out &o,
-            const crypto::key_derivation &derivation,
-            const std::vector<crypto::key_derivation> &additional_derivations,
-            size_t i,
-            const is_out_data *is_out_data,
-            tx_scan_info_t &tx_scan_info
-            ) const {
+        const cryptonote::tx_out &o,
+        const crypto::key_derivation &derivation,
+        const std::vector<crypto::key_derivation> &additional_derivations,
+        size_t i,
+        const is_out_data *is_out_data,
+        tx_scan_info_t &tx_scan_info
+    ) const {
         if(!is_out_data || i >= is_out_data->received.size())
             return check_acc_out_precomp(o, derivation, additional_derivations, i, tx_scan_info);
         tx_scan_info.received = is_out_data->received[i];
@@ -897,7 +920,11 @@ process:
         tx_scan_info.error = false;
     }
 
-    std::string Account::decrypt(const std::string &ciphertext, const crypto::secret_key &skey, bool authenticated) const {
+    std::string Account::decrypt(
+        const std::string &ciphertext,
+        const crypto::secret_key &skey,
+        bool authenticated
+    ) const {
         const size_t prefix_size = sizeof(crypto::chacha_iv) + (authenticated ? sizeof(crypto::signature) : 0);
         if(ciphertext.size() < prefix_size)
             throw ots::exception::wallet::InvalidCiphertext("Ciphertext too short");
@@ -919,18 +946,28 @@ process:
         return std::string(buffer.get(), ciphertext.size() - prefix_size);
     }
 
-    std::string Account::decryptWithViewSecretKey(const std::string& ciphertext, bool authenticated) const {
+    std::string Account::decryptWithViewSecretKey(
+        const std::string& ciphertext,
+        bool authenticated
+    ) const {
         return decrypt(ciphertext, m_account.get_keys().m_view_secret_key, authenticated);
     }
 
-    void Account::authenticateWithViewPublicKey(const std::string& data, const crypto::signature& signature) const {
+    void Account::authenticateWithViewPublicKey(
+        const std::string& data,
+        const crypto::signature& signature
+    ) const {
         crypto::hash hash;
         crypto::cn_fast_hash(data.data(), data.size(), hash);
         if(!crypto::check_signature(hash, m_account.get_keys().m_account_address.m_view_public_key, signature))
             throw ots::exception::sign::InvalidSignature();
     }
 
-    crypto::hash Account::hashData(const std::string& data, const crypto::public_key& spendKey, const crypto::public_key& viewKey) {
+    crypto::hash Account::hashData(
+        const std::string& data,
+        const crypto::public_key& spendKey,
+        const crypto::public_key& viewKey
+    ) {
         KECCAK_CTX ctx;
         keccak_init(&ctx);
         keccak_update(&ctx, (const uint8_t*)config::HASH_KEY_MESSAGE_SIGNING, sizeof(config::HASH_KEY_MESSAGE_SIGNING)); // includes NUL
@@ -960,7 +997,11 @@ process:
         return std::string("SigV2") + tools::base58::encode(std::string((const char *)&signature, sizeof(signature)));
     }
 
-    std::string Account::signData(const std::string& data, const std::pair<uint32_t, uint32_t>& index) const {
+    std::string Account::signData(
+        const std::string& data,
+        const std::pair<uint32_t,
+        uint32_t>& index
+    ) const {
         if(data.empty())
             throw ots::exception::sign::EmptyMessage();
         cryptonote::subaddress_index idx = {index.first, index.second};
@@ -980,13 +1021,28 @@ process:
         return std::string("SigV2") + tools::base58::encode(std::string((const char *)&signature, sizeof(signature)));
     }
 
-    std::string Account::signData(const std::string& data, const Address& address, uint32_t maxAccountDepth, uint32_t maxIndexDepth) const {
+    std::string Account::signData(
+        const std::string& data,
+        const Address& address,
+        uint32_t maxAccountDepth,
+        uint32_t maxIndexDepth
+    ) const {
         std::pair<uint32_t, uint32_t> index = addressIndex(address, maxAccountDepth, maxIndexDepth); // throws ots::exception::wallet::AddressNotFound if address is not in the wallet until maxAccountDepth and maxIndexDepth
         return signData(data, index);
     }
 
-    std::string Account::signData(const std::string& data, const std::string& address, uint32_t maxAccountDepth, uint32_t maxIndexDepth) const {
-        return signData(data, Address(address), maxAccountDepth, maxIndexDepth);
+    std::string Account::signData(
+        const std::string& data,
+        const std::string& address,
+        uint32_t maxAccountDepth,
+        uint32_t maxIndexDepth
+    ) const {
+        return signData(
+            data,
+            Address(address),
+            maxAccountDepth,
+            maxIndexDepth
+        );
     }
 
     bool Account::verifyData(
@@ -1022,11 +1078,19 @@ process:
         );
     }
 
-    bool Account::verifyData(const std::string& data, const std::string& address, const std::string& signature) {
+    bool Account::verifyData(
+        const std::string& data,
+        const std::string& address,
+        const std::string& signature
+    ) {
         return verifyData(data, Address(address), signature); // throws ots::exception::address::Invalid if address is not valid
     }
 
-    bool Account::verifyDataLegacy(const std::string& data, const Address& address, const std::string& signature) {
+    bool Account::verifyDataLegacy(
+        const std::string& data,
+        const Address& address,
+        const std::string& signature
+    ) {
         if(data.empty())
             throw ots::exception::sign::EmptyMessage();
         static const std::string& header("SigV1");
@@ -1048,15 +1112,25 @@ process:
         return crypto::check_signature(hash, info.address.m_spend_public_key, s);
     }
 
-    bool Account::verifyDataLegacy(const std::string& data, const std::string& address, const std::string& signature) {
+    bool Account::verifyDataLegacy(
+        const std::string& data,
+        const std::string& address,
+        const std::string& signature
+    ) {
         return verifyDataLegacy(data, Address(address), signature); // throws ots::exception::address::Invalid if address is not valid
     }
 
-    bool Account::isBadMagic(const std::string& data, const std::string& magic) {
+    bool Account::isBadMagic(
+        const std::string& data,
+        const std::string& magic
+    ) {
         return data.size() < magic.size() || data.substr(0, magic.size()) != magic;
     }
 
-    void Account::setupTd(const exported_transfer_details& etd, transfer_details& td) {
+    void Account::setupTd(
+        const exported_transfer_details& etd,
+        transfer_details& td
+    ) {
         td.m_block_height = 0;
         td.m_txid = crypto::null_hash;
         td.m_global_output_index = etd.m_global_output_index;
@@ -1073,7 +1147,10 @@ process:
         td.m_subaddr_index.minor = etd.m_subaddr_index_minor;
     }
 
-    unsigned_tx_set Account::parseUnsignedTransaction(const std::string &unsigned_tx, bool withMagic) const {
+    unsigned_tx_set Account::parseUnsignedTransaction(
+        const std::string &unsigned_tx,
+        bool withMagic
+    ) const {
         unsigned_tx_set exported_txs;
         if(withMagic && isBadMagic(unsigned_tx, UNSIGNED_TX_PREFIX))
             throw ots::exception::wallet::UnsignedTransaction("Bad magic in data");
