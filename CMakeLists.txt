@@ -7,7 +7,7 @@ endif()
 cmake_policy(SET CMP0076 NEW)  # For target_sources relative paths
 # cmake_policy(SET CMP0115 NEW)  # For source file extensions
 
-project(monero-ots VERSION 0.4.1)
+project(monero-ots VERSION 0.4.2)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -228,6 +228,20 @@ set(RANDOMX_JIT ON CACHE BOOL "Enable RandomX JIT compilation" FORCE)
 set(RANDOMX_LARGE_PAGES OFF CACHE BOOL "Enable RandomX large pages support" FORCE)
 add_subdirectory(${RANDOMX_DIR} ${CMAKE_BINARY_DIR}/randomx)
 
+set(CRYPTONIGHT_ASM_TARGETS)
+string(TOLOWER "${CMAKE_SYSTEM_PROCESSOR}" CRYPTO_PROC_LC)
+if(CRYPTO_PROC_LC MATCHES "^(i386|x86_64|amd64|x86-64)$")
+	set(CRYPTONIGHT_ASM_TARGETS cryptonight_asm)
+	enable_language(ASM)
+	add_library(cryptonight_asm STATIC
+		${MONERO_CRYPTO_SOURCE_DIR}/CryptonightR_template.S
+	)
+	target_include_directories(cryptonight_asm PRIVATE
+		${MONERO_SOURCE_DIR}/src
+	)
+	set_target_properties(cryptonight_asm PROPERTIES POSITION_INDEPENDENT_CODE ON)
+endif()
+
 add_library(monero-crypto STATIC
 	${CMAKE_CURRENT_BINARY_DIR}/version.cpp
 	${MONERO_CRYPTO_SOURCE_DIR}/crypto.cpp
@@ -279,6 +293,7 @@ target_compile_definitions(monero-crypto
 
 target_link_libraries(monero-crypto
 	PRIVATE
+	${CRYPTONIGHT_ASM_TARGETS}
 	randomx
 	epee
 	easylogging
@@ -536,6 +551,7 @@ install(
 	epee
 	easylogging
 	randomx
+	${CRYPTONIGHT_ASM_TARGETS}
 	monero-crypto
 	EXPORT monero-ots-targets
 	LIBRARY DESTINATION lib
