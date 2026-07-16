@@ -1,5 +1,6 @@
 #include "ots-internal.h"
 #include <cstring>
+#include <cstdint>
 
 namespace ots::internal {
     void translate_exception(ots_error_t* error, const ots::exception::Exception& e) {
@@ -79,7 +80,12 @@ namespace ots::internal {
         result->result.data.reference = false;
     }
 
-    void set_binary_string(ots_result_t* result, const std::string& data, size_t size) {
+    void set_binary_string(
+        ots_result_t* result,
+        const std::string& data,
+        size_t size
+    ) {
+        std::cout << "set_binary_string(" << data.size() << "/" << size << "): " << data << std::endl;
         if(result == nullptr)
             return;
         set_result_type(result, OTS_RESULT_STRING);
@@ -87,6 +93,7 @@ namespace ots::internal {
         result->result.data.size = size;
         result->result.data.type = OTS_DATA_CHAR;
         result->result.data.reference = false;
+        std::cout << "set_binary_string:copy(" << result->result.data.size << "): " << std::string(result->result.data.ptr, result->result.data.size) << std::endl;
     }
 
     void set_boolean(ots_result_t* result, bool value) {
