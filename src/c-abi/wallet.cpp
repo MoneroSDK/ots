@@ -24,7 +24,7 @@ extern "C" {
         }
         return result;
     }
-    
+
     ots_result_t* ots_wallet_height(const ots_handle_t* wallet) {
         ots_result_t* result = new ots_result_t();
         try {
@@ -76,7 +76,7 @@ extern "C" {
         return result;
     }
 
-    ots_result_t* ots_wallet_accounts( // TODO: BUG: after calling this function, the wallet disappears in the python wrapper
+    ots_result_t* ots_wallet_accounts(
             const ots_handle_t* wallet,
             uint32_t max,
             uint32_t offset
@@ -104,7 +104,7 @@ extern "C" {
         return result;
     }
 
-    ots_result_t* ots_wallet_subaddresses( // TODO: BUG: after calling this function, the wallet disappears in the python wrapper
+    ots_result_t* ots_wallet_subaddresses(
             const ots_handle_t* wallet,
             uint32_t account,
             uint32_t max,
@@ -158,11 +158,11 @@ extern "C" {
     }
 
     ots_result_t* ots_wallet_has_address_string(
-            const ots_handle_t* wallet,
-            const char* address,
-            uint32_t max_account_depth,
-            uint32_t max_index_depth
-            ) {
+        const ots_handle_t* wallet,
+        const char* address,
+        uint32_t max_account_depth,
+        uint32_t max_index_depth
+    ) {
         ots_result_t* result = new ots_result_t();
         try {
             if(wallet->type != OTS_HANDLE_WALLET)
@@ -196,7 +196,7 @@ extern "C" {
                         max_account_depth,
                         max_index_depth
                     );
-            
+
             uint32_t* arr = new uint32_t[2];
             arr[0] = idx.first;
             arr[1] = idx.second;
@@ -222,7 +222,7 @@ extern "C" {
                         max_account_depth,
                         max_index_depth
                     );
-            
+
             uint32_t* arr = new uint32_t[2];
             arr[0] = idx.first;
             arr[1] = idx.second;
