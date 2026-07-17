@@ -821,8 +821,6 @@ process:
             crypto::secret_key_to_public_key(skey, pkey);
             crypto::signature &signature = *(crypto::signature*)&ciphertext[ciphertext.size() - sizeof(crypto::signature)];
             crypto::generate_signature(hash, pkey, skey, signature);
-            if(!crypto::check_signature(hash, pkey, signature))
-                throw ots::exception::wallet::CiphertextAuthenticationFailed();
         }
         return ciphertext;
     }

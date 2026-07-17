@@ -1,5 +1,6 @@
 #include "ots-internal.h"
 #include <cstring>
+#include <cstdint>
 
 namespace ots::internal {
     void translate_exception(ots_error_t* error, const ots::exception::Exception& e) {
@@ -55,6 +56,13 @@ namespace ots::internal {
         return copy;
     }
 
+    char* create_string_binary_copy(const std::string& str, size_t size) {
+        char* copy = new char[size + 1];
+        std::memcpy(copy, str.data(), size);
+        copy[size] = '\0';
+        return copy;
+    }
+
     void set_handle(ots_result_t* result, ots_handle_type handle_type, void* handle) {
         if(!result)
             return;
@@ -79,11 +87,15 @@ namespace ots::internal {
         result->result.data.reference = false;
     }
 
-    void set_binary_string(ots_result_t* result, const std::string& data, size_t size) {
+    void set_binary_string(
+        ots_result_t* result,
+        const std::string& data,
+        size_t size
+    ) {
         if(result == nullptr)
             return;
         set_result_type(result, OTS_RESULT_STRING);
-        result->result.data.ptr = create_string_copy(data, size);
+        result->result.data.ptr = create_string_binary_copy(data, size);
         result->result.data.size = size;
         result->result.data.type = OTS_DATA_CHAR;
         result->result.data.reference = false;
