@@ -84,6 +84,7 @@ if(NOT MONERO_SOURCE_DIR)
 		get_filename_component(MONERO_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
 		get_filename_component(MONERO_STUBS_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/stubs/include" ABSOLUTE)
 		get_filename_component(MONERO_CRYPTO_SOURCE_DIR "${MONERO_SOURCE_DIR}/src/crypto" ABSOLUTE)
+		get_filename_component(MONERO_FCMP_SOURCE_DIR "${MONERO_SOURCE_DIR}/src/fcmp_pp" ABSOLUTE)
 		get_filename_component(MONERO_COMMON_SOURCE_DIR "${MONERO_SOURCE_DIR}/src/common" ABSOLUTE)
 		get_filename_component(MONERO_MNEMONICS_SOURCE_DIR "${MONERO_SOURCE_DIR}/src/mnemonics" ABSOLUTE)
 		get_filename_component(MONERO_CRYPTONOTE_BASIC_SOURCE_DIR "${MONERO_SOURCE_DIR}/src/cryptonote_basic" ABSOLUTE)
@@ -269,6 +270,7 @@ add_library(monero-crypto STATIC
 	${MONERO_CRYPTO_SOURCE_DIR}/crypto_ops_builder/verify.c
 	${MONERO_CRYPTO_SOURCE_DIR}/CryptonightR_JIT.c
 	${MONERO_CRYPTO_SOURCE_DIR}/CryptonightR_template.h
+	${MONERO_FCMP_SOURCE_DIR}/fcmp_pp_crypto.cpp
 )
 
 target_include_directories(monero-crypto
