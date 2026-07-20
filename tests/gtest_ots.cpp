@@ -9,6 +9,7 @@
 #include <map>
 #include <sstream>
 #include <iostream>
+#include <iomanip>
 #include <vector>
 #include <numeric>
 #include <cmath>
@@ -200,11 +201,11 @@ TEST_F(OTSTest, WipeableStringBasicConstruction) {
     // construction with c-string
     ots::WipeableString s1;
     EXPECT_TRUE(s1.empty());
-    
+
     ots::WipeableString s2("test");
     EXPECT_EQ(s2.size(), 4);
     EXPECT_STREQ(s2.c_str(), "test");
-    
+
     ots::WipeableString s3("test", 2);
     EXPECT_EQ(s3.size(), 2);
     EXPECT_STREQ(s3.c_str(), "te");
@@ -300,12 +301,12 @@ TEST_F(OTSTest, WipeableStringWiping) {
 TEST_F(OTSTest, SeedIndicesBasicConstruction) {
     ots::SeedIndices v1;
     EXPECT_TRUE(v1.empty());
-    
+
     std::vector<uint16_t> orig{1, 2, 3, 4};
     ots::SeedIndices v2(orig);
     EXPECT_EQ(v2.size(), 4);
     EXPECT_EQ(v2[0], 1);
-    
+
     ots::SeedIndices v3(3, 42);
     EXPECT_EQ(v3.size(), 3);
     EXPECT_EQ(v3[0], 42);
@@ -344,7 +345,7 @@ TEST_F(OTSTest, SeedIndicesOperations) {
     EXPECT_EQ(v.size(), 2);
     EXPECT_EQ(v[0], 1);
     EXPECT_EQ(v[1], 2);
-    
+
     // Clear
     v.clear();
     EXPECT_TRUE(v.empty());
@@ -555,7 +556,7 @@ TEST_F(OTSTest, SeedMergeWithPassword) {
     // Test size limit enforcement
     {
         std::vector<uint16_t> too_long(33, 0xdead);
-        EXPECT_THROW(ots::Seed::mergeWithPassword(password, too_long), 
+        EXPECT_THROW(ots::Seed::mergeWithPassword(password, too_long),
                 ots::exception::seed::MergeError);
     }
 }
@@ -564,11 +565,11 @@ TEST_F(OTSTest, SeedMergeComplexPasswords) {
     // Test with non-ASCII password
     const std::string password = "p@ssw0rd_Æ¥#";
     const std::vector<uint16_t> values = {0x1234, 0x5678};
-    
+
     auto merged = ots::Seed::mergeWithPassword(password, values);
     auto restored = ots::Seed::mergeWithPassword(password, merged);
     EXPECT_EQ(restored, values);
-    
+
     // Test with emoji password
     const std::string emoji_pass = "🔑🚪🗝️";
     auto merged_emoji = ots::Seed::mergeWithPassword(emoji_pass, values);
@@ -612,7 +613,7 @@ TEST_F(OTSTest, SeedMergeMultipleVectors) {
             {0x5555, 0x6666}
         };
         const auto merged = ots::Seed::mergeValues(vectors);
-        
+
         // Verify cumulative XOR
         const std::vector<uint16_t> expected = {
             0x1111 ^ 0x3333 ^ 0x5555,
@@ -661,7 +662,7 @@ TEST_F(OTSTest, SeedMergeAndZeroizeMultipleVectors) {
         {0xc3c3, 0xd4d4},
         {0xe5e5, 0xf6f6}
     };
-    
+
     // Store original pointers for validation
     const auto original_data_ptrs = {
         vectors[0].data(),
@@ -680,7 +681,7 @@ TEST_F(OTSTest, SeedMergeAndZeroizeMultipleVectors) {
 
     // Verify all input vectors were zeroed
     for(const auto& vec : vectors) {
-        EXPECT_TRUE(std::all_of(vec.begin(), vec.end(), 
+        EXPECT_TRUE(std::all_of(vec.begin(), vec.end(),
             [](uint16_t x) { return x == 0; }));
     }
     // Verify original memory locations were wiped (not reallocated)
