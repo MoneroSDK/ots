@@ -246,6 +246,7 @@ endif()
 add_library(monero-crypto STATIC
 	${CMAKE_CURRENT_BINARY_DIR}/version.cpp
 	${MONERO_CRYPTO_SOURCE_DIR}/crypto.cpp
+	${MONERO_CRYPTO_SOURCE_DIR}/generators.cpp
 	${MONERO_CRYPTO_SOURCE_DIR}/hash.c
 	${MONERO_CRYPTO_SOURCE_DIR}/random.c
 	${MONERO_CRYPTO_SOURCE_DIR}/slow-hash.c
